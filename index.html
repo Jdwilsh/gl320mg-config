@@ -19,9 +19,12 @@ header .subtitle{color:var(--muted);font-size:13px}
 nav{background:var(--panel);border-right:1px solid var(--border);padding:16px 0;position:sticky;top:0;height:calc(100vh - 56px);overflow-y:auto}
 nav .nav-section{padding:4px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:16px;margin-bottom:4px}
 nav .nav-section:first-child{margin-top:0}
-nav a{display:block;padding:7px 16px;color:var(--text);text-decoration:none;border-radius:6px;margin:1px 8px;font-size:13px;transition:background .1s}
+nav a{display:block;padding:6px 16px;color:var(--text);text-decoration:none;border-radius:6px;margin:1px 8px;font-size:13px;transition:background .1s;line-height:1.3}
 nav a:hover{background:var(--bg)}
 nav a.active{background:var(--accent-bg);color:var(--accent);font-weight:600}
+nav a .nav-cmd{display:block;font-family:'SF Mono','Fira Code',monospace;font-size:10px;font-weight:700;color:var(--accent);opacity:.7;letter-spacing:.03em}
+nav a.active .nav-cmd{opacity:1}
+nav a .nav-lbl{display:block;font-size:12px}
 main{padding:24px;max-width:960px}
 .section{display:none}.section.active{display:block}
 .section-title{font-size:20px;font-weight:700;margin-bottom:4px}
@@ -97,40 +100,40 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 </header>
 <div class="layout">
 <nav id="sidebar">
+  <div class="nav-section">Dashboard</div>
+  <a href="#" data-section="monitor" class="active"><span class="nav-lbl">Tracker Activity</span></a>
+  <a href="#" data-section="devices"><span class="nav-lbl">Device Names</span></a>
   <div class="nav-section">Network</div>
-  <a href="#" data-section="connectivity" class="active">Connectivity</a>
-  <a href="#" data-section="apnlist">APN List</a>
+  <a href="#" data-section="connectivity"><span class="nav-cmd">AT+GTBSI / GTSRI</span><span class="nav-lbl">Connectivity</span></a>
+  <a href="#" data-section="apnlist"><span class="nav-cmd">AT+GTAPN</span><span class="nav-lbl">APN List</span></a>
   <div class="nav-section">Device</div>
-  <a href="#" data-section="globalcfg">Global Config</a>
-  <a href="#" data-section="simpin">SIM &amp; PIN</a>
-  <div class="nav-section">Tracking</div>
-  <a href="#" data-section="reporting">Fixed Reporting</a>
-  <a href="#" data-section="motion">Motion Detection</a>
+  <a href="#" data-section="globalcfg"><span class="nav-cmd">AT+GTCFG</span><span class="nav-lbl">Device Config</span></a>
+  <a href="#" data-section="simpin"><span class="nav-cmd">AT+GTSIM / GTPIN</span><span class="nav-lbl">SIM &amp; PIN</span></a>
+  <div class="nav-section">Reporting</div>
+  <a href="#" data-section="reporting"><span class="nav-cmd">AT+GTFRI</span><span class="nav-lbl">Fixed Reports</span></a>
+  <a href="#" data-section="motion"><span class="nav-cmd">AT+GTNMD / GTGAM</span><span class="nav-lbl">Motion Detection</span></a>
+  <a href="#" data-section="geofences"><span class="nav-cmd">AT+GTGEO</span><span class="nav-lbl">Geofences</span></a>
   <div class="nav-section">Alarms</div>
-  <a href="#" data-section="geofences">Geofences</a>
-  <a href="#" data-section="alarms">Speed &amp; Temperature</a>
-  <a href="#" data-section="harsh">Motion &amp; Harsh</a>
-  <div class="nav-section">Hardware</div>
-  <a href="#" data-section="watchdog">Watchdog</a>
-  <a href="#" data-section="funckey">Function Key</a>
-  <div class="nav-section">Notifications</div>
-  <a href="#" data-section="workhours">Working Hours</a>
-  <a href="#" data-section="smsalerts">SMS &amp; Alerts</a>
+  <a href="#" data-section="alarms"><span class="nav-cmd">AT+GTSPD / GTTEM</span><span class="nav-lbl">Speed &amp; Temperature</span></a>
+  <a href="#" data-section="harsh"><span class="nav-cmd">AT+GTMSA / GTHBM</span><span class="nav-lbl">Fall &amp; Harsh Events</span></a>
+  <div class="nav-section">Behaviour</div>
+  <a href="#" data-section="watchdog"><span class="nav-cmd">AT+GTDOG</span><span class="nav-lbl">Watchdog</span></a>
+  <a href="#" data-section="funckey"><span class="nav-cmd">AT+GTFKS</span><span class="nav-lbl">Function Keys</span></a>
+  <a href="#" data-section="workhours"><span class="nav-cmd">AT+GTOWH</span><span class="nav-lbl">Working Hours</span></a>
+  <div class="nav-section">Comms</div>
+  <a href="#" data-section="smsalerts"><span class="nav-cmd">AT+GTNTS / GTWLT / GTGLM</span><span class="nav-lbl">SMS &amp; Alerts</span></a>
   <div class="nav-section">Advanced</div>
-  <a href="#" data-section="otacfg">OTA Config</a>
-  <a href="#" data-section="advanced">Other Settings</a>
-  <div class="nav-section">Monitor</div>
-  <a href="#" data-section="monitor">Tracker Activity</a>
-  <a href="#" data-section="devices">Device Names</a>
+  <a href="#" data-section="otacfg"><span class="nav-cmd">AT+GTUPC</span><span class="nav-lbl">OTA Config</span></a>
+  <a href="#" data-section="advanced"><span class="nav-cmd">AT+GTJDC / GTPDS / Other</span><span class="nav-lbl">Other Settings</span></a>
   <div class="nav-section">Output</div>
-  <a href="#" data-section="output">Generate &amp; Save</a>
+  <a href="#" data-section="output"><span class="nav-lbl">Generate &amp; Save</span></a>
 </nav>
 <main>
 
 <!-- ── CONNECTIVITY ── -->
-<div class="section active" id="sect-connectivity">
-  <div class="section-title">Connectivity</div>
-  <div class="section-desc">Network mode, LTE APN (AT+GTBSI) and reporting server (AT+GTSRI).</div>
+<div class="section" id="sect-connectivity">
+  <div class="section-title">AT+GTBSI / GTSRI — Connectivity</div>
+  <div class="section-desc">Network mode and LTE APN (AT+GTBSI), reporting server settings (AT+GTSRI).</div>
   <div class="card">
     <div class="card-title">Network &amp; APN (AT+GTBSI)</div>
     <div class="fg two">
@@ -203,8 +206,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── APN LIST ── -->
 <div class="section" id="sect-apnlist">
-  <div class="section-title">APN List</div>
-  <div class="section-desc">Up to 8 APN entries for automatic APN changeover (AT+GTAPN). Enable auto-changeover below (AT+GTAAC).</div>
+  <div class="section-title">AT+GTAPN — APN List</div>
+  <div class="section-desc">Up to 8 APN entries for automatic APN changeover. Enable auto-changeover below (AT+GTAAC).</div>
   <div class="card">
     <div class="card-title">Auto APN Changeover (AT+GTAAC)</div>
     <div class="fg two">
@@ -228,8 +231,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── GLOBAL CONFIG ── -->
 <div class="section" id="sect-globalcfg">
-  <div class="section-title">Global Config</div>
-  <div class="section-desc">Core device settings (AT+GTCFG).</div>
+  <div class="section-title">AT+GTCFG — Device Config</div>
+  <div class="section-desc">Core device settings: password, GPS mode, reporting mask, events, LEDs, odometer.</div>
   <div class="card">
     <div class="card-title">Identity &amp; Password</div>
     <div class="fg three">
@@ -316,7 +319,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── SIM & PIN ── -->
 <div class="section" id="sect-simpin">
-  <div class="section-title">SIM &amp; PIN</div>
+  <div class="section-title">AT+GTSIM / GTPIN — SIM &amp; PIN</div>
   <div class="section-desc">SIM PIN auto-unlock (AT+GTPIN) and SIM card binding (AT+GTSIM).</div>
   <div class="card">
     <div class="card-title">SIM PIN (AT+GTPIN)</div>
@@ -343,8 +346,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── FIXED REPORTING ── -->
 <div class="section" id="sect-reporting">
-  <div class="section-title">Fixed Reporting</div>
-  <div class="section-desc">Controls how and when GPS position reports are sent (AT+GTFRI).</div>
+  <div class="section-title">AT+GTFRI — Fixed Reporting</div>
+  <div class="section-desc">Controls how and when GPS position reports are sent.</div>
   <div class="card">
     <div class="card-title">Report Mode</div>
     <div class="fg two">
@@ -406,8 +409,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── MOTION DETECTION ── -->
 <div class="section" id="sect-motion">
-  <div class="section-title">Motion Detection</div>
-  <div class="section-desc">Non-movement detection (AT+GTNMD) and GPS-assisted motion (AT+GTGAM).</div>
+  <div class="section-title">AT+GTNMD / GTGAM — Motion Detection</div>
+  <div class="section-desc">Non-movement detection (AT+GTNMD) and GPS-assisted motion measurement (AT+GTGAM).</div>
   <div class="card">
     <div class="card-title">Non-Movement Detection (AT+GTNMD)</div>
     <div class="fg two" style="margin-bottom:14px">
@@ -442,8 +445,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── GEOFENCES ── -->
 <div class="section" id="sect-geofences">
-  <div class="section-title">Geofences</div>
-  <div class="section-desc">Up to 20 circular geo-fence zones (AT+GTGEO). Leave Mode=0 to disable a slot.</div>
+  <div class="section-title">AT+GTGEO — Geofences</div>
+  <div class="section-desc">Up to 20 circular geo-fence zones. Leave Mode=0 to disable a slot.</div>
   <div class="note"><strong>Mode:</strong> 0=Disabled &nbsp; 1=Alert on Enter &nbsp; 2=Alert on Exit &nbsp; 3=Enter &amp; Exit</div>
   <div class="card" style="padding:0;overflow:hidden">
     <table class="tbl" id="geo_table">
@@ -455,7 +458,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── SPEED & TEMPERATURE ── -->
 <div class="section" id="sect-alarms">
-  <div class="section-title">Speed &amp; Temperature Alarms</div>
+  <div class="section-title">AT+GTSPD / GTTEM — Speed &amp; Temperature Alarms</div>
   <div class="section-desc">Speed alarm (AT+GTSPD) and temperature alarm (AT+GTTEM).</div>
   <div class="card">
     <div class="card-title">Speed Alarm (AT+GTSPD)</div>
@@ -497,8 +500,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── MOTION & HARSH ── -->
 <div class="section" id="sect-harsh">
-  <div class="section-title">Motion &amp; Harsh Behaviour</div>
-  <div class="section-desc">Fall detection (AT+GTMSA) and harsh braking/acceleration (AT+GTHBM).</div>
+  <div class="section-title">AT+GTMSA / GTHBM — Fall &amp; Harsh Events</div>
+  <div class="section-desc">Fall detection (AT+GTMSA) and harsh braking/acceleration monitoring (AT+GTHBM).</div>
   <div class="card">
     <div class="card-title">Fall Detection / Motion Sensor Alarm (AT+GTMSA)</div>
     <div class="fg two">
@@ -531,8 +534,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── WATCHDOG ── -->
 <div class="section" id="sect-watchdog">
-  <div class="section-title">Watchdog</div>
-  <div class="section-desc">Automatic reboot to recover from hangs (AT+GTDOG).</div>
+  <div class="section-title">AT+GTDOG — Watchdog</div>
+  <div class="section-desc">Automatic reboot to recover from hangs.</div>
   <div class="card">
     <div class="fg two">
       <div class="f"><label>Mode</label>
@@ -558,8 +561,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── FUNCTION KEY ── -->
 <div class="section" id="sect-funckey">
-  <div class="section-title">Function Key</div>
-  <div class="section-desc">Behaviour of the physical power and function keys (AT+GTFKS).</div>
+  <div class="section-title">AT+GTFKS — Function Keys</div>
+  <div class="section-desc">Behaviour of the physical power and function keys.</div>
   <div class="card">
     <div class="fg two">
       <div class="f"><label>Power Key Mode</label>
@@ -599,8 +602,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── WORKING HOURS ── -->
 <div class="section" id="sect-workhours">
-  <div class="section-title">Working Hours</div>
-  <div class="section-desc">Hide location data outside working hours (AT+GTOWH).</div>
+  <div class="section-title">AT+GTOWH — Working Hours</div>
+  <div class="section-desc">Hide location data outside working hours.</div>
   <div class="card">
     <div class="fg two">
       <div class="f"><label>Mode</label>
@@ -638,8 +641,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── SMS & ALERTS ── -->
 <div class="section" id="sect-smsalerts">
-  <div class="section-title">SMS &amp; Alerts</div>
-  <div class="section-desc">SMS whitelist (AT+GTWLT) and Google Maps SMS links (AT+GTGLM).</div>
+  <div class="section-title">AT+GTNTS / GTWLT / GTGLM — Comms &amp; Alerts</div>
+  <div class="section-desc">Network selection (AT+GTNTS), SMS whitelist (AT+GTWLT), and Google Maps SMS links (AT+GTGLM).</div>
   <div class="card">
     <div class="card-title">SMS Whitelist (AT+GTWLT)</div>
     <div class="fg two">
@@ -676,8 +679,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── OTA CONFIG ── -->
 <div class="section" id="sect-otacfg">
-  <div class="section-title">OTA Config Download</div>
-  <div class="section-desc">Tells the device to periodically fetch a new config file over HTTP (AT+GTUPC).</div>
+  <div class="section-title">AT+GTUPC — OTA Config Download</div>
+  <div class="section-desc">Tells the device to periodically fetch a new config file over HTTP.</div>
   <div class="note"><strong>URL:</strong> Set to <code>http://cfg.jdwilsh.com/</code> (trailing slash) and each device will automatically request <code>http://cfg.jdwilsh.com/&lt;IMEI&gt;.ini</code> — allowing per-device configs. Or specify a full path for a shared config.</div>
   <div class="card">
     <div class="fg two">
@@ -693,8 +696,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── ADVANCED / OTHER ── -->
 <div class="section" id="sect-advanced">
-  <div class="section-title">Other Settings</div>
-  <div class="section-desc">Miscellaneous advanced configuration.</div>
+  <div class="section-title">AT+GTJDC / GTPDS / Other — Advanced Settings</div>
+  <div class="section-desc">Jamming detection (AT+GTJDC), power-down state preservation (AT+GTPDS), and other settings.</div>
   <div class="card">
     <div class="card-title">Jamming Detection (AT+GTJDC)</div>
     <div class="fg two">
@@ -775,7 +778,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 </div>
 
 <!-- ── MONITOR ── -->
-<div class="section" id="sect-monitor">
+<div class="section active" id="sect-monitor">
   <div class="section-title">Tracker Activity</div>
   <div class="section-desc">Live view parsed from the nginx access log on cfg.jdwilsh.com.</div>
   <div class="monitor-bar">
@@ -835,6 +838,19 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     <span id="save_msg" class="status-msg"></span>
   </div>
   <textarea class="output" id="config_output" readonly placeholder="Click 'Generate Preview' to build the config file…"></textarea>
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">Deploy to Multiple Devices</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Saves the current config as <code>&lt;IMEI&gt;.ini</code> for each selected device. Devices must be registered in Device Names first.</p>
+    <div id="deploy_device_list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+      <span style="color:var(--muted);font-size:13px">No devices registered.</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" id="btn_deploy_all">Select All</button>
+      <button class="btn btn-outline btn-sm" id="btn_deploy_none">Deselect All</button>
+      <button class="btn btn-success" id="btn_deploy_selected">Save to Selected Devices</button>
+      <span id="deploy_msg" class="status-msg"></span>
+    </div>
+  </div>
 </div>
 
 </main>
@@ -855,6 +871,8 @@ navLinks.forEach(link => {
     if (t === 'devices') loadDevices();
   });
 });
+// Monitor is the landing page — load it immediately
+loadMonitor();
 
 // ── Form helpers ─────────────────────────────────────────────────────────────
 function v(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
@@ -1456,6 +1474,32 @@ document.getElementById('btn_download').addEventListener('click', () => {
   URL.revokeObjectURL(a.href);
 });
 
+document.getElementById('btn_deploy_all').addEventListener('click', () => {
+  document.querySelectorAll('.deploy-cb').forEach(cb => cb.checked = true);
+});
+document.getElementById('btn_deploy_none').addEventListener('click', () => {
+  document.querySelectorAll('.deploy-cb').forEach(cb => cb.checked = false);
+});
+document.getElementById('btn_deploy_selected').addEventListener('click', async () => {
+  const cbs = [...document.querySelectorAll('.deploy-cb:checked')];
+  if (!cbs.length) { showMsg('deploy_msg', 'No devices selected', true); return; }
+  const out = generate();
+  let ok = 0, fail = 0;
+  for (const cb of cbs) {
+    const filename = cb.dataset.file;
+    try {
+      const res = await fetch(`${API}/config/${encodeURIComponent(filename)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: out }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      ok++;
+    } catch { fail++; }
+  }
+  if (fail === 0) showMsg('deploy_msg', `Saved to ${ok} device${ok > 1 ? 's' : ''}`, false);
+  else showMsg('deploy_msg', `${ok} saved, ${fail} failed`, true);
+});
+
 // ── Monitor ───────────────────────────────────────────────────────────────────
 const API = '/api';
 let monitorTimer = null;
@@ -1589,6 +1633,19 @@ function renderDevices(devices) {
     opt.textContent = `${name} — ${cfgFile}`;
     sel.appendChild(opt);
   });
+
+  // Populate deploy checklist
+  const deployList = document.getElementById('deploy_device_list');
+  if (deployList) {
+    deployList.innerHTML = '';
+    entries.forEach(([imei, name]) => {
+      const lbl = document.createElement('label');
+      lbl.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer';
+      lbl.innerHTML = `<input type="checkbox" class="deploy-cb" data-imei="${esc(imei)}" data-file="${esc(imei)}.ini" checked>
+        <strong>${esc(name)}</strong><span class="mono">${esc(imei)}.ini</span>`;
+      deployList.appendChild(lbl);
+    });
+  }
 }
 
 function editDevice(imei, name) {
