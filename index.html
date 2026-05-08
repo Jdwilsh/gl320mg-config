@@ -648,11 +648,11 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section" id="sect-otacfg">
   <div class="section-title">OTA Config Download</div>
   <div class="section-desc">Tells the device to periodically fetch a new config file over HTTP (AT+GTUPC).</div>
-  <div class="note"><strong>URL:</strong> Set this to the full URL of the config file on cfg.jdwilsh.com, e.g. <code>http://cfg.jdwilsh.com/1.GL320M</code></div>
+  <div class="note"><strong>URL:</strong> Set to <code>http://cfg.jdwilsh.com/</code> (trailing slash) and each device will automatically request <code>http://cfg.jdwilsh.com/&lt;IMEI&gt;.ini</code> — allowing per-device configs. Or specify a full path for a shared config.</div>
   <div class="card">
     <div class="fg two">
       <div class="f cb"><input type="checkbox" id="upc_mode"><label for="upc_mode">Enable OTA config download</label></div>
-      <div class="f"><label>Config File URL</label><input id="upc_url" placeholder="http://cfg.jdwilsh.com/1.cfg"></div>
+      <div class="f"><label>Config File URL</label><input id="upc_url" value="http://cfg.jdwilsh.com/" placeholder="http://cfg.jdwilsh.com/"></div>
       <div class="f"><label>Check interval (hours, 0=once only)</label><input id="upc_interval" type="number" value="0" min="0" max="8760"></div>
       <div class="f"><label>Max download retries (0–3)</label><input id="upc_max_retries" type="number" value="0" min="0" max="3"></div>
       <div class="f"><label>Download timeout (minutes)</label><input id="upc_timeout" type="number" value="10" min="5" max="30"></div>
@@ -767,7 +767,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   </div>
   <div class="card" style="padding:0;overflow:hidden">
     <table class="tbl">
-      <thead><tr><th>Name</th><th>IMEI</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>IMEI</th><th>Config file</th><th></th></tr></thead>
       <tbody id="devices_tbody"><tr><td colspan="3" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr></tbody>
     </table>
   </div>
@@ -781,6 +781,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     <div class="card-title">Config File</div>
     <div class="cfg-file-bar">
       <div class="f"><label>Filename on server</label><input id="cfg_filename" value="1.cfg" placeholder="1.cfg"><span class="hint">Served from cfg.jdwilsh.com/&lt;filename&gt;</span></div>
+      <div class="f"><label>Or pick a device</label><select id="cfg_device_select"><option value="">— select device —</option></select><button class="btn btn-outline btn-sm" id="btn_use_device">Use IMEI filename</button></div>
       <button class="btn btn-outline" id="btn_load_server">Load from Server</button>
     </div>
     <div id="load_msg" class="status-msg" style="margin-bottom:12px"></div>
@@ -1316,6 +1317,11 @@ function populateFromConfig(text) {
 document.getElementById('btn_generate').addEventListener('click', generate);
 document.getElementById('btn_load_server').addEventListener('click', loadFromServer);
 
+document.getElementById('btn_use_device').addEventListener('click', () => {
+  const sel = document.getElementById('cfg_device_select');
+  if (sel.value) document.getElementById('cfg_filename').value = sel.value;
+});
+
 document.getElementById('btn_save_server').addEventListener('click', async () => {
   const out = generate();
   const filename = v('cfg_filename');
@@ -1448,28 +1454,37 @@ async function loadDevices() {
     renderDevices(await res.json());
   } catch (e) {
     document.getElementById('devices_tbody').innerHTML =
-      `<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--danger)">Error: ${esc(e.message)}</td></tr>`;
+      `<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--danger)">Error: ${esc(e.message)}</td></tr>`;
   }
 }
 
 function renderDevices(devices) {
   const tbody = document.getElementById('devices_tbody');
+  const sel = document.getElementById('cfg_device_select');
   const entries = Object.entries(devices);
   if (!entries.length) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:32px;color:var(--muted)">No devices registered.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted)">No devices registered.</td></tr>';
+    sel.innerHTML = '<option value="">— select device —</option>';
     return;
   }
   tbody.innerHTML = '';
+  sel.innerHTML = '<option value="">— select device —</option>';
   entries.forEach(([imei, name]) => {
+    const cfgFile = `${imei}.ini`;
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><strong>${esc(name)}</strong></td>
       <td><span class="mono">${esc(imei)}</span></td>
+      <td><span class="mono">${cfgFile}</span></td>
       <td style="text-align:right">
         <button class="btn btn-outline btn-sm" style="margin-right:4px" onclick="editDevice('${esc(imei)}','${esc(name).replace(/'/g,"\\'")}')">Edit</button>
         <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteDevice('${esc(imei)}')">Delete</button>
       </td>`;
     tbody.appendChild(tr);
+    const opt = document.createElement('option');
+    opt.value = cfgFile;
+    opt.textContent = `${name} — ${cfgFile}`;
+    sel.appendChild(opt);
   });
 }
 
@@ -1500,6 +1515,9 @@ document.getElementById('btn_save_device').addEventListener('click', async () =>
     loadDevices();
   } catch (e) { showMsg('dev_save_msg', `Error: ${e.message}`, true); }
 });
+
+// Populate device select on page load
+loadDevices();
 </script>
 </body>
 </html>
