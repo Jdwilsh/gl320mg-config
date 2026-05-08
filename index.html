@@ -104,6 +104,36 @@
 
   .note { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: 12px; color: var(--muted); margin-bottom: 16px; }
   .note strong { color: var(--text); }
+
+  /* Monitor / Devices tables */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th { padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); border-bottom: 2px solid var(--border); }
+  .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--bg); }
+
+  .status-ok   { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #dcfce7; color: #15803d; }
+  .status-notmod { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #dbeafe; color: #1d4ed8; }
+  .status-err  { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #fee2e2; color: #b91c1c; }
+
+  .history-toggle { background: none; border: none; cursor: pointer; color: var(--accent); font-size: 12px; padding: 0; text-decoration: underline; }
+  .history-rows { display: none; }
+  .history-rows.open { display: table-row-group; }
+  .history-row td { background: var(--bg) !important; font-size: 12px; color: var(--muted); padding: 6px 12px 6px 32px; }
+
+  .monitor-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .refresh-indicator { font-size: 12px; color: var(--muted); }
+  .refresh-indicator .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--success); margin-right: 4px; }
+  .refresh-indicator .dot.off { background: var(--muted); }
+
+  .device-form { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
+  .device-form .field { flex: 1; min-width: 160px; }
+  .device-form .btn { flex-shrink: 0; align-self: flex-end; }
+
+  .name-cell { font-weight: 600; }
+  .name-cell.unnamed { color: var(--muted); font-weight: 400; font-style: italic; }
+
+  .imei-code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -128,6 +158,10 @@
     <a href="#" data-section="speed">Speed Alarm</a>
     <a href="#" data-section="motion">Motion / Tow</a>
     <a href="#" data-section="power">Power &amp; Watchdog</a>
+
+    <div class="nav-section">Monitor</div>
+    <a href="#" data-section="monitor">Tracker Activity</a>
+    <a href="#" data-section="devices">Device Names</a>
 
     <div class="nav-section">Output</div>
     <a href="#" data-section="output">Generate Config</a>
@@ -419,6 +453,76 @@
             <input id="pds_delay" type="number" value="0" min="0" max="86400">
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ── MONITOR ── -->
+    <div class="section" id="sect-monitor">
+      <div class="section-title">Tracker Activity</div>
+      <div class="section-desc">Live view of which trackers have fetched their config file. Parsed from the nginx access log.</div>
+
+      <div class="monitor-bar">
+        <button class="btn btn-primary" id="btn_refresh_monitor">Refresh Now</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="auto_refresh" checked>
+          Auto-refresh every 30s
+        </label>
+        <span class="refresh-indicator"><span class="dot" id="refresh_dot"></span><span id="refresh_label">Refreshing…</span></span>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="data-table" id="monitor_table">
+          <thead>
+            <tr>
+              <th>Name / IMEI</th>
+              <th>Last Seen</th>
+              <th>Config File</th>
+              <th>Status</th>
+              <th>Last IP</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="monitor_tbody">
+            <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── DEVICES ── -->
+    <div class="section" id="sect-devices">
+      <div class="section-title">Device Names</div>
+      <div class="section-desc">Map IMEI numbers to friendly names. These appear in the Tracker Activity view.</div>
+
+      <div class="card">
+        <div class="card-title">Add / Update Device</div>
+        <div class="device-form">
+          <div class="field">
+            <label>IMEI (15 digits)</label>
+            <input id="new_imei" maxlength="15" placeholder="860201067895154">
+          </div>
+          <div class="field">
+            <label>Friendly Name</label>
+            <input id="new_name" placeholder="Ambulance 1">
+          </div>
+          <button class="btn btn-primary" id="btn_save_device">Save</button>
+        </div>
+        <div id="device_save_msg" style="font-size:12px;color:var(--success);display:none;margin-top:-6px">Saved.</div>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="data-table" id="devices_table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>IMEI</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="devices_tbody">
+            <tr><td colspan="3" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -787,6 +891,224 @@ document.getElementById('btn_download').addEventListener('click', () => {
   a.download = 'config.GL320M';
   a.click();
   URL.revokeObjectURL(a.href);
+});
+
+// ── Monitor & Devices ──────────────────────────────────────────────────────
+
+const API = '/api';
+
+// Load monitor when section is first shown, and also on nav click
+let monitorLoaded = false;
+let devicesLoaded = false;
+
+// Override nav click to trigger loads
+links.forEach(link => {
+  link.addEventListener('click', () => {
+    const target = link.dataset.section;
+    if (target === 'monitor') { loadMonitor(); }
+    if (target === 'devices') { loadDevices(); }
+  });
+});
+
+// ── Helpers ──
+
+function relativeTime(isoStr) {
+  const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
+  if (diff < 0)    return 'just now';
+  if (diff < 60)   return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function statusBadge(code) {
+  if (code === 200) return `<span class="status-ok">200 OK</span>`;
+  if (code === 304) return `<span class="status-notmod">304 Not Modified</span>`;
+  if (code >= 400)  return `<span class="status-err">${code}</span>`;
+  return `<span class="tag">${code}</span>`;
+}
+
+// ── Monitor ──
+
+let monitorRefreshTimer = null;
+
+async function loadMonitor() {
+  const dot   = document.getElementById('refresh_dot');
+  const label = document.getElementById('refresh_label');
+  dot.classList.remove('off');
+  label.textContent = 'Refreshing…';
+  try {
+    const res = await fetch(`${API}/trackers`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const trackers = await res.json();
+    renderMonitor(trackers);
+    label.textContent = `Last updated ${new Date().toLocaleTimeString()}`;
+    monitorLoaded = true;
+  } catch (err) {
+    label.textContent = `Error: ${err.message}`;
+    dot.classList.add('off');
+  }
+}
+
+function renderMonitor(trackers) {
+  const tbody = document.getElementById('monitor_tbody');
+  if (!trackers.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">No tracker activity found in log.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = '';
+  trackers.forEach(t => {
+    const displayName = t.name || null;
+    const nameHtml = displayName
+      ? `<span class="name-cell">${esc(displayName)}</span>`
+      : `<span class="name-cell unnamed">Unnamed</span>`;
+
+    const historyId = `hist_${t.imei}`;
+    const hasHistory = t.history && t.history.length > 1;
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>
+        ${nameHtml}<br>
+        <span class="imei-code">${t.imei}</span>
+      </td>
+      <td title="${t.lastSeen}">${relativeTime(t.lastSeen)}</td>
+      <td><code style="font-size:12px">${esc(t.lastConfig)}</code></td>
+      <td>${statusBadge(t.lastStatus)}</td>
+      <td><span class="imei-code">${esc(t.lastIp)}</span></td>
+      <td>${hasHistory ? `<button class="history-toggle" onclick="toggleHistory('${historyId}', this)">History ▾</button>` : ''}</td>
+    `;
+    tbody.appendChild(row);
+
+    if (hasHistory) {
+      const histGroup = document.createElement('tbody');
+      histGroup.id = historyId;
+      histGroup.className = 'history-rows';
+      t.history.forEach(h => {
+        const hr = document.createElement('tr');
+        hr.className = 'history-row';
+        hr.innerHTML = `
+          <td colspan="2" title="${h.timestamp}">${relativeTime(h.timestamp)} &nbsp; <span style="color:var(--text)">${new Date(h.timestamp).toLocaleString()}</span></td>
+          <td><code style="font-size:12px">${esc(h.config)}</code></td>
+          <td>${statusBadge(h.status)}</td>
+          <td colspan="2"><span class="imei-code">${esc(h.ip)}</span></td>
+        `;
+        histGroup.appendChild(hr);
+      });
+      // Insert after current row's tbody (the main tbody)
+      // We'll append histGroup to the table directly
+      document.getElementById('monitor_table').appendChild(histGroup);
+    }
+  });
+}
+
+function toggleHistory(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const open = el.classList.toggle('open');
+  btn.textContent = open ? 'History ▴' : 'History ▾';
+}
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.getElementById('btn_refresh_monitor').addEventListener('click', loadMonitor);
+
+// Auto-refresh
+function scheduleAutoRefresh() {
+  clearInterval(monitorRefreshTimer);
+  if (document.getElementById('auto_refresh').checked) {
+    monitorRefreshTimer = setInterval(() => {
+      // Only refresh if monitor section is visible
+      if (document.getElementById('sect-monitor').classList.contains('active')) {
+        loadMonitor();
+      }
+    }, 30000);
+  }
+}
+
+document.getElementById('auto_refresh').addEventListener('change', scheduleAutoRefresh);
+scheduleAutoRefresh();
+
+// ── Devices ──
+
+async function loadDevices() {
+  try {
+    const res = await fetch(`${API}/devices`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const devices = await res.json(); // { imei: name, ... }
+    renderDevices(devices);
+    devicesLoaded = true;
+  } catch (err) {
+    document.getElementById('devices_tbody').innerHTML =
+      `<tr><td colspan="3" style="text-align:center;padding:32px;color:var(--danger)">Error loading devices: ${esc(err.message)}</td></tr>`;
+  }
+}
+
+function renderDevices(devices) {
+  const tbody = document.getElementById('devices_tbody');
+  const entries = Object.entries(devices);
+  if (!entries.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:32px;color:var(--muted)">No devices registered yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = '';
+  entries.forEach(([imei, name]) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td><strong>${esc(name)}</strong></td>
+      <td><span class="imei-code">${esc(imei)}</span></td>
+      <td style="text-align:right">
+        <button class="btn btn-outline" style="padding:4px 12px;font-size:12px;margin-right:4px"
+          onclick="editDevice('${esc(imei)}','${esc(name).replace(/'/g,"\\'")}')">Edit</button>
+        <button class="btn btn-outline" style="padding:4px 12px;font-size:12px;color:var(--danger);border-color:var(--danger)"
+          onclick="deleteDevice('${esc(imei)}')">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+function editDevice(imei, name) {
+  document.getElementById('new_imei').value = imei;
+  document.getElementById('new_name').value = name;
+  document.getElementById('new_name').focus();
+}
+
+async function deleteDevice(imei) {
+  if (!confirm(`Remove name for IMEI ${imei}?`)) return;
+  try {
+    await fetch(`${API}/devices/${imei}`, { method: 'DELETE' });
+    loadDevices();
+    // Invalidate monitor cache on next load
+    monitorLoaded = false;
+  } catch (err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+document.getElementById('btn_save_device').addEventListener('click', async () => {
+  const imei = document.getElementById('new_imei').value.trim();
+  const name = document.getElementById('new_name').value.trim();
+  if (!imei) { alert('IMEI is required'); return; }
+  try {
+    const res = await fetch(`${API}/devices`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imei, name }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    document.getElementById('new_imei').value = '';
+    document.getElementById('new_name').value = '';
+    const msg = document.getElementById('device_save_msg');
+    msg.style.display = 'block';
+    setTimeout(() => { msg.style.display = 'none'; }, 2000);
+    loadDevices();
+    monitorLoaded = false;
+  } catch (err) {
+    alert('Save failed: ' + err.message);
+  }
 });
 </script>
 </body>

@@ -1,0 +1,12 @@
+{
+  "name": "tracker-api",
+  "version": "1.0.0",
+  "description": "GL320MG tracker log monitor API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
