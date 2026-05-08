@@ -40,6 +40,9 @@ main{padding:24px;max-width:960px}
 .f.cb{flex-direction:row;align-items:center;gap:8px}
 .f.cb input{width:auto}
 .f.cb label{font-size:13px;font-weight:400;color:var(--text);cursor:pointer}
+.cb-group{display:flex;flex-direction:column;gap:5px;margin-top:4px}
+.cb-group label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:400;color:var(--text);cursor:pointer}
+.cb-group input[type=checkbox]{width:auto;margin:0}
 .btn{padding:8px 18px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s}
 .btn:hover{opacity:.85}
 .btn-primary{background:var(--accent);color:#fff}
@@ -251,9 +254,36 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   </div>
   <div class="card">
     <div class="card-title">Reporting &amp; LEDs</div>
-    <div class="fg three">
-      <div class="f"><label>Report Item Mask (HEX)</label><input id="cfg_report_mask" value="001B" maxlength="4"><span class="hint">001B = Speed+Azimuth+Altitude+SendTime</span></div>
-      <div class="f"><label>Event Mask (HEX)</label><input id="cfg_event_mask" value="4A13" maxlength="4"><span class="hint">4A13 = power on/off, ignition, network events</span></div>
+    <div class="fg two">
+      <div class="f">
+        <label>Report Item Mask — fields included in reports</label>
+        <div class="cb-group">
+          <label><input type="checkbox" id="rim_speed" checked> Speed</label>
+          <label><input type="checkbox" id="rim_azimuth" checked> Azimuth (heading)</label>
+          <label><input type="checkbox" id="rim_altitude" checked> Altitude</label>
+          <label><input type="checkbox" id="rim_cell"> Cell info (MCC/MNC/LAC/Cell ID)</label>
+          <label><input type="checkbox" id="rim_sendtime" checked> Send time</label>
+          <label><input type="checkbox" id="rim_devname"> Device name</label>
+        </div>
+      </div>
+      <div class="f">
+        <label>Event Mask — which events are reported to server</label>
+        <div class="cb-group">
+          <label><input type="checkbox" id="em_gtpna" checked> Power on (GTPNA)</label>
+          <label><input type="checkbox" id="em_gtpfa" checked> External power fail (GTPFA)</label>
+          <label><input type="checkbox" id="em_gtepn"> Ext. power reconnect (GTEPN)</label>
+          <label><input type="checkbox" id="em_gtepf"> Ext. power fail event (GTEPF)</label>
+          <label><input type="checkbox" id="em_gtbpl"> Battery low (GTBPL)</label>
+          <label><input type="checkbox" id="em_gtbtc"> Battery charging (GTBTC)</label>
+          <label><input type="checkbox" id="em_gtstc"> Stop charging (GTSTC)</label>
+          <label><input type="checkbox" id="em_gtstt" checked> State change (GTSTT)</label>
+          <label><input type="checkbox" id="em_gtpdp"> GPRS link lost (GTPDP)</label>
+          <label><input type="checkbox" id="em_gtpnl"> SIM absent (GTPNL)</label>
+          <label><input type="checkbox" id="em_gtign" checked> Ignition on/off (GTIGN/GTIGF)</label>
+          <label><input type="checkbox" id="em_gtigl"> Ignition loss (GTIGL)</label>
+          <label><input type="checkbox" id="em_gtpfl" checked> Ext. power restored (GTPFL)</label>
+        </div>
+      </div>
       <div class="f"><label>LED Mode</label>
         <select id="cfg_led">
           <option value="0">0 – GPS LED off after 150s</option>
@@ -722,7 +752,18 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
           <option value="2">2 – Reset all states then preserve</option>
         </select>
       </div>
-      <div class="f"><label>State Mask (HEX)</label><input id="pds_mask" value="000048" maxlength="6"><span class="hint">000048 = last position + charging state</span></div>
+      <div class="f">
+        <label>States to preserve across reboots</label>
+        <div class="cb-group">
+          <label><input type="checkbox" id="pds_geo"> GEO zone states</label>
+          <label><input type="checkbox" id="pds_reset"> Suppress power on/off msgs after watchdog reboot</label>
+          <label><input type="checkbox" id="pds_lastpos" checked> Last known position</label>
+          <label><input type="checkbox" id="pds_devstate"> Device state (ignition + motion)</label>
+          <label><input type="checkbox" id="pds_extpwr"> External power supply state</label>
+          <label><input type="checkbox" id="pds_charging" checked> Charging state</label>
+          <label><input type="checkbox" id="pds_digin"> Digital inputs state</label>
+        </div>
+      </div>
     </div>
   </div>
   <div class="card">
@@ -888,9 +929,32 @@ function buildGTQSS(p) {
 
 function buildGTCFG(p) {
   const newPw = v('cfg_new_pw') || p;
+  let rim = 0;
+  if (chk('rim_speed'))    rim |= 0x0001;
+  if (chk('rim_azimuth'))  rim |= 0x0002;
+  if (chk('rim_altitude')) rim |= 0x0004;
+  if (chk('rim_cell'))     rim |= 0x0008;
+  if (chk('rim_sendtime')) rim |= 0x0010;
+  if (chk('rim_devname'))  rim |= 0x0020;
+  let em = 0;
+  if (chk('em_gtpna')) em |= 0x0001;
+  if (chk('em_gtpfa')) em |= 0x0002;
+  if (chk('em_gtepn')) em |= 0x0004;
+  if (chk('em_gtepf')) em |= 0x0008;
+  if (chk('em_gtbpl')) em |= 0x0020;
+  if (chk('em_gtbtc')) em |= 0x0040;
+  if (chk('em_gtstc')) em |= 0x0080;
+  if (chk('em_gtstt')) em |= 0x0100;
+  if (chk('em_gtpdp')) em |= 0x0400;
+  if (chk('em_gtpnl')) em |= 0x0800;
+  if (chk('em_gtign')) em |= 0x1000;
+  if (chk('em_gtigl')) em |= 0x2000;
+  if (chk('em_gtpfl')) em |= 0x4000;
+  const rimHex = rim.toString(16).toUpperCase().padStart(4,'0');
+  const emHex  = em.toString(16).toUpperCase().padStart(4,'0');
   return `AT+GTCFG=${p},${newPw},${v('cfg_device_name') || 'gl320mg'},` +
     `${chk('cfg_odo_enable')},${v('cfg_odo_initial') || '0'},${v('cfg_gps_need')},${v('cfg_gps_delay') || 5},` +
-    `${v('cfg_report_mask') || '001B'},,,${v('cfg_event_mask') || '4A13'},0,${v('cfg_led')},` +
+    `${rimHex},,,${emHex},0,${v('cfg_led')},` +
     `${chk('cfg_info_enable')},${v('cfg_info_interval') || 300},0,${chk('cfg_expiry_enable')},` +
     `${v('cfg_expiry_time') || '20491231235959'},${chk('cfg_agps')},0000,` +
     `${chk('cfg_bat_switch')},${v('cfg_bat_low') || 20},${chk('cfg_walking_mode')},,${SN}$`;
@@ -1040,7 +1104,16 @@ function buildGTUPC(p) {
 }
 
 function buildGTPDS(p) {
-  return `AT+GTPDS=${p},${v('pds_mode')},${v('pds_mask') || '000048'},,,,,,,${SN}$`;
+  let mask = 0;
+  if (chk('pds_geo'))      mask |= 0x01;
+  if (chk('pds_reset'))    mask |= 0x02;
+  if (chk('pds_lastpos'))  mask |= 0x08;
+  if (chk('pds_devstate')) mask |= 0x10;
+  if (chk('pds_extpwr'))   mask |= 0x20;
+  if (chk('pds_charging')) mask |= 0x40;
+  if (chk('pds_digin'))    mask |= 0x80;
+  const maskHex = mask.toString(16).toUpperCase().padStart(6,'0');
+  return `AT+GTPDS=${p},${v('pds_mode')},${maskHex},,,,,,,${SN}$`;
 }
 
 function buildGTGAM(p) {
@@ -1176,7 +1249,27 @@ function populateFromConfig(text) {
     setV('cfg_password', p[0]); setV('cfg_new_pw', ''); setV('cfg_device_name', p[2]);
     setV('cfg_odo_enable', p[3]); setV('cfg_odo_initial', p[4]);
     setV('cfg_gps_need', p[5]); setV('cfg_gps_delay', p[6]);
-    setV('cfg_report_mask', p[7]); setV('cfg_event_mask', p[10]);
+    const rim = parseInt(p[7], 16) || 0;
+    document.getElementById('rim_speed').checked    = !!(rim & 0x0001);
+    document.getElementById('rim_azimuth').checked  = !!(rim & 0x0002);
+    document.getElementById('rim_altitude').checked = !!(rim & 0x0004);
+    document.getElementById('rim_cell').checked     = !!(rim & 0x0008);
+    document.getElementById('rim_sendtime').checked = !!(rim & 0x0010);
+    document.getElementById('rim_devname').checked  = !!(rim & 0x0020);
+    const em = parseInt(p[10], 16) || 0;
+    document.getElementById('em_gtpna').checked = !!(em & 0x0001);
+    document.getElementById('em_gtpfa').checked = !!(em & 0x0002);
+    document.getElementById('em_gtepn').checked = !!(em & 0x0004);
+    document.getElementById('em_gtepf').checked = !!(em & 0x0008);
+    document.getElementById('em_gtbpl').checked = !!(em & 0x0020);
+    document.getElementById('em_gtbtc').checked = !!(em & 0x0040);
+    document.getElementById('em_gtstc').checked = !!(em & 0x0080);
+    document.getElementById('em_gtstt').checked = !!(em & 0x0100);
+    document.getElementById('em_gtpdp').checked = !!(em & 0x0400);
+    document.getElementById('em_gtpnl').checked = !!(em & 0x0800);
+    document.getElementById('em_gtign').checked = !!(em & 0x1000);
+    document.getElementById('em_gtigl').checked = !!(em & 0x2000);
+    document.getElementById('em_gtpfl').checked = !!(em & 0x4000);
     setV('cfg_led', p[12]); setV('cfg_info_enable', p[13]); setV('cfg_info_interval', p[14]);
     setV('cfg_expiry_enable', p[16]); setV('cfg_expiry_time', p[17]);
     setV('cfg_agps', p[18]); setV('cfg_bat_switch', p[20]); setV('cfg_bat_low', p[21]);
@@ -1303,7 +1396,17 @@ function populateFromConfig(text) {
     setV('upc_report', p[4]); setV('upc_interval', p[5]); setV('upc_url', p[6]);
     setV('upc_mode', p[7]);
   }
-  if (cmds.GTPDS) { const p = cmds.GTPDS[0]; setV('pds_mode', p[1]); setV('pds_mask', p[2]); }
+  if (cmds.GTPDS) {
+    const p = cmds.GTPDS[0]; setV('pds_mode', p[1]);
+    const pm = parseInt(p[2], 16) || 0;
+    document.getElementById('pds_geo').checked      = !!(pm & 0x01);
+    document.getElementById('pds_reset').checked    = !!(pm & 0x02);
+    document.getElementById('pds_lastpos').checked  = !!(pm & 0x08);
+    document.getElementById('pds_devstate').checked = !!(pm & 0x10);
+    document.getElementById('pds_extpwr').checked   = !!(pm & 0x20);
+    document.getElementById('pds_charging').checked = !!(pm & 0x40);
+    document.getElementById('pds_digin').checked    = !!(pm & 0x80);
+  }
   if (cmds.GTGAM) {
     const p = cmds.GTGAM[0];
     setV('gam_mode', p[1]); setV('gam_speed_mode', p[2]);
