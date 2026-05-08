@@ -1843,6 +1843,33 @@ document.getElementById('btn_save_device').addEventListener('click', async () =>
 
 // loadDevices() is called after auth check completes
 
+// ── Form persistence (localStorage) ──────────────────────────────────────
+const FORM_KEY = 'tracker_form_state';
+
+function saveFormState() {
+  const state = {};
+  document.querySelectorAll('main input[id], main select[id]').forEach(el => {
+    state[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+  });
+  localStorage.setItem(FORM_KEY, JSON.stringify(state));
+}
+
+function loadFormState() {
+  try {
+    const raw = localStorage.getItem(FORM_KEY);
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    Object.entries(state).forEach(([id, val]) => setV(id, val));
+  } catch {}
+}
+
+// Save on any form change
+document.querySelector('main').addEventListener('input',  saveFormState);
+document.querySelector('main').addEventListener('change', saveFormState);
+
+// Restore on load (APN/GEO tables are already built by their IIFEs at this point)
+loadFormState();
+
 // ── Live command preview ───────────────────────────────────────────────────
 const sectionBuilders = {
   connectivity: p => [buildGTBSI(p), buildGTSRI(p), buildGTQSS(p)],
