@@ -91,6 +91,15 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 /* Config file selector */
 .cfg-file-bar{display:flex;gap:10px;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap}
 .cfg-file-bar .f{flex:1;min-width:200px;max-width:320px}
+/* Live command preview */
+.cmd-preview{background:#1e2330;border-radius:var(--radius);padding:14px 16px;margin-top:20px}
+.cmd-preview-hdr{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7a95;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.cmd-preview-hdr span{color:#4ade80;font-weight:400;font-size:10px;letter-spacing:0;text-transform:none}
+.cmd-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px}
+.cmd-row:last-child{margin-bottom:0}
+.cmd-text{font-family:'SF Mono','Fira Code',monospace;font-size:12px;color:#d4d8e4;line-height:1.6;word-break:break-all;flex:1;white-space:pre-wrap}
+.cmd-copy{background:rgba(255,255,255,.08);border:none;color:#6b7a95;padding:3px 9px;border-radius:4px;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:inherit}
+.cmd-copy:hover{background:rgba(255,255,255,.16);color:#d4d8e4}
 /* Login screen */
 #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999}
 #login-screen.hidden{display:none}
@@ -1833,6 +1842,95 @@ document.getElementById('btn_save_device').addEventListener('click', async () =>
 });
 
 // loadDevices() is called after auth check completes
+
+// ── Live command preview ───────────────────────────────────────────────────
+const sectionBuilders = {
+  connectivity: p => [buildGTBSI(p), buildGTSRI(p), buildGTQSS(p)],
+  apnlist:      p => buildGTAPNLines(p).split('\n').filter(Boolean).concat(buildGTAAC(p)),
+  globalcfg:    p => [buildGTCFG(p)],
+  simpin:       p => [buildGTPIN(p), buildGTSIM(p)],
+  reporting:    p => [buildGTFRI(p)],
+  motion:       p => [`AT+GTTMA=${p},+,0,0,0,,,,,,FFFF$`, buildGTNMD(p), buildGTGAM(p)],
+  geofences:    p => buildGTGEOLines(p).split('\n').filter(line => {
+                       if (!line) return false;
+                       const m = line.split(',')[2]; return m && m !== '0';
+                     }),
+  alarms:       p => [buildGTSPD(p), buildGTTEM(p)],
+  harsh:        p => [buildGTMSA(p), buildGTHBM(p)],
+  watchdog:     p => [buildGTDOG(p)],
+  funckey:      p => [buildGTFKS(p)],
+  workhours:    p => [buildGTOWH(p)],
+  smsalerts:    p => [buildGTWLT(p), buildGTGLM(p)],
+  otacfg:       p => [buildGTUPC(p)],
+  advanced:     p => [buildGTJDC(p), buildGTNTS(p), buildGTURT(p), buildGTPDS(p), buildGTRPC(p)],
+};
+
+function renderCmdPreview(sectionId) {
+  const el = document.getElementById(`cmdprev-${sectionId}`);
+  if (!el) return;
+  const builders = sectionBuilders[sectionId];
+  if (!builders) return;
+  let lines;
+  try {
+    lines = builders(pw()).filter(l => l && l.trim());
+  } catch { return; }
+
+  if (!lines.length) {
+    el.innerHTML = '<div class="cmd-preview-hdr">AT Commands <span>● no active lines</span></div>';
+    return;
+  }
+
+  el.innerHTML = `<div class="cmd-preview-hdr">AT Commands
+    <span>● live — copy any line to send via SMS</span></div>` +
+    lines.map(() => `<div class="cmd-row">
+      <span class="cmd-text"></span>
+      <button class="cmd-copy">Copy</button>
+    </div>`).join('');
+
+  el.querySelectorAll('.cmd-row').forEach((row, i) => {
+    row.querySelector('.cmd-text').textContent = lines[i];
+    row.dataset.cmd = lines[i];
+  });
+}
+
+// Copy button via event delegation (avoids inline onclick)
+document.addEventListener('click', e => {
+  if (!e.target.classList.contains('cmd-copy')) return;
+  const row = e.target.closest('.cmd-row');
+  if (!row) return;
+  navigator.clipboard.writeText(row.dataset.cmd || '').then(() => {
+    const orig = e.target.textContent;
+    e.target.textContent = 'Copied!';
+    setTimeout(() => { e.target.textContent = orig; }, 1500);
+  });
+});
+
+// Insert preview containers into each config section and do initial render
+Object.keys(sectionBuilders).forEach(id => {
+  const sect = document.getElementById(`sect-${id}`);
+  if (!sect) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'cmd-preview';
+  wrap.id = `cmdprev-${id}`;
+  sect.appendChild(wrap);
+  renderCmdPreview(id);
+});
+
+// Re-render on any form change within a section
+document.querySelector('main').addEventListener('input',  e => {
+  const sect = e.target.closest('.section');
+  if (sect) renderCmdPreview(sect.id.replace('sect-', ''));
+});
+document.querySelector('main').addEventListener('change', e => {
+  const sect = e.target.closest('.section');
+  if (sect) renderCmdPreview(sect.id.replace('sect-', ''));
+});
+
+// Re-render when switching to a section
+navLinks.forEach(link => link.addEventListener('click', () => {
+  const t = link.dataset.section;
+  if (sectionBuilders[t]) setTimeout(() => renderCmdPreview(t), 0);
+}));
 </script>
 </body>
 </html>
