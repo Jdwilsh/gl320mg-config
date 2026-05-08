@@ -652,7 +652,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="card">
     <div class="fg two">
       <div class="f cb"><input type="checkbox" id="upc_mode"><label for="upc_mode">Enable OTA config download</label></div>
-      <div class="f"><label>Config File URL</label><input id="upc_url" placeholder="http://cfg.jdwilsh.com/1.GL320M"></div>
+      <div class="f"><label>Config File URL</label><input id="upc_url" placeholder="http://cfg.jdwilsh.com/1.cfg"></div>
       <div class="f"><label>Check interval (hours, 0=once only)</label><input id="upc_interval" type="number" value="0" min="0" max="8760"></div>
       <div class="f"><label>Max download retries (0–3)</label><input id="upc_max_retries" type="number" value="0" min="0" max="3"></div>
       <div class="f"><label>Download timeout (minutes)</label><input id="upc_timeout" type="number" value="10" min="5" max="30"></div>
@@ -780,7 +780,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="card">
     <div class="card-title">Config File</div>
     <div class="cfg-file-bar">
-      <div class="f"><label>Filename on server</label><input id="cfg_filename" value="1.GL320M" placeholder="1.GL320M"><span class="hint">Served from cfg.jdwilsh.com/&lt;filename&gt;</span></div>
+      <div class="f"><label>Filename on server</label><input id="cfg_filename" value="1.cfg" placeholder="1.cfg"><span class="hint">Served from cfg.jdwilsh.com/&lt;filename&gt;</span></div>
       <button class="btn btn-outline" id="btn_load_server">Load from Server</button>
     </div>
     <div id="load_msg" class="status-msg" style="margin-bottom:12px"></div>
@@ -1078,15 +1078,6 @@ function buildGTRPC(p) {
 // ── Generate full config ──────────────────────────────────────────────────────
 function generate() {
   const p = pw();
-  const devName = v('cfg_device_name') || 'gl320mg';
-  const header = [
-    `Device Name: ${devName}`,
-    `Manage Tool Name: GL320MG-Config-Tool  Subversion: GL320MG-Config-Tool`,
-    `Firmware Version: GL320M_B7K1_R01A12V09`,
-    `Hardware Version: GL320M_B7K1_HWR108`,
-    `Protocol Version: C30303`,
-  ].join('\n');
-
   const body = [
     buildGTBSI(p),
     buildGTSRI(p),
@@ -1123,7 +1114,7 @@ function generate() {
     buildGTRPC(p),
   ].join('\n');
 
-  const out = header + '\n' + body + '\n';
+  const out = body + '\n';
   document.getElementById('config_output').value = out;
   return out;
 }
