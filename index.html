@@ -91,12 +91,41 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 /* Config file selector */
 .cfg-file-bar{display:flex;gap:10px;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap}
 .cfg-file-bar .f{flex:1;min-width:200px;max-width:320px}
+/* Login screen */
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999}
+#login-screen.hidden{display:none}
+.login-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:40px 36px;width:100%;max-width:360px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.login-card h2{font-size:18px;font-weight:700;margin-bottom:4px}
+.login-card .subtitle{color:var(--muted);font-size:13px;margin-bottom:28px}
+.login-card .f{margin-bottom:14px}
+.login-card button{width:100%;padding:10px;margin-top:4px}
+/* Deploy diff badge */
+.diff-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#fef9c3;color:#854d0e;margin-left:8px}
 </style>
 </head>
 <body>
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen">
+  <div class="login-card">
+    <h2>GL320MG Config Tool</h2>
+    <p class="subtitle">Sign in to continue</p>
+    <form id="login-form" autocomplete="on">
+      <!-- hidden username helps password managers save credentials -->
+      <input type="text" name="username" autocomplete="username" value="admin" style="display:none">
+      <div class="f">
+        <label>Password</label>
+        <input type="password" id="login_pw" name="password" autocomplete="current-password" placeholder="Password">
+      </div>
+      <button type="submit" class="btn btn-primary">Sign in</button>
+    </form>
+    <div id="login_err" class="status-msg err" style="margin-top:12px;display:none"></div>
+  </div>
+</div>
+
 <header>
   <h1>GL320MG Config Tool</h1>
   <span class="subtitle">Queclink GL320MG &bull; OTA Configuration Generator</span>
+  <span style="margin-left:auto"><button class="btn btn-outline btn-sm" id="btn_logout">Sign out</button></span>
 </header>
 <div class="layout">
 <nav id="sidebar">
@@ -844,9 +873,14 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     <div id="deploy_device_list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
       <span style="color:var(--muted);font-size:13px">No devices registered.</span>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
       <button class="btn btn-outline btn-sm" id="btn_deploy_all">Select All</button>
       <button class="btn btn-outline btn-sm" id="btn_deploy_none">Deselect All</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin-left:8px">
+        <input type="checkbox" id="deploy_force_full"> Force full config (ignore delta)
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-success" id="btn_deploy_selected">Save to Selected Devices</button>
       <span id="deploy_msg" class="status-msg"></span>
     </div>
@@ -871,8 +905,69 @@ navLinks.forEach(link => {
     if (t === 'devices') loadDevices();
   });
 });
-// Monitor is the landing page — load it immediately
-loadMonitor();
+// ── Auth ─────────────────────────────────────────────────────────────────────
+const API = '/api';
+let authToken = localStorage.getItem('tracker_token') || '';
+
+async function apiFetch(url, opts = {}) {
+  opts.headers = Object.assign({}, opts.headers, { 'Authorization': `Bearer ${authToken}` });
+  const res = await fetch(url, opts);
+  if (res.status === 401) {
+    authToken = '';
+    localStorage.removeItem('tracker_token');
+    showLoginScreen();
+    throw new Error('Session expired — please sign in again');
+  }
+  return res;
+}
+
+function showLoginScreen() {
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+function hideLoginScreen() {
+  document.getElementById('login-screen').classList.add('hidden');
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const pw = document.getElementById('login_pw').value;
+  const errEl = document.getElementById('login_err');
+  try {
+    const res = await fetch(`${API}/login`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Login failed';
+      errEl.style.display = 'inline-block';
+      return;
+    }
+    authToken = data.token;
+    localStorage.setItem('tracker_token', authToken);
+    hideLoginScreen();
+    loadMonitor();
+    loadDevices();
+  } catch {
+    errEl.textContent = 'Could not reach server';
+    errEl.style.display = 'inline-block';
+  }
+});
+
+document.getElementById('btn_logout').addEventListener('click', () => {
+  authToken = '';
+  localStorage.removeItem('tracker_token');
+  showLoginScreen();
+});
+
+// Check token on load — if we have one, verify it works
+(async () => {
+  if (!authToken) { showLoginScreen(); return; }
+  try {
+    const res = await apiFetch(`${API}/devices`);
+    if (res.ok) { hideLoginScreen(); loadMonitor(); loadDevices(); }
+  } catch { /* apiFetch already showed login screen */ }
+})();
 
 // ── Form helpers ─────────────────────────────────────────────────────────────
 function v(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
@@ -1223,7 +1318,7 @@ async function loadFromServer() {
   const filename = v('cfg_filename');
   if (!filename) return;
   try {
-    const res = await fetch(`/api/config/${encodeURIComponent(filename)}`);
+    const res = await apiFetch(`${API}/config/${encodeURIComponent(filename)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
     document.getElementById('config_output').value = text;
@@ -1448,9 +1543,8 @@ document.getElementById('btn_save_server').addEventListener('click', async () =>
   const filename = v('cfg_filename');
   if (!filename) { showMsg('save_msg', 'Enter a filename', true); return; }
   try {
-    const res = await fetch(`/api/config/${encodeURIComponent(filename)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await apiFetch(`${API}/config/${encodeURIComponent(filename)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: out }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1480,28 +1574,77 @@ document.getElementById('btn_deploy_all').addEventListener('click', () => {
 document.getElementById('btn_deploy_none').addEventListener('click', () => {
   document.querySelectorAll('.deploy-cb').forEach(cb => cb.checked = false);
 });
+// Parse config text into { "GTXXX[n]": "AT+GTXXX=..." } map for delta comparison
+function parseConfigToMap(text) {
+  const counters = {};
+  const map = {};
+  for (const line of text.trim().split('\n')) {
+    const m = line.match(/^(AT\+GT\w+)=/);
+    if (!m) continue;
+    const cmd = m[1];
+    counters[cmd] = (counters[cmd] || 0);
+    map[`${cmd}[${counters[cmd]++}]`] = line;
+  }
+  return map;
+}
+
 document.getElementById('btn_deploy_selected').addEventListener('click', async () => {
   const cbs = [...document.querySelectorAll('.deploy-cb:checked')];
   if (!cbs.length) { showMsg('deploy_msg', 'No devices selected', true); return; }
-  const out = generate();
-  let ok = 0, fail = 0;
+  const forceFull = document.getElementById('deploy_force_full').checked;
+  const fullOut = generate();
+  const newMap = parseConfigToMap(fullOut);
+  const total = Object.keys(newMap).length;
+  let ok = 0, skipped = 0, fail = 0;
+
   for (const cb of cbs) {
+    const imei = cb.dataset.imei;
     const filename = cb.dataset.file;
     try {
-      const res = await fetch(`${API}/config/${encodeURIComponent(filename)}`, {
+      let deployContent = fullOut;
+      let changedCount = total;
+
+      if (!forceFull) {
+        const depRes = await apiFetch(`${API}/deployed/${imei}`);
+        const oldMap = depRes.ok ? await depRes.json() : null;
+        if (oldMap) {
+          const changedLines = Object.entries(newMap)
+            .filter(([k, line]) => oldMap[k] !== line)
+            .map(([, line]) => line);
+          changedCount = changedLines.length;
+          if (changedCount === 0) { skipped++; continue; }
+          deployContent = changedLines.join('\n') + '\n';
+        }
+      }
+
+      // Write config file (delta or full)
+      const cfgRes = await apiFetch(`${API}/config/${encodeURIComponent(filename)}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: out }),
+        body: JSON.stringify({ content: deployContent }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!cfgRes.ok) throw new Error(`HTTP ${cfgRes.status}`);
+
+      // Update stored deployed state with the full new config
+      await apiFetch(`${API}/deployed/${imei}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: newMap }),
+      });
+
+      // Update the badge on the checkbox label
+      const badge = cb.closest('label').querySelector('.diff-badge');
+      if (badge) badge.remove();
       ok++;
     } catch { fail++; }
   }
-  if (fail === 0) showMsg('deploy_msg', `Saved to ${ok} device${ok > 1 ? 's' : ''}`, false);
-  else showMsg('deploy_msg', `${ok} saved, ${fail} failed`, true);
+
+  const parts = [];
+  if (ok)      parts.push(`${ok} deployed`);
+  if (skipped) parts.push(`${skipped} unchanged`);
+  if (fail)    parts.push(`${fail} failed`);
+  showMsg('deploy_msg', parts.join(', '), fail > 0);
 });
 
 // ── Monitor ───────────────────────────────────────────────────────────────────
-const API = '/api';
 let monitorTimer = null;
 
 function relTime(iso) {
@@ -1525,7 +1668,7 @@ async function loadMonitor() {
   dot.className = 'ref-dot';
   lbl.textContent = 'Refreshing…';
   try {
-    const res = await fetch(`${API}/trackers`);
+    const res = await apiFetch(`${API}/trackers`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     renderMonitor(data);
@@ -1596,7 +1739,7 @@ scheduleAutoRefresh();
 // ── Devices ───────────────────────────────────────────────────────────────────
 async function loadDevices() {
   try {
-    const res = await fetch(`${API}/devices`);
+    const res = await apiFetch(`${API}/devices`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     renderDevices(await res.json());
   } catch (e) {
@@ -1634,7 +1777,7 @@ function renderDevices(devices) {
     sel.appendChild(opt);
   });
 
-  // Populate deploy checklist
+  // Populate deploy checklist (with async diff badge per device)
   const deployList = document.getElementById('deploy_device_list');
   if (deployList) {
     deployList.innerHTML = '';
@@ -1642,8 +1785,21 @@ function renderDevices(devices) {
       const lbl = document.createElement('label');
       lbl.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer';
       lbl.innerHTML = `<input type="checkbox" class="deploy-cb" data-imei="${esc(imei)}" data-file="${esc(imei)}.ini" checked>
-        <strong>${esc(name)}</strong><span class="mono">${esc(imei)}.ini</span>`;
+        <strong>${esc(name)}</strong><span class="mono">${esc(imei)}.ini</span>
+        <span class="diff-badge" id="diff_${esc(imei)}">…</span>`;
       deployList.appendChild(lbl);
+      // Async: fetch deployed state and show diff count
+      apiFetch(`${API}/deployed/${imei}`).then(r => r.json()).then(oldMap => {
+        const badge = document.getElementById(`diff_${imei}`);
+        if (!badge) return;
+        if (!oldMap) { badge.textContent = 'No prior deploy'; badge.style.background='#dbeafe'; badge.style.color='#1d4ed8'; return; }
+        // We can't compute the diff without generating the config, so just note "prior deploy exists"
+        badge.textContent = 'Prior deploy recorded';
+        badge.style.background = '#dcfce7'; badge.style.color = '#15803d';
+      }).catch(() => {
+        const badge = document.getElementById(`diff_${imei}`);
+        if (badge) badge.remove();
+      });
     });
   }
 }
@@ -1656,7 +1812,7 @@ function editDevice(imei, name) {
 
 async function deleteDevice(imei) {
   if (!confirm(`Remove name for ${imei}?`)) return;
-  await fetch(`${API}/devices/${imei}`, { method: 'DELETE' });
+  await apiFetch(`${API}/devices/${imei}`, { method: 'DELETE' });
   loadDevices();
 }
 
@@ -1664,7 +1820,7 @@ document.getElementById('btn_save_device').addEventListener('click', async () =>
   const imei = v('new_imei'); const name = v('new_name');
   if (!imei) { showMsg('dev_save_msg', 'IMEI required', true); return; }
   try {
-    const res = await fetch(`${API}/devices`, {
+    const res = await apiFetch(`${API}/devices`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ imei, name }),
     });
@@ -1676,8 +1832,7 @@ document.getElementById('btn_save_device').addEventListener('click', async () =>
   } catch (e) { showMsg('dev_save_msg', `Error: ${e.message}`, true); }
 });
 
-// Populate device select on page load
-loadDevices();
+// loadDevices() is called after auth check completes
 </script>
 </body>
 </html>
