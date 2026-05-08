@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GL320MG Config Tool</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f6f9;
+    --panel: #ffffff;
+    --border: #dde2ea;
+    --text: #1a2030;
+    --muted: #6b7a95;
+    --accent: #2563eb;
+    --accent-bg: #eff6ff;
+    --danger: #dc2626;
+    --success: #16a34a;
+    --radius: 8px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 56px;
+  }
+  header h1 { font-size: 17px; font-weight: 700; }
+  header .subtitle { color: var(--muted); font-size: 13px; }
+
+  .layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 56px); }
+
+  /* Sidebar nav */
+  nav {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+    position: sticky;
+    top: 0;
+    height: calc(100vh - 56px);
+    overflow-y: auto;
+  }
+  nav .nav-section { padding: 4px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-top: 16px; margin-bottom: 4px; }
+  nav .nav-section:first-child { margin-top: 0; }
+  nav a { display: block; padding: 7px 16px; color: var(--text); text-decoration: none; border-radius: 6px; margin: 1px 8px; font-size: 13px; transition: background 0.1s; }
+  nav a:hover { background: var(--bg); }
+  nav a.active { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+
+  /* Main content */
+  main { padding: 24px; max-width: 900px; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .section-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .section-desc { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .card-title { font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 14px; }
+
+  .field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .field-grid.two { grid-template-columns: 1fr 1fr; }
+  .field-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .field input, .field select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; color: var(--text); background: var(--panel); transition: border-color 0.15s; width: 100%; }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+  .field .hint { font-size: 11px; color: var(--muted); }
+
+  .field input[type="checkbox"] { width: auto; margin-right: 6px; }
+  .field.checkbox { flex-direction: row; align-items: center; }
+  .field.checkbox label { font-size: 13px; color: var(--text); font-weight: 400; cursor: pointer; }
+
+  .geo-block { border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin-bottom: 10px; position: relative; }
+  .geo-block .geo-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .geo-block .geo-num { font-weight: 700; font-size: 13px; color: var(--accent); background: var(--accent-bg); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  /* Output section */
+  .output-bar { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+  .btn { padding: 8px 18px; border-radius: 6px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-outline { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
+  .btn-success { background: var(--success); color: #fff; }
+
+  textarea.output { width: 100%; height: 480px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: #1e2330; color: #d4d8e4; resize: vertical; line-height: 1.6; }
+
+  .copy-feedback { font-size: 12px; color: var(--success); display: none; }
+  .copy-feedback.show { display: inline; }
+
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: var(--accent-bg); color: var(--accent); }
+
+  .apn-row { display: grid; grid-template-columns: 100px 1fr 140px 140px; gap: 10px; align-items: start; margin-bottom: 10px; }
+
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  .note { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+  .note strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>GL320MG Config Tool</h1>
+  <span class="subtitle">Queclink GL320MG · OTA Configuration Generator</span>
+</header>
+
+<div class="layout">
+  <nav id="sidebar">
+    <div class="nav-section">Setup</div>
+    <a href="#" data-section="device" class="active">Device &amp; Password</a>
+    <a href="#" data-section="server">Server Connection</a>
+    <a href="#" data-section="apn">APN / Cellular</a>
+
+    <div class="nav-section">Tracking</div>
+    <a href="#" data-section="reporting">Fixed Reporting</a>
+    <a href="#" data-section="geofence">Geofences</a>
+
+    <div class="nav-section">Alarms</div>
+    <a href="#" data-section="speed">Speed Alarm</a>
+    <a href="#" data-section="motion">Motion / Tow</a>
+    <a href="#" data-section="power">Power &amp; Watchdog</a>
+
+    <div class="nav-section">Output</div>
+    <a href="#" data-section="output">Generate Config</a>
+  </nav>
+
+  <main>
+
+    <!-- ── DEVICE ── -->
+    <div class="section active" id="sect-device">
+      <div class="section-title">Device &amp; Password</div>
+      <div class="section-desc">Basic device identity and security credentials used in every AT command.</div>
+
+      <div class="card">
+        <div class="card-title">Credentials</div>
+        <div class="field-grid two">
+          <div class="field">
+            <label>Device Password</label>
+            <input id="password" value="gl320m" maxlength="20">
+            <span class="hint">Used as the first parameter in every command</span>
+          </div>
+          <div class="field">
+            <label>Device Name / Label</label>
+            <input id="device_name" value="gl320mg" maxlength="20">
+            <span class="hint">Friendly name stored in device (AT+GTCFG)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Time &amp; Timezone</div>
+        <div class="field-grid three">
+          <div class="field">
+            <label>Timezone Offset (hours)</label>
+            <select id="timezone">
+              <option value="-12">UTC-12</option>
+              <option value="-11">UTC-11</option>
+              <option value="-10">UTC-10</option>
+              <option value="-9">UTC-9</option>
+              <option value="-8">UTC-8</option>
+              <option value="-7">UTC-7</option>
+              <option value="-6">UTC-6</option>
+              <option value="-5">UTC-5</option>
+              <option value="-4">UTC-4</option>
+              <option value="-3">UTC-3</option>
+              <option value="-2">UTC-2</option>
+              <option value="-1">UTC-1</option>
+              <option value="0" selected>UTC+0</option>
+              <option value="1">UTC+1</option>
+              <option value="2">UTC+2</option>
+              <option value="3">UTC+3</option>
+              <option value="4">UTC+4</option>
+              <option value="5">UTC+5</option>
+              <option value="6">UTC+6</option>
+              <option value="7">UTC+7</option>
+              <option value="8">UTC+8</option>
+              <option value="9">UTC+9</option>
+              <option value="10">UTC+10</option>
+              <option value="11">UTC+11</option>
+              <option value="12">UTC+12</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Config Expiry Date</label>
+            <input id="expiry" value="20491231235959" maxlength="14">
+            <span class="hint">YYYYMMDDHHmmss format</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SERVER ── -->
+    <div class="section" id="sect-server">
+      <div class="section-title">Server Connection</div>
+      <div class="section-desc">Primary server that receives GPS reports (AT+GTSRI / AT+GTQSS).</div>
+
+      <div class="card">
+        <div class="card-title">Primary Server</div>
+        <div class="field-grid two">
+          <div class="field">
+            <label>Server Hostname / IP</label>
+            <input id="server_host" value="gps.pyramiddispatch.com">
+          </div>
+          <div class="field">
+            <label>Server Port</label>
+            <input id="server_port" type="number" value="5004" min="1" max="65535">
+          </div>
+          <div class="field">
+            <label>Protocol</label>
+            <select id="server_proto">
+              <option value="0">UDP</option>
+              <option value="1" selected>TCP</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Heartbeat Interval (seconds)</label>
+            <input id="heartbeat" type="number" value="60" min="10" max="3600">
+            <span class="hint">How often device pings server to keep connection alive</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">OTA Config Download</div>
+        <div class="note"><strong>Note:</strong> The tracker downloads a config file via HTTP. Host this generated file on a public URL and enter it below. The device will fetch it on next contact.</div>
+        <div class="field-grid">
+          <div class="field">
+            <label>OTA Config File URL</label>
+            <input id="ota_url" placeholder="http://example.com/config.GL320M">
+            <span class="hint">Full URL where this config file will be hosted (used in AT+GTFVR)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── APN ── -->
+    <div class="section" id="sect-apn">
+      <div class="section-title">APN / Cellular</div>
+      <div class="section-desc">Up to 8 APN profiles (AT+GTAPN). The device tries each in order until one connects.</div>
+
+      <div class="note"><strong>Tip:</strong> For a single SIM with a known APN, configure slot 0 only and leave the rest disabled.</div>
+
+      <div class="card">
+        <div class="card-title">APN Profiles</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="text-align:left; border-bottom:1px solid var(--border)">
+                <th style="padding:6px 8px; color:var(--muted); font-weight:600; width:60px">Slot</th>
+                <th style="padding:6px 8px; color:var(--muted); font-weight:600; width:70px">Enable</th>
+                <th style="padding:6px 8px; color:var(--muted); font-weight:600">APN</th>
+                <th style="padding:6px 8px; color:var(--muted); font-weight:600">Username</th>
+                <th style="padding:6px 8px; color:var(--muted); font-weight:600">Password</th>
+              </tr>
+            </thead>
+            <tbody id="apn_table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REPORTING ── -->
+    <div class="section" id="sect-reporting">
+      <div class="section-title">Fixed Reporting</div>
+      <div class="section-desc">Controls how often the device sends GPS position reports (AT+GTFRI).</div>
+
+      <div class="card">
+        <div class="card-title">Report Enable</div>
+        <div class="field-grid two">
+          <div class="field checkbox">
+            <input type="checkbox" id="fri_enable" checked>
+            <label for="fri_enable">Enable fixed reporting</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Send Intervals</div>
+        <div class="field-grid two">
+          <div class="field">
+            <label>Ignition ON interval (seconds)</label>
+            <input id="fri_interval_on" type="number" value="60" min="5" max="86400">
+            <span class="hint">How often to send reports while vehicle is running</span>
+          </div>
+          <div class="field">
+            <label>Ignition OFF interval (seconds)</label>
+            <input id="fri_interval_off" type="number" value="60" min="5" max="86400">
+            <span class="hint">How often to send reports while vehicle is parked</span>
+          </div>
+          <div class="field">
+            <label>Buffer interval ON (seconds)</label>
+            <input id="fri_buf_on" type="number" value="180" min="5" max="86400">
+            <span class="hint">Interval for buffered (offline) reports when ignition is on</span>
+          </div>
+          <div class="field">
+            <label>Buffer interval OFF (seconds)</label>
+            <input id="fri_buf_off" type="number" value="180" min="5" max="86400">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Distance &amp; Corner Triggers</div>
+        <div class="field-grid three">
+          <div class="field">
+            <label>Distance trigger ON (metres, 0=off)</label>
+            <input id="fri_dist_on" type="number" value="1000" min="0" max="100000">
+          </div>
+          <div class="field">
+            <label>Distance trigger OFF (metres, 0=off)</label>
+            <input id="fri_dist_off" type="number" value="1000" min="0" max="100000">
+          </div>
+          <div class="field">
+            <label>Corner angle (degrees, 0=off)</label>
+            <input id="fri_corner" type="number" value="0" min="0" max="180">
+            <span class="hint">Report on direction change greater than this angle</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GEOFENCES ── -->
+    <div class="section" id="sect-geofence">
+      <div class="section-title">Geofences</div>
+      <div class="section-desc">Up to 20 circular geofences (AT+GTGEO). The device alerts when entering or exiting the defined area.</div>
+
+      <div class="note"><strong>Mode:</strong> 0 = disabled, 1 = alert on enter, 2 = alert on exit, 3 = alert on enter &amp; exit.</div>
+
+      <div id="geo_list"></div>
+
+      <button class="btn btn-outline" id="geo_add" style="margin-top:4px">+ Add Geofence</button>
+    </div>
+
+    <!-- ── SPEED ── -->
+    <div class="section" id="sect-speed">
+      <div class="section-title">Speed Alarm</div>
+      <div class="section-desc">Alert when vehicle exceeds a speed threshold (AT+GTSPD).</div>
+
+      <div class="card">
+        <div class="field-grid two">
+          <div class="field checkbox" style="grid-column:1/-1">
+            <input type="checkbox" id="spd_enable">
+            <label for="spd_enable">Enable speed alarm</label>
+          </div>
+          <div class="field">
+            <label>Speed threshold (km/h)</label>
+            <input id="spd_threshold" type="number" value="100" min="1" max="300">
+          </div>
+          <div class="field">
+            <label>Duration before alarm (seconds)</label>
+            <input id="spd_duration" type="number" value="60" min="5" max="3600">
+            <span class="hint">Must exceed threshold for this long before alerting</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MOTION ── -->
+    <div class="section" id="sect-motion">
+      <div class="section-title">Motion / Tow Alarm</div>
+      <div class="section-desc">Detect movement when vehicle should be stationary (AT+GTMSA).</div>
+
+      <div class="card">
+        <div class="field-grid two">
+          <div class="field checkbox" style="grid-column:1/-1">
+            <input type="checkbox" id="msa_enable">
+            <label for="msa_enable">Enable motion/tow alarm</label>
+          </div>
+          <div class="field">
+            <label>Motion sensitivity (1–5)</label>
+            <input id="msa_sensitivity" type="number" value="5" min="1" max="5">
+          </div>
+          <div class="field">
+            <label>Confirm time (seconds)</label>
+            <input id="msa_time" type="number" value="5" min="1" max="60">
+            <span class="hint">Movement must continue this long before alarm triggers</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── POWER ── -->
+    <div class="section" id="sect-power">
+      <div class="section-title">Power &amp; Watchdog</div>
+      <div class="section-desc">Watchdog auto-reboot (AT+GTDOG) and power-down scheduling (AT+GTPDS).</div>
+
+      <div class="card">
+        <div class="card-title">Watchdog</div>
+        <div class="field-grid two">
+          <div class="field checkbox" style="grid-column:1/-1">
+            <input type="checkbox" id="dog_enable">
+            <label for="dog_enable">Enable watchdog (auto-reboot on hang)</label>
+          </div>
+          <div class="field">
+            <label>Watchdog timeout (minutes)</label>
+            <input id="dog_timeout" type="number" value="60" min="1" max="1440">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Power Down Schedule</div>
+        <div class="field-grid two">
+          <div class="field checkbox" style="grid-column:1/-1">
+            <input type="checkbox" id="pds_enable">
+            <label for="pds_enable">Enable scheduled power-down</label>
+          </div>
+          <div class="field">
+            <label>Power-down delay (seconds after ignition off)</label>
+            <input id="pds_delay" type="number" value="0" min="0" max="86400">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── OUTPUT ── -->
+    <div class="section" id="sect-output">
+      <div class="section-title">Generate Config</div>
+      <div class="section-desc">Click Generate to build the configuration file from your settings above.</div>
+
+      <div class="output-bar">
+        <button class="btn btn-primary" id="btn_generate">Generate Config</button>
+        <button class="btn btn-outline" id="btn_copy">Copy to Clipboard</button>
+        <button class="btn btn-success" id="btn_download">Download File</button>
+        <span class="copy-feedback" id="copy_feedback">Copied!</span>
+      </div>
+
+      <textarea class="output" id="config_output" readonly placeholder="Click 'Generate Config' to build the file…"></textarea>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── Navigation ──
+const links = document.querySelectorAll('nav a');
+const sections = document.querySelectorAll('.section');
+
+links.forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    const target = link.dataset.section;
+    links.forEach(l => l.classList.remove('active'));
+    sections.forEach(s => s.classList.remove('active'));
+    link.classList.add('active');
+    document.getElementById('sect-' + target).classList.add('active');
+  });
+});
+
+// ── APN table ──
+const APN_COUNT = 8;
+const apnTable = document.getElementById('apn_table');
+for (let i = 0; i < APN_COUNT; i++) {
+  const row = document.createElement('tr');
+  row.style.borderBottom = '1px solid var(--border)';
+  row.innerHTML = `
+    <td style="padding:8px"><span style="font-weight:700;color:var(--muted)">${i}</span></td>
+    <td style="padding:8px"><input type="checkbox" id="apn_en_${i}" ${i === 0 ? '' : ''}></td>
+    <td style="padding:8px"><input id="apn_name_${i}" placeholder="e.g. internet" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px"></td>
+    <td style="padding:8px"><input id="apn_user_${i}" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px"></td>
+    <td style="padding:8px"><input id="apn_pass_${i}" type="password" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px"></td>
+  `;
+  apnTable.appendChild(row);
+}
+
+// ── Geofences ──
+let geoCount = 0;
+const GEO_MAX = 20;
+const geoList = document.getElementById('geo_list');
+
+function addGeo(index) {
+  if (geoCount >= GEO_MAX) return;
+  const idx = index !== undefined ? index : geoCount;
+  const block = document.createElement('div');
+  block.className = 'geo-block';
+  block.dataset.idx = idx;
+  block.innerHTML = `
+    <div class="geo-header">
+      <div class="geo-num">${idx + 1}</div>
+      <div style="flex:1;font-weight:600;font-size:13px">Geofence ${idx + 1}</div>
+      <button class="btn btn-outline" style="padding:4px 12px;font-size:12px" onclick="removeGeo(this)">Remove</button>
+    </div>
+    <div class="field-grid" style="grid-template-columns:1fr 1fr 120px 180px">
+      <div class="field"><label>Latitude</label><input class="geo-lat" type="number" step="0.000001" placeholder="51.5074"></div>
+      <div class="field"><label>Longitude</label><input class="geo-lng" type="number" step="0.000001" placeholder="-0.1278"></div>
+      <div class="field"><label>Radius (m)</label><input class="geo-radius" type="number" value="200" min="50" max="100000"></div>
+      <div class="field"><label>Mode</label>
+        <select class="geo-mode">
+          <option value="0">0 – Disabled</option>
+          <option value="1">1 – Alert on Enter</option>
+          <option value="2">2 – Alert on Exit</option>
+          <option value="3" selected>3 – Enter &amp; Exit</option>
+        </select>
+      </div>
+    </div>
+  `;
+  geoList.appendChild(block);
+  geoCount++;
+  updateGeoButton();
+}
+
+function removeGeo(btn) {
+  btn.closest('.geo-block').remove();
+  geoCount--;
+  updateGeoButton();
+}
+
+function updateGeoButton() {
+  document.getElementById('geo_add').disabled = geoCount >= GEO_MAX;
+}
+
+document.getElementById('geo_add').addEventListener('click', () => addGeo());
+
+// ── Helpers ──
+function v(id) { return document.getElementById(id).value.trim(); }
+function checked(id) { return document.getElementById(id).checked; }
+function pad(n, len) { return String(n).padStart(len, '0'); }
+
+function tzOffset(hours) {
+  // Returns e.g. "+0100" or "-0530"
+  const h = Math.abs(hours);
+  const sign = hours >= 0 ? '+' : '-';
+  return sign + pad(Math.floor(h), 2) + pad(Math.round((h % 1) * 60), 2);
+}
+
+// ── Config generator ──
+document.getElementById('btn_generate').addEventListener('click', generate);
+
+function generate() {
+  const pw = v('password') || 'gl320m';
+  const devName = v('device_name') || 'gl320mg';
+  const host = v('server_host');
+  const port = v('server_port');
+  const proto = v('server_proto');
+  const hb = v('heartbeat');
+  const expiry = v('expiry') || '20491231235959';
+  const tzHours = parseInt(v('timezone')) || 0;
+  const tzStr = tzOffset(tzHours);
+
+  // AT+GTBSI — Base Station Info (APN for BS lookup; use first enabled APN)
+  let bsiApn = '', bsiUser = '', bsiPw = '';
+  for (let i = 0; i < APN_COUNT; i++) {
+    if (checked(`apn_en_${i}`)) {
+      bsiApn = document.getElementById(`apn_name_${i}`).value.trim();
+      bsiUser = document.getElementById(`apn_user_${i}`).value.trim();
+      bsiPw   = document.getElementById(`apn_pass_${i}`).value.trim();
+      break;
+    }
+  }
+  const gtbsi = `AT+GTBSI=${pw},${bsiApn},${bsiUser},${bsiPw},,,,,0,0,0,0,0,0,0,,FFFF$`;
+
+  // AT+GTSRI — Server Report Info
+  const gtsri = `AT+GTSRI=${pw},1,,${proto},${host},${port},,0,,${hb},0,0,0,0,,FFFF$`;
+
+  // AT+GTQSS — Quick Start Settings
+  const gtqss = `AT+GTQSS=${pw},${bsiApn},,,1,,${proto},${host},${port},,0,,${hb},0,,,FFFF$`;
+
+  // AT+GTCFG — Global Config
+  // tz as signed int, tz offset as hhmm
+  const tzSignedInt = tzHours;
+  const gtcfg = `AT+GTCFG=${pw},${pw},${devName},0,0.6,1,5,001B,,,4A13,0,1,0,300,0,0,${expiry},${tzSignedInt},${tzStr},0,20,0,,FFFF$`;
+
+  // AT+GTPIN — PIN
+  const gtpin = `AT+GTPIN=${pw},0,,,,,,,FFFF$`;
+
+  // AT+GTDOG — Watchdog
+  const dogEn = checked('dog_enable') ? '1' : '0';
+  const dogTo = v('dog_timeout') || '60';
+  const gtdog = `AT+GTDOG=${pw},${dogEn},${dogTo},7,0200,,1,0,0,,,,FFFF$`;
+
+  // AT+GTTMA — Tamper (default)
+  const gttma = `AT+GTTMA=${pw},+,0,0,0,,,,,,FFFF$`;
+
+  // AT+GTNMD — Normal mode (default)
+  const gtnmd = `AT+GTNMD=${pw},1,2,3,2,600,600,2,3,0,0,2,,,FFFF$`;
+
+  // AT+GTFKS — Function keys (default)
+  const gtfks = `AT+GTFKS=${pw},1,1,0,0,0,3,3,4,4,3,FFFF$`;
+
+  // AT+GTNTS — Notification (default)
+  const gtnts = `AT+GTNTS=${pw},0,,,,,,,,,,,FFFF$`;
+
+  // AT+GTOWH — Office Working Hours (default off)
+  const gtowh = `AT+GTOWH=${pw},0,1F,0900,1200,1300,1800,,,0,0,,,,,,,,FFFF$`;
+
+  // AT+GTSIM — SIM (default)
+  const gtsim = `AT+GTSIM=${pw},0,,0,,,,,,,,,,FFFF$`;
+
+  // AT+GTURT — UART (default)
+  const gturt = `AT+GTURT=${pw},,12,,,,,,,,FFFF$`;
+
+  // AT+GTJDC — Jamming (default off)
+  const gtjdc = `AT+GTJDC=${pw},0,2,,,10,10,,,,,,,FFFF$`;
+
+  // AT+GTAAC — Auto answer (default off)
+  const gtaac = `AT+GTAAC=${pw},0,,,FFFF$`;
+
+  // AT+GTAPN — APN slots
+  let apnLines = '';
+  for (let i = 0; i < APN_COUNT; i++) {
+    const en = checked(`apn_en_${i}`) ? '1' : '0';
+    const apn = document.getElementById(`apn_name_${i}`).value.trim();
+    const user = document.getElementById(`apn_user_${i}`).value.trim();
+    const pass = document.getElementById(`apn_pass_${i}`).value.trim();
+    apnLines += `AT+GTAPN=${pw},${i},${en},${apn},${user},${pass},,,,,,,FFFF$\n`;
+  }
+
+  // AT+GTFRI — Fixed Report Info
+  const friEn   = checked('fri_enable') ? '1' : '0';
+  const friOn   = v('fri_interval_on') || '60';
+  const friOff  = v('fri_interval_off') || '60';
+  const friBufOn  = v('fri_buf_on') || '180';
+  const friBufOff = v('fri_buf_off') || '180';
+  const friDistOn  = v('fri_dist_on') || '0';
+  const friDistOff = v('fri_dist_off') || '0';
+  const friCorner  = v('fri_corner') || '0';
+  const gtfri = `AT+GTFRI=${pw},${friEn},0,,,0000,0000,${friOn},${friOff},${friBufOn},${friBufOff},,${friDistOn},${friDistOff},${friCorner},5,50,5,0,00000000,FFFF$`;
+
+  // AT+GTGEO — Geofences (all 20 slots)
+  let geoLines = '';
+  const geoBlocks = document.querySelectorAll('.geo-block');
+  const geoData = [];
+  geoBlocks.forEach(block => {
+    geoData.push({
+      lat:    block.querySelector('.geo-lat').value.trim() || '0',
+      lng:    block.querySelector('.geo-lng').value.trim() || '0',
+      radius: block.querySelector('.geo-radius').value.trim() || '200',
+      mode:   block.querySelector('.geo-mode').value,
+    });
+  });
+  for (let i = 0; i < 20; i++) {
+    const g = geoData[i];
+    if (g && g.mode !== '0') {
+      geoLines += `AT+GTGEO=${pw},${i},${g.mode},${g.lat},${g.lng},${g.radius},0,0,,,,,,,,FFFF$\n`;
+    } else {
+      geoLines += `AT+GTGEO=${pw},${i},0,0,0,50,0,0,,,,,,,,FFFF$\n`;
+    }
+  }
+
+  // AT+GTSPD — Speed alarm
+  const spdEn   = checked('spd_enable') ? '1' : '0';
+  const spdSpd  = v('spd_threshold') || '100';
+  const spdDur  = v('spd_duration') || '60';
+  const gtspd = `AT+GTSPD=${pw},${spdEn},0,0,${spdDur},${spdSpd},,,,,,,,,,,,,,,,FFFF$`;
+
+  // AT+GTTEM — Temperature (default off)
+  const gttem = `AT+GTTEM=${pw},0,0,0,60,300,,,,,,,FFFF$`;
+
+  // AT+GTMSA — Motion / Tow
+  const msaEn  = checked('msa_enable') ? '1' : '0';
+  const msaSens = v('msa_sensitivity') || '5';
+  const msaTime = v('msa_time') || '5';
+  const gtmsa = `AT+GTMSA=${pw},${msaEn},1,${msaSens},${msaTime},,,,FFFF$`;
+
+  // AT+GTHBM — Harsh braking/acceleration (default off)
+  const gthbm = `AT+GTHBM=${pw},0,3,,100,0,0,,60,0,0,,,0,0,,,,,,,,,,FFFF$`;
+
+  // AT+GTDIS — Distance (default)
+  const gtdis = `AT+GTDIS=${pw},1,0,5,2,,,,,FFFF$`;
+
+  // AT+GTDAT — Data (default)
+  const gtdat = `AT+GTDAT=${pw},0,,,0,,,,FFFF$`;
+
+  // AT+GTWLT — Whitelist (default)
+  const gtwlt = `AT+GTWLT=${pw},1,1,1,,,,,,FFFF$`;
+
+  // AT+GTGLM — Geo-live monitoring (default)
+  const gtglm = `AT+GTGLM=${pw},0,1,1,,,,,,FFFF$`;
+
+  // AT+GTUPC — Unplugged (default off)
+  const gtupc = `AT+GTUPC=${pw},0,10,0,0,0,,0,,,,FFFF$`;
+
+  // AT+GTPDS — Power down schedule
+  const pdsEn = checked('pds_enable') ? '1' : '0';
+  const pdsDel = v('pds_delay') || '0';
+  const pdsDelHex = pad(parseInt(pdsDel || 0).toString(16).toUpperCase(), 6);
+  const gtpds = `AT+GTPDS=${pw},${pdsEn},${pdsDelHex},,,,,,,FFFF$`;
+
+  // AT+GTGAM — GPS Antenna Monitor (default)
+  const gtgam = `AT+GTGAM=${pw},0,0,25,10,60,60,,,,,FFFF$`;
+
+  // AT+GTCMD — 32 entries (all disabled)
+  let cmdLines = '';
+  for (let i = 0; i < 32; i++) {
+    cmdLines += `AT+GTCMD=${pw},0,${i},,,,,,FFFF$\n`;
+  }
+
+  // AT+GTUDF — 32 entries (all blank)
+  let udfLines = '';
+  for (let i = 0; i < 32; i++) {
+    udfLines += `AT+GTUDF=${pw},0,${i},0000000000000000,0,00000,00000,0000000000000000,0,,,,,FFFF$\n`;
+  }
+
+  // AT+GTFVR — Firmware version / OTA URL
+  const now = new Date();
+  const ts = [
+    now.getFullYear(),
+    pad(now.getMonth()+1,2),
+    pad(now.getDate(),2),
+    pad(now.getHours(),2),
+    pad(now.getMinutes(),2),
+    pad(now.getSeconds(),2)
+  ].join('');
+  const otaUrl = v('ota_url');
+  const gtfvr = `AT+GTFVR=${pw},,,,,,,,,,,,${ts},FFFF$`;
+
+  // AT+GTRPC — Remote password change (disabled)
+  const gtrpc = `AT+GTRPC=${pw},1,,,,,,FFFF$`;
+
+  // ── Assemble ──
+  const now2 = new Date().toISOString();
+  const header = [
+    `Device Name: ${devName}`,
+    `Manage Tool Name: GL320MG-Config-Tool  Subversion: GL320MG-Config-Tool`,
+    `Firmware Version: GL320M_B7K1_R01A12V09`,
+    `Hardware Version: GL320M_B7K1_HWR108`,
+    `Protocol Version: C30303`,
+  ].join('\n');
+
+  const body = [
+    gtbsi,
+    gtsri,
+    gtqss,
+    gtcfg,
+    gtpin,
+    gtdog,
+    gttma,
+    gtnmd,
+    gtfks,
+    gtnts,
+    gtowh,
+    gtsim,
+    gturt,
+    gtjdc,
+    gtaac,
+    apnLines.trim(),
+    gtfri,
+    geoLines.trim(),
+    gtspd,
+    gttem,
+    gtmsa,
+    gthbm,
+    gtdis,
+    gtdat,
+    gtwlt,
+    gtglm,
+    gtupc,
+    gtpds,
+    gtgam,
+    cmdLines.trim(),
+    udfLines.trim(),
+    gtfvr,
+    gtrpc,
+  ].join('\n');
+
+  document.getElementById('config_output').value = header + '\n' + body + '\n';
+}
+
+// ── Copy ──
+document.getElementById('btn_copy').addEventListener('click', () => {
+  const out = document.getElementById('config_output').value;
+  if (!out) return;
+  navigator.clipboard.writeText(out).then(() => {
+    const fb = document.getElementById('copy_feedback');
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 2000);
+  });
+});
+
+// ── Download ──
+document.getElementById('btn_download').addEventListener('click', () => {
+  const out = document.getElementById('config_output').value;
+  if (!out) { generate(); }
+  const content = document.getElementById('config_output').value;
+  const blob = new Blob([content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'config.GL320M';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+</script>
+</body>
+</html>
