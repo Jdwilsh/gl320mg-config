@@ -5,823 +5,1080 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GL320MG Config Tool</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg: #f4f6f9;
-    --panel: #ffffff;
-    --border: #dde2ea;
-    --text: #1a2030;
-    --muted: #6b7a95;
-    --accent: #2563eb;
-    --accent-bg: #eff6ff;
-    --danger: #dc2626;
-    --success: #16a34a;
-    --radius: 8px;
-    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  }
-
-  body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
-
-  header {
-    background: var(--panel);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    height: 56px;
-  }
-  header h1 { font-size: 17px; font-weight: 700; }
-  header .subtitle { color: var(--muted); font-size: 13px; }
-
-  .layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 56px); }
-
-  /* Sidebar nav */
-  nav {
-    background: var(--panel);
-    border-right: 1px solid var(--border);
-    padding: 16px 0;
-    position: sticky;
-    top: 0;
-    height: calc(100vh - 56px);
-    overflow-y: auto;
-  }
-  nav .nav-section { padding: 4px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-top: 16px; margin-bottom: 4px; }
-  nav .nav-section:first-child { margin-top: 0; }
-  nav a { display: block; padding: 7px 16px; color: var(--text); text-decoration: none; border-radius: 6px; margin: 1px 8px; font-size: 13px; transition: background 0.1s; }
-  nav a:hover { background: var(--bg); }
-  nav a.active { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
-
-  /* Main content */
-  main { padding: 24px; max-width: 900px; }
-
-  .section { display: none; }
-  .section.active { display: block; }
-
-  .section-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-  .section-desc { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
-
-  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
-  .card-title { font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 14px; }
-
-  .field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
-  .field-grid.two { grid-template-columns: 1fr 1fr; }
-  .field-grid.three { grid-template-columns: 1fr 1fr 1fr; }
-
-  .field { display: flex; flex-direction: column; gap: 4px; }
-  .field label { font-size: 12px; font-weight: 600; color: var(--muted); }
-  .field input, .field select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; color: var(--text); background: var(--panel); transition: border-color 0.15s; width: 100%; }
-  .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
-  .field .hint { font-size: 11px; color: var(--muted); }
-
-  .field input[type="checkbox"] { width: auto; margin-right: 6px; }
-  .field.checkbox { flex-direction: row; align-items: center; }
-  .field.checkbox label { font-size: 13px; color: var(--text); font-weight: 400; cursor: pointer; }
-
-  .geo-block { border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin-bottom: 10px; position: relative; }
-  .geo-block .geo-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .geo-block .geo-num { font-weight: 700; font-size: 13px; color: var(--accent); background: var(--accent-bg); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-
-  /* Output section */
-  .output-bar { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
-  .btn { padding: 8px 18px; border-radius: 6px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
-  .btn:hover { opacity: 0.85; }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-outline { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
-  .btn-success { background: var(--success); color: #fff; }
-
-  textarea.output { width: 100%; height: 480px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: #1e2330; color: #d4d8e4; resize: vertical; line-height: 1.6; }
-
-  .copy-feedback { font-size: 12px; color: var(--success); display: none; }
-  .copy-feedback.show { display: inline; }
-
-  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: var(--accent-bg); color: var(--accent); }
-
-  .apn-row { display: grid; grid-template-columns: 100px 1fr 140px 140px; gap: 10px; align-items: start; margin-bottom: 10px; }
-
-  hr.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
-
-  .note { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: 12px; color: var(--muted); margin-bottom: 16px; }
-  .note strong { color: var(--text); }
-
-  /* Monitor / Devices tables */
-  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .data-table th { padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); border-bottom: 2px solid var(--border); }
-  .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  .data-table tr:last-child td { border-bottom: none; }
-  .data-table tr:hover td { background: var(--bg); }
-
-  .status-ok   { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #dcfce7; color: #15803d; }
-  .status-notmod { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #dbeafe; color: #1d4ed8; }
-  .status-err  { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #fee2e2; color: #b91c1c; }
-
-  .history-toggle { background: none; border: none; cursor: pointer; color: var(--accent); font-size: 12px; padding: 0; text-decoration: underline; }
-  .history-rows { display: none; }
-  .history-rows.open { display: table-row-group; }
-  .history-row td { background: var(--bg) !important; font-size: 12px; color: var(--muted); padding: 6px 12px 6px 32px; }
-
-  .monitor-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-  .refresh-indicator { font-size: 12px; color: var(--muted); }
-  .refresh-indicator .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--success); margin-right: 4px; }
-  .refresh-indicator .dot.off { background: var(--muted); }
-
-  .device-form { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
-  .device-form .field { flex: 1; min-width: 160px; }
-  .device-form .btn { flex-shrink: 0; align-self: flex-end; }
-
-  .name-cell { font-weight: 600; }
-  .name-cell.unnamed { color: var(--muted); font-weight: 400; font-style: italic; }
-
-  .imei-code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: var(--muted); }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f6f9;--panel:#fff;--border:#dde2ea;--text:#1a2030;--muted:#6b7a95;
+  --accent:#2563eb;--accent-bg:#eff6ff;--danger:#dc2626;--success:#16a34a;
+  --warn:#d97706;--radius:8px;--font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+header{background:var(--panel);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;gap:16px;height:56px}
+header h1{font-size:17px;font-weight:700}
+header .subtitle{color:var(--muted);font-size:13px}
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 56px)}
+nav{background:var(--panel);border-right:1px solid var(--border);padding:16px 0;position:sticky;top:0;height:calc(100vh - 56px);overflow-y:auto}
+nav .nav-section{padding:4px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:16px;margin-bottom:4px}
+nav .nav-section:first-child{margin-top:0}
+nav a{display:block;padding:7px 16px;color:var(--text);text-decoration:none;border-radius:6px;margin:1px 8px;font-size:13px;transition:background .1s}
+nav a:hover{background:var(--bg)}
+nav a.active{background:var(--accent-bg);color:var(--accent);font-weight:600}
+main{padding:24px;max-width:960px}
+.section{display:none}.section.active{display:block}
+.section-title{font-size:20px;font-weight:700;margin-bottom:4px}
+.section-desc{color:var(--muted);font-size:13px;margin-bottom:20px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.card-title{font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:14px}
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.fg.two{grid-template-columns:1fr 1fr}
+.fg.three{grid-template-columns:1fr 1fr 1fr}
+.fg.four{grid-template-columns:1fr 1fr 1fr 1fr}
+.f{display:flex;flex-direction:column;gap:4px}
+.f label{font-size:12px;font-weight:600;color:var(--muted)}
+.f input,.f select{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;color:var(--text);background:var(--panel);width:100%}
+.f input:focus,.f select:focus{outline:none;border-color:var(--accent)}
+.f .hint{font-size:11px;color:var(--muted)}
+.f.cb{flex-direction:row;align-items:center;gap:8px}
+.f.cb input{width:auto}
+.f.cb label{font-size:13px;font-weight:400;color:var(--text);cursor:pointer}
+.btn{padding:8px 18px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-outline{background:var(--panel);color:var(--text);border:1px solid var(--border)}
+.btn-success{background:var(--success);color:#fff}
+.btn-warn{background:var(--warn);color:#fff}
+.btn-sm{padding:4px 12px;font-size:12px}
+.note{background:var(--accent-bg);border-left:3px solid var(--accent);padding:10px 14px;border-radius:0 6px 6px 0;font-size:12px;color:var(--muted);margin-bottom:16px}
+.note strong{color:var(--text)}
+hr.div{border:none;border-top:1px solid var(--border);margin:16px 0}
+textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monospace;font-size:12px;padding:14px;border:1px solid var(--border);border-radius:var(--radius);background:#1e2330;color:#d4d8e4;resize:vertical;line-height:1.6}
+.action-bar{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.status-msg{font-size:12px;padding:4px 10px;border-radius:4px;display:none}
+.status-msg.ok{background:#dcfce7;color:#15803d;display:inline-block}
+.status-msg.err{background:#fee2e2;color:#b91c1c;display:inline-block}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{padding:8px 10px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:2px solid var(--border)}
+.tbl td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--bg)}
+.tbl input,.tbl select{padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;font-family:inherit;width:100%}
+/* Monitor */
+.monitor-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.ref-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);margin-right:4px}
+.ref-dot.off{background:var(--muted)}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700}
+.badge-ok{background:#dcfce7;color:#15803d}
+.badge-notmod{background:#dbeafe;color:#1d4ed8}
+.badge-err{background:#fee2e2;color:#b91c1c}
+.badge-muted{background:var(--bg);color:var(--muted)}
+.mono{font-family:'SF Mono','Fira Code',monospace;font-size:12px;color:var(--muted)}
+.hist-toggle{background:none;border:none;cursor:pointer;color:var(--accent);font-size:12px;padding:0;text-decoration:underline}
+.hist-group{display:none}.hist-group.open{display:table-row-group}
+.hist-row td{background:var(--bg)!important;font-size:12px;color:var(--muted);padding:5px 10px 5px 28px}
+/* Device form */
+.dev-form{display:flex;gap:10px;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap}
+.dev-form .f{flex:1;min-width:160px}
+/* Days checkboxes */
+.days{display:flex;gap:8px;flex-wrap:wrap}
+.day-cb{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted);font-weight:600}
+.day-cb input{width:16px;height:16px}
+/* Config file selector */
+.cfg-file-bar{display:flex;gap:10px;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap}
+.cfg-file-bar .f{flex:1;min-width:200px;max-width:320px}
 </style>
 </head>
 <body>
-
 <header>
   <h1>GL320MG Config Tool</h1>
-  <span class="subtitle">Queclink GL320MG · OTA Configuration Generator</span>
+  <span class="subtitle">Queclink GL320MG &bull; OTA Configuration Generator</span>
 </header>
-
 <div class="layout">
-  <nav id="sidebar">
-    <div class="nav-section">Setup</div>
-    <a href="#" data-section="device" class="active">Device &amp; Password</a>
-    <a href="#" data-section="server">Server Connection</a>
-    <a href="#" data-section="apn">APN / Cellular</a>
+<nav id="sidebar">
+  <div class="nav-section">Network</div>
+  <a href="#" data-section="connectivity" class="active">Connectivity</a>
+  <a href="#" data-section="apnlist">APN List</a>
+  <div class="nav-section">Device</div>
+  <a href="#" data-section="globalcfg">Global Config</a>
+  <a href="#" data-section="simpin">SIM &amp; PIN</a>
+  <div class="nav-section">Tracking</div>
+  <a href="#" data-section="reporting">Fixed Reporting</a>
+  <a href="#" data-section="motion">Motion Detection</a>
+  <div class="nav-section">Alarms</div>
+  <a href="#" data-section="geofences">Geofences</a>
+  <a href="#" data-section="alarms">Speed &amp; Temperature</a>
+  <a href="#" data-section="harsh">Motion &amp; Harsh</a>
+  <div class="nav-section">Hardware</div>
+  <a href="#" data-section="watchdog">Watchdog</a>
+  <a href="#" data-section="funckey">Function Key</a>
+  <div class="nav-section">Notifications</div>
+  <a href="#" data-section="workhours">Working Hours</a>
+  <a href="#" data-section="smsalerts">SMS &amp; Alerts</a>
+  <div class="nav-section">Advanced</div>
+  <a href="#" data-section="otacfg">OTA Config</a>
+  <a href="#" data-section="advanced">Other Settings</a>
+  <div class="nav-section">Monitor</div>
+  <a href="#" data-section="monitor">Tracker Activity</a>
+  <a href="#" data-section="devices">Device Names</a>
+  <div class="nav-section">Output</div>
+  <a href="#" data-section="output">Generate &amp; Save</a>
+</nav>
+<main>
 
-    <div class="nav-section">Tracking</div>
-    <a href="#" data-section="reporting">Fixed Reporting</a>
-    <a href="#" data-section="geofence">Geofences</a>
-
-    <div class="nav-section">Alarms</div>
-    <a href="#" data-section="speed">Speed Alarm</a>
-    <a href="#" data-section="motion">Motion / Tow</a>
-    <a href="#" data-section="power">Power &amp; Watchdog</a>
-
-    <div class="nav-section">Monitor</div>
-    <a href="#" data-section="monitor">Tracker Activity</a>
-    <a href="#" data-section="devices">Device Names</a>
-
-    <div class="nav-section">Output</div>
-    <a href="#" data-section="output">Generate Config</a>
-  </nav>
-
-  <main>
-
-    <!-- ── DEVICE ── -->
-    <div class="section active" id="sect-device">
-      <div class="section-title">Device &amp; Password</div>
-      <div class="section-desc">Basic device identity and security credentials used in every AT command.</div>
-
-      <div class="card">
-        <div class="card-title">Credentials</div>
-        <div class="field-grid two">
-          <div class="field">
-            <label>Device Password</label>
-            <input id="password" value="gl320m" maxlength="20">
-            <span class="hint">Used as the first parameter in every command</span>
-          </div>
-          <div class="field">
-            <label>Device Name / Label</label>
-            <input id="device_name" value="gl320mg" maxlength="20">
-            <span class="hint">Friendly name stored in device (AT+GTCFG)</span>
-          </div>
-        </div>
+<!-- ── CONNECTIVITY ── -->
+<div class="section active" id="sect-connectivity">
+  <div class="section-title">Connectivity</div>
+  <div class="section-desc">Network mode, LTE APN (AT+GTBSI) and reporting server (AT+GTSRI).</div>
+  <div class="card">
+    <div class="card-title">Network &amp; APN (AT+GTBSI)</div>
+    <div class="fg two">
+      <div class="f"><label>LTE APN</label><input id="bsi_lte_apn" placeholder="e.g. internet"></div>
+      <div class="f"><label>APN Username</label><input id="bsi_lte_user"></div>
+      <div class="f"><label>APN Password</label><input id="bsi_lte_pw" type="password"></div>
+      <div class="f"><label>Network Mode</label>
+        <select id="bsi_net_mode">
+          <option value="0" selected>0 – Auto (LTE + GSM)</option>
+          <option value="1">1 – GSM only</option>
+          <option value="2">2 – LTE only</option>
+          <option value="3">3 – GSM first</option>
+        </select>
       </div>
-
-      <div class="card">
-        <div class="card-title">Time &amp; Timezone</div>
-        <div class="field-grid three">
-          <div class="field">
-            <label>Timezone Offset (hours)</label>
-            <select id="timezone">
-              <option value="-12">UTC-12</option>
-              <option value="-11">UTC-11</option>
-              <option value="-10">UTC-10</option>
-              <option value="-9">UTC-9</option>
-              <option value="-8">UTC-8</option>
-              <option value="-7">UTC-7</option>
-              <option value="-6">UTC-6</option>
-              <option value="-5">UTC-5</option>
-              <option value="-4">UTC-4</option>
-              <option value="-3">UTC-3</option>
-              <option value="-2">UTC-2</option>
-              <option value="-1">UTC-1</option>
-              <option value="0" selected>UTC+0</option>
-              <option value="1">UTC+1</option>
-              <option value="2">UTC+2</option>
-              <option value="3">UTC+3</option>
-              <option value="4">UTC+4</option>
-              <option value="5">UTC+5</option>
-              <option value="6">UTC+6</option>
-              <option value="7">UTC+7</option>
-              <option value="8">UTC+8</option>
-              <option value="9">UTC+9</option>
-              <option value="10">UTC+10</option>
-              <option value="11">UTC+11</option>
-              <option value="12">UTC+12</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Config Expiry Date</label>
-            <input id="expiry" value="20491231235959" maxlength="14">
-            <span class="hint">YYYYMMDDHHmmss format</span>
-          </div>
-        </div>
+      <div class="f"><label>LTE Mode</label>
+        <select id="bsi_lte_mode">
+          <option value="0" selected>0 – Cat-M1 + NB2 (M1 first)</option>
+          <option value="1">1 – Cat-M1 + NB2 (NB2 first)</option>
+          <option value="2">2 – Cat-M1 only</option>
+          <option value="3">3 – Cat-NB2 only</option>
+          <option value="4">4 – NB2 first (NB2 &gt; 2G &gt; M1)</option>
+          <option value="5">5 – NB2 only (NB2 &gt; 2G)</option>
+        </select>
       </div>
-    </div>
-
-    <!-- ── SERVER ── -->
-    <div class="section" id="sect-server">
-      <div class="section-title">Server Connection</div>
-      <div class="section-desc">Primary server that receives GPS reports (AT+GTSRI / AT+GTQSS).</div>
-
-      <div class="card">
-        <div class="card-title">Primary Server</div>
-        <div class="field-grid two">
-          <div class="field">
-            <label>Server Hostname / IP</label>
-            <input id="server_host" value="gps.pyramiddispatch.com">
-          </div>
-          <div class="field">
-            <label>Server Port</label>
-            <input id="server_port" type="number" value="5004" min="1" max="65535">
-          </div>
-          <div class="field">
-            <label>Protocol</label>
-            <select id="server_proto">
-              <option value="0">UDP</option>
-              <option value="1" selected>TCP</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Heartbeat Interval (seconds)</label>
-            <input id="heartbeat" type="number" value="60" min="10" max="3600">
-            <span class="hint">How often device pings server to keep connection alive</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">OTA Config Download</div>
-        <div class="note"><strong>Note:</strong> The tracker downloads a config file via HTTP. Host this generated file on a public URL and enter it below. The device will fetch it on next contact.</div>
-        <div class="field-grid">
-          <div class="field">
-            <label>OTA Config File URL</label>
-            <input id="ota_url" placeholder="http://example.com/config.GL320M">
-            <span class="hint">Full URL where this config file will be hosted (used in AT+GTFVR)</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── APN ── -->
-    <div class="section" id="sect-apn">
-      <div class="section-title">APN / Cellular</div>
-      <div class="section-desc">Up to 8 APN profiles (AT+GTAPN). The device tries each in order until one connects.</div>
-
-      <div class="note"><strong>Tip:</strong> For a single SIM with a known APN, configure slot 0 only and leave the rest disabled.</div>
-
-      <div class="card">
-        <div class="card-title">APN Profiles</div>
-        <div style="overflow-x:auto">
-          <table style="width:100%; border-collapse:collapse; font-size:13px;">
-            <thead>
-              <tr style="text-align:left; border-bottom:1px solid var(--border)">
-                <th style="padding:6px 8px; color:var(--muted); font-weight:600; width:60px">Slot</th>
-                <th style="padding:6px 8px; color:var(--muted); font-weight:600; width:70px">Enable</th>
-                <th style="padding:6px 8px; color:var(--muted); font-weight:600">APN</th>
-                <th style="padding:6px 8px; color:var(--muted); font-weight:600">Username</th>
-                <th style="padding:6px 8px; color:var(--muted); font-weight:600">Password</th>
-              </tr>
-            </thead>
-            <tbody id="apn_table"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── REPORTING ── -->
-    <div class="section" id="sect-reporting">
-      <div class="section-title">Fixed Reporting</div>
-      <div class="section-desc">Controls how often the device sends GPS position reports (AT+GTFRI).</div>
-
-      <div class="card">
-        <div class="card-title">Report Enable</div>
-        <div class="field-grid two">
-          <div class="field checkbox">
-            <input type="checkbox" id="fri_enable" checked>
-            <label for="fri_enable">Enable fixed reporting</label>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Send Intervals</div>
-        <div class="field-grid two">
-          <div class="field">
-            <label>Ignition ON interval (seconds)</label>
-            <input id="fri_interval_on" type="number" value="60" min="5" max="86400">
-            <span class="hint">How often to send reports while vehicle is running</span>
-          </div>
-          <div class="field">
-            <label>Ignition OFF interval (seconds)</label>
-            <input id="fri_interval_off" type="number" value="60" min="5" max="86400">
-            <span class="hint">How often to send reports while vehicle is parked</span>
-          </div>
-          <div class="field">
-            <label>Buffer interval ON (seconds)</label>
-            <input id="fri_buf_on" type="number" value="180" min="5" max="86400">
-            <span class="hint">Interval for buffered (offline) reports when ignition is on</span>
-          </div>
-          <div class="field">
-            <label>Buffer interval OFF (seconds)</label>
-            <input id="fri_buf_off" type="number" value="180" min="5" max="86400">
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Distance &amp; Corner Triggers</div>
-        <div class="field-grid three">
-          <div class="field">
-            <label>Distance trigger ON (metres, 0=off)</label>
-            <input id="fri_dist_on" type="number" value="1000" min="0" max="100000">
-          </div>
-          <div class="field">
-            <label>Distance trigger OFF (metres, 0=off)</label>
-            <input id="fri_dist_off" type="number" value="1000" min="0" max="100000">
-          </div>
-          <div class="field">
-            <label>Corner angle (degrees, 0=off)</label>
-            <input id="fri_corner" type="number" value="0" min="0" max="180">
-            <span class="hint">Report on direction change greater than this angle</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── GEOFENCES ── -->
-    <div class="section" id="sect-geofence">
-      <div class="section-title">Geofences</div>
-      <div class="section-desc">Up to 20 circular geofences (AT+GTGEO). The device alerts when entering or exiting the defined area.</div>
-
-      <div class="note"><strong>Mode:</strong> 0 = disabled, 1 = alert on enter, 2 = alert on exit, 3 = alert on enter &amp; exit.</div>
-
-      <div id="geo_list"></div>
-
-      <button class="btn btn-outline" id="geo_add" style="margin-top:4px">+ Add Geofence</button>
-    </div>
-
-    <!-- ── SPEED ── -->
-    <div class="section" id="sect-speed">
-      <div class="section-title">Speed Alarm</div>
-      <div class="section-desc">Alert when vehicle exceeds a speed threshold (AT+GTSPD).</div>
-
-      <div class="card">
-        <div class="field-grid two">
-          <div class="field checkbox" style="grid-column:1/-1">
-            <input type="checkbox" id="spd_enable">
-            <label for="spd_enable">Enable speed alarm</label>
-          </div>
-          <div class="field">
-            <label>Speed threshold (km/h)</label>
-            <input id="spd_threshold" type="number" value="100" min="1" max="300">
-          </div>
-          <div class="field">
-            <label>Duration before alarm (seconds)</label>
-            <input id="spd_duration" type="number" value="60" min="5" max="3600">
-            <span class="hint">Must exceed threshold for this long before alerting</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── MOTION ── -->
-    <div class="section" id="sect-motion">
-      <div class="section-title">Motion / Tow Alarm</div>
-      <div class="section-desc">Detect movement when vehicle should be stationary (AT+GTMSA).</div>
-
-      <div class="card">
-        <div class="field-grid two">
-          <div class="field checkbox" style="grid-column:1/-1">
-            <input type="checkbox" id="msa_enable">
-            <label for="msa_enable">Enable motion/tow alarm</label>
-          </div>
-          <div class="field">
-            <label>Motion sensitivity (1–5)</label>
-            <input id="msa_sensitivity" type="number" value="5" min="1" max="5">
-          </div>
-          <div class="field">
-            <label>Confirm time (seconds)</label>
-            <input id="msa_time" type="number" value="5" min="1" max="60">
-            <span class="hint">Movement must continue this long before alarm triggers</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── POWER ── -->
-    <div class="section" id="sect-power">
-      <div class="section-title">Power &amp; Watchdog</div>
-      <div class="section-desc">Watchdog auto-reboot (AT+GTDOG) and power-down scheduling (AT+GTPDS).</div>
-
-      <div class="card">
-        <div class="card-title">Watchdog</div>
-        <div class="field-grid two">
-          <div class="field checkbox" style="grid-column:1/-1">
-            <input type="checkbox" id="dog_enable">
-            <label for="dog_enable">Enable watchdog (auto-reboot on hang)</label>
-          </div>
-          <div class="field">
-            <label>Watchdog timeout (minutes)</label>
-            <input id="dog_timeout" type="number" value="60" min="1" max="1440">
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Power Down Schedule</div>
-        <div class="field-grid two">
-          <div class="field checkbox" style="grid-column:1/-1">
-            <input type="checkbox" id="pds_enable">
-            <label for="pds_enable">Enable scheduled power-down</label>
-          </div>
-          <div class="field">
-            <label>Power-down delay (seconds after ignition off)</label>
-            <input id="pds_delay" type="number" value="0" min="0" max="86400">
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── MONITOR ── -->
-    <div class="section" id="sect-monitor">
-      <div class="section-title">Tracker Activity</div>
-      <div class="section-desc">Live view of which trackers have fetched their config file. Parsed from the nginx access log.</div>
-
-      <div class="monitor-bar">
-        <button class="btn btn-primary" id="btn_refresh_monitor">Refresh Now</button>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-          <input type="checkbox" id="auto_refresh" checked>
-          Auto-refresh every 30s
-        </label>
-        <span class="refresh-indicator"><span class="dot" id="refresh_dot"></span><span id="refresh_label">Refreshing…</span></span>
-      </div>
-
-      <div class="card" style="padding:0;overflow:hidden">
-        <table class="data-table" id="monitor_table">
-          <thead>
-            <tr>
-              <th>Name / IMEI</th>
-              <th>Last Seen</th>
-              <th>Config File</th>
-              <th>Status</th>
-              <th>Last IP</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="monitor_tbody">
-            <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ── DEVICES ── -->
-    <div class="section" id="sect-devices">
-      <div class="section-title">Device Names</div>
-      <div class="section-desc">Map IMEI numbers to friendly names. These appear in the Tracker Activity view.</div>
-
-      <div class="card">
-        <div class="card-title">Add / Update Device</div>
-        <div class="device-form">
-          <div class="field">
-            <label>IMEI (15 digits)</label>
-            <input id="new_imei" maxlength="15" placeholder="860201067895154">
-          </div>
-          <div class="field">
-            <label>Friendly Name</label>
-            <input id="new_name" placeholder="Ambulance 1">
-          </div>
-          <button class="btn btn-primary" id="btn_save_device">Save</button>
-        </div>
-        <div id="device_save_msg" style="font-size:12px;color:var(--success);display:none;margin-top:-6px">Saved.</div>
-      </div>
-
-      <div class="card" style="padding:0;overflow:hidden">
-        <table class="data-table" id="devices_table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>IMEI</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="devices_tbody">
-            <tr><td colspan="3" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ── OUTPUT ── -->
-    <div class="section" id="sect-output">
-      <div class="section-title">Generate Config</div>
-      <div class="section-desc">Click Generate to build the configuration file from your settings above.</div>
-
-      <div class="output-bar">
-        <button class="btn btn-primary" id="btn_generate">Generate Config</button>
-        <button class="btn btn-outline" id="btn_copy">Copy to Clipboard</button>
-        <button class="btn btn-success" id="btn_download">Download File</button>
-        <span class="copy-feedback" id="copy_feedback">Copied!</span>
-      </div>
-
-      <textarea class="output" id="config_output" readonly placeholder="Click 'Generate Config' to build the file…"></textarea>
-    </div>
-
-  </main>
-</div>
-
-<script>
-// ── Navigation ──
-const links = document.querySelectorAll('nav a');
-const sections = document.querySelectorAll('.section');
-
-links.forEach(link => {
-  link.addEventListener('click', e => {
-    e.preventDefault();
-    const target = link.dataset.section;
-    links.forEach(l => l.classList.remove('active'));
-    sections.forEach(s => s.classList.remove('active'));
-    link.classList.add('active');
-    document.getElementById('sect-' + target).classList.add('active');
-  });
-});
-
-// ── APN table ──
-const APN_COUNT = 8;
-const apnTable = document.getElementById('apn_table');
-for (let i = 0; i < APN_COUNT; i++) {
-  const row = document.createElement('tr');
-  row.style.borderBottom = '1px solid var(--border)';
-  row.innerHTML = `
-    <td style="padding:8px"><span style="font-weight:700;color:var(--muted)">${i}</span></td>
-    <td style="padding:8px"><input type="checkbox" id="apn_en_${i}" ${i === 0 ? '' : ''}></td>
-    <td style="padding:8px"><input id="apn_name_${i}" placeholder="e.g. internet" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px"></td>
-    <td style="padding:8px"><input id="apn_user_${i}" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px"></td>
-    <td style="padding:8px"><input id="apn_pass_${i}" type="password" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px"></td>
-  `;
-  apnTable.appendChild(row);
-}
-
-// ── Geofences ──
-let geoCount = 0;
-const GEO_MAX = 20;
-const geoList = document.getElementById('geo_list');
-
-function addGeo(index) {
-  if (geoCount >= GEO_MAX) return;
-  const idx = index !== undefined ? index : geoCount;
-  const block = document.createElement('div');
-  block.className = 'geo-block';
-  block.dataset.idx = idx;
-  block.innerHTML = `
-    <div class="geo-header">
-      <div class="geo-num">${idx + 1}</div>
-      <div style="flex:1;font-weight:600;font-size:13px">Geofence ${idx + 1}</div>
-      <button class="btn btn-outline" style="padding:4px 12px;font-size:12px" onclick="removeGeo(this)">Remove</button>
-    </div>
-    <div class="field-grid" style="grid-template-columns:1fr 1fr 120px 180px">
-      <div class="field"><label>Latitude</label><input class="geo-lat" type="number" step="0.000001" placeholder="51.5074"></div>
-      <div class="field"><label>Longitude</label><input class="geo-lng" type="number" step="0.000001" placeholder="-0.1278"></div>
-      <div class="field"><label>Radius (m)</label><input class="geo-radius" type="number" value="200" min="50" max="100000"></div>
-      <div class="field"><label>Mode</label>
-        <select class="geo-mode">
-          <option value="0">0 – Disabled</option>
-          <option value="1">1 – Alert on Enter</option>
-          <option value="2">2 – Alert on Exit</option>
-          <option value="3" selected>3 – Enter &amp; Exit</option>
+      <div class="f"><label>APN Authentication</label>
+        <select id="bsi_auth">
+          <option value="0" selected>0 – None</option>
+          <option value="1">1 – PAP</option>
+          <option value="2">2 – CHAP</option>
+          <option value="3">3 – PAP or CHAP</option>
         </select>
       </div>
     </div>
-  `;
-  geoList.appendChild(block);
-  geoCount++;
-  updateGeoButton();
-}
+  </div>
+  <div class="card">
+    <div class="card-title">Reporting Server (AT+GTSRI)</div>
+    <div class="fg two">
+      <div class="f"><label>Report Mode</label>
+        <select id="sri_report_mode">
+          <option value="0">0 – Stop (disabled)</option>
+          <option value="1" selected>1 – TCP short-conn (SMS fallback)</option>
+          <option value="2">2 – TCP short-conn (no SMS fallback)</option>
+          <option value="3">3 – TCP long-connection</option>
+          <option value="4">4 – UDP</option>
+          <option value="5">5 – SMS only</option>
+        </select>
+      </div>
+      <div class="f"><label>Buffer Mode</label>
+        <select id="sri_buffer">
+          <option value="0">0 – Disabled</option>
+          <option value="1" selected>1 – Enabled</option>
+          <option value="2">2 – High priority (send buffered first)</option>
+        </select>
+      </div>
+      <div class="f"><label>Main Server Host / IP</label><input id="sri_main_host" placeholder="e.g. gps.example.com"></div>
+      <div class="f"><label>Main Server Port</label><input id="sri_main_port" type="number" value="5004" min="1" max="65535"></div>
+      <div class="f"><label>Backup Server Host / IP</label><input id="sri_backup_host"></div>
+      <div class="f"><label>Backup Server Port</label><input id="sri_backup_port" type="number" value="0" min="0" max="65535"></div>
+      <div class="f"><label>Heartbeat Interval (minutes, 0=off)</label><input id="sri_heartbeat" type="number" value="60" min="0" max="360"><span class="hint">Keep TCP long-connection alive</span></div>
+      <div class="f"><label>SACK (server acknowledgement)</label>
+        <select id="sri_sack">
+          <option value="0" selected>0 – No ACK required</option>
+          <option value="1">1 – Server must ACK each message</option>
+          <option value="2">2 – Server sends SACK (no serial check)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
 
-function removeGeo(btn) {
-  btn.closest('.geo-block').remove();
-  geoCount--;
-  updateGeoButton();
-}
+<!-- ── APN LIST ── -->
+<div class="section" id="sect-apnlist">
+  <div class="section-title">APN List</div>
+  <div class="section-desc">Up to 8 APN entries for automatic APN changeover (AT+GTAPN). Enable auto-changeover below (AT+GTAAC).</div>
+  <div class="card">
+    <div class="card-title">Auto APN Changeover (AT+GTAAC)</div>
+    <div class="fg two">
+      <div class="f"><label>Changeover Mode</label>
+        <select id="aac_mode">
+          <option value="0" selected>0 – Disabled</option>
+          <option value="1">1 – Enabled (free APNs apply to any PLMN)</option>
+          <option value="2">2 – Restricted (free APNs for unlisted PLMNs only)</option>
+        </select>
+        <span class="hint">Requires Manual Netreg=1 in GTBSI (set automatically)</span>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="tbl" id="apn_table">
+      <thead><tr><th style="width:50px">Slot</th><th style="width:70px">Enable</th><th>PLMN (MCC+MNC)</th><th>APN</th><th>Username</th><th>Password</th></tr></thead>
+      <tbody id="apn_tbody"></tbody>
+    </table>
+  </div>
+</div>
 
-function updateGeoButton() {
-  document.getElementById('geo_add').disabled = geoCount >= GEO_MAX;
-}
+<!-- ── GLOBAL CONFIG ── -->
+<div class="section" id="sect-globalcfg">
+  <div class="section-title">Global Config</div>
+  <div class="section-desc">Core device settings (AT+GTCFG).</div>
+  <div class="card">
+    <div class="card-title">Identity &amp; Password</div>
+    <div class="fg three">
+      <div class="f"><label>Current Password (auth)</label><input id="cfg_password" value="gl320m" maxlength="20"><span class="hint">Used to authenticate all commands</span></div>
+      <div class="f"><label>New Password (leave blank to keep same)</label><input id="cfg_new_pw" maxlength="20" placeholder="(unchanged)"></div>
+      <div class="f"><label>Device Name</label><input id="cfg_device_name" value="gl320mg" maxlength="20"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">GPS Behaviour</div>
+    <div class="fg three">
+      <div class="f"><label>GPS On Need</label>
+        <select id="cfg_gps_need">
+          <option value="0">0 – Always on</option>
+          <option value="1" selected>1 – Off after each fix</option>
+          <option value="2">2 – On when ignition on or moving</option>
+        </select>
+      </div>
+      <div class="f"><label>GPS Fix Delay (seconds)</label><input id="cfg_gps_delay" type="number" value="5" min="5" max="60"><span class="hint">Wait after fix before recording (accuracy)</span></div>
+      <div class="f cb"><input type="checkbox" id="cfg_agps"><label for="cfg_agps">Enable AGPS (faster first fix)</label></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Reporting &amp; LEDs</div>
+    <div class="fg three">
+      <div class="f"><label>Report Item Mask (HEX)</label><input id="cfg_report_mask" value="001B" maxlength="4"><span class="hint">001B = Speed+Azimuth+Altitude+SendTime</span></div>
+      <div class="f"><label>Event Mask (HEX)</label><input id="cfg_event_mask" value="4A13" maxlength="4"><span class="hint">4A13 = power on/off, ignition, network events</span></div>
+      <div class="f"><label>LED Mode</label>
+        <select id="cfg_led">
+          <option value="0">0 – GPS LED off after 150s</option>
+          <option value="1" selected>1 – All LEDs normal</option>
+          <option value="2">2 – All LEDs off</option>
+        </select>
+      </div>
+      <div class="f cb"><input type="checkbox" id="cfg_info_enable"><label for="cfg_info_enable">Enable periodic device info reports</label></div>
+      <div class="f"><label>Info Report Interval (seconds)</label><input id="cfg_info_interval" type="number" value="300" min="30" max="86400"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Battery &amp; Odometer</div>
+    <div class="fg three">
+      <div class="f cb"><input type="checkbox" id="cfg_odo_enable"><label for="cfg_odo_enable">Enable odometer</label></div>
+      <div class="f"><label>ODO Initial Mileage (km)</label><input id="cfg_odo_initial" type="number" value="0" min="0" step="0.1"></div>
+      <div class="f cb"><input type="checkbox" id="cfg_bat_switch"><label for="cfg_bat_switch">Switch to internal battery on ext. loss</label></div>
+      <div class="f"><label>Battery Low Threshold (%)</label><input id="cfg_bat_low" type="number" value="20" min="0" max="30"><span class="hint">Triggers GTBPL event</span></div>
+      <div class="f cb"><input type="checkbox" id="cfg_walking_mode"><label for="cfg_walking_mode">Walking mode (pedestrian accuracy)</label></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Config Expiry</div>
+    <div class="fg two">
+      <div class="f cb"><input type="checkbox" id="cfg_expiry_enable"><label for="cfg_expiry_enable">Enable expiry (stop all GPS after date)</label></div>
+      <div class="f"><label>Expiry Date/Time (YYYYMMDDHHmmss)</label><input id="cfg_expiry_time" value="20491231235959" maxlength="14"></div>
+    </div>
+  </div>
+</div>
 
-document.getElementById('geo_add').addEventListener('click', () => addGeo());
+<!-- ── SIM & PIN ── -->
+<div class="section" id="sect-simpin">
+  <div class="section-title">SIM &amp; PIN</div>
+  <div class="section-desc">SIM PIN auto-unlock (AT+GTPIN) and SIM card binding (AT+GTSIM).</div>
+  <div class="card">
+    <div class="card-title">SIM PIN (AT+GTPIN)</div>
+    <div class="fg two">
+      <div class="f cb"><input type="checkbox" id="pin_auto"><label for="pin_auto">Auto-unlock SIM PIN on power-on</label></div>
+      <div class="f"><label>SIM PIN Code</label><input id="pin_code" maxlength="8" placeholder="4-8 digits (leave blank to clear)"><span class="hint">Leave blank if SIM has no PIN</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">SIM Binding (AT+GTSIM)</div>
+    <div class="fg two">
+      <div class="f"><label>ICCID Mode</label>
+        <select id="sim_mode">
+          <option value="0" selected>0 – No binding</option>
+          <option value="1">1 – Bind current SIM</option>
+          <option value="2">2 – Bind specific SIM by ICCID</option>
+        </select>
+        <span class="hint">Mode 1/2 unregisters device from network if wrong SIM detected</span>
+      </div>
+      <div class="f"><label>ICCID (20 digits, Mode 2 only)</label><input id="sim_iccid" maxlength="20" placeholder="89441234..."></div>
+    </div>
+  </div>
+</div>
 
-// ── Helpers ──
-function v(id) { return document.getElementById(id).value.trim(); }
-function checked(id) { return document.getElementById(id).checked; }
-function pad(n, len) { return String(n).padStart(len, '0'); }
+<!-- ── FIXED REPORTING ── -->
+<div class="section" id="sect-reporting">
+  <div class="section-title">Fixed Reporting</div>
+  <div class="section-desc">Controls how and when GPS position reports are sent (AT+GTFRI).</div>
+  <div class="card">
+    <div class="card-title">Report Mode</div>
+    <div class="fg two">
+      <div class="f"><label>Mode</label>
+        <select id="fri_mode">
+          <option value="0">0 – Disabled</option>
+          <option value="1" selected>1 – Fixed time</option>
+          <option value="2">2 – Fixed distance</option>
+          <option value="3">3 – Fixed mileage</option>
+          <option value="4">4 – Optimum (time AND distance)</option>
+          <option value="6">6 – Time OR mileage</option>
+        </select>
+      </div>
+      <div class="f cb"><input type="checkbox" id="fri_discard"><label for="fri_discard">Discard report if no GPS fix</label></div>
+    </div>
+    <hr class="div">
+    <div class="fg two" style="margin-top:12px">
+      <div class="f"><label>Report Window Start (HHMM)</label><input id="fri_begin" value="0000" maxlength="4"><span class="hint">0000 = no restriction (all day)</span></div>
+      <div class="f"><label>Report Window End (HHMM)</label><input id="fri_end" value="0000" maxlength="4"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Intervals — Ignition OFF</div>
+    <div class="fg two">
+      <div class="f"><label>GPS Fix Interval (seconds)</label><input id="fri_check_off" type="number" value="60" min="1" max="86400"><span class="hint">&gt;60s = GPS turns off between fixes</span></div>
+      <div class="f"><label>Report Send Interval (seconds)</label><input id="fri_send_off" type="number" value="60" min="1" max="86400"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Intervals — Ignition ON</div>
+    <div class="fg two">
+      <div class="f"><label>GPS Fix Interval (seconds)</label><input id="fri_check_on" type="number" value="60" min="1" max="86400"></div>
+      <div class="f"><label>Report Send Interval (seconds)</label><input id="fri_send_on" type="number" value="60" min="1" max="86400"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Distance / Mileage Triggers</div>
+    <div class="fg three">
+      <div class="f"><label>Distance threshold (metres)</label><input id="fri_distance" type="number" value="1000" min="5" max="65535"></div>
+      <div class="f"><label>Mileage threshold (metres)</label><input id="fri_mileage" type="number" value="1000" min="5" max="65535"></div>
+      <div class="f"><label>Corner angle (0 = off)</label><input id="fri_corner" type="number" value="0" min="0" max="180"><span class="hint">Degrees of heading change to trigger extra report</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Movement Detection (suppress reports when stationary)</div>
+    <div class="fg three">
+      <div class="f"><label>Mode</label>
+        <select id="fri_move_mode">
+          <option value="0" selected>0 – Disabled</option>
+          <option value="1">1 – Suppress if slow AND short distance</option>
+        </select>
+      </div>
+      <div class="f"><label>Speed threshold (km/h)</label><input id="fri_move_speed" type="number" value="5" min="1" max="999"></div>
+      <div class="f"><label>Distance threshold (metres)</label><input id="fri_move_dist" type="number" value="50" min="1" max="9999"></div>
+      <div class="f"><label>Max reports while stationary</label><input id="fri_move_num" type="number" value="5" min="1" max="5"></div>
+    </div>
+  </div>
+</div>
 
-function tzOffset(hours) {
-  // Returns e.g. "+0100" or "-0530"
-  const h = Math.abs(hours);
-  const sign = hours >= 0 ? '+' : '-';
-  return sign + pad(Math.floor(h), 2) + pad(Math.round((h % 1) * 60), 2);
-}
+<!-- ── MOTION DETECTION ── -->
+<div class="section" id="sect-motion">
+  <div class="section-title">Motion Detection</div>
+  <div class="section-desc">Non-movement detection (AT+GTNMD) and GPS-assisted motion (AT+GTGAM).</div>
+  <div class="card">
+    <div class="card-title">Non-Movement Detection (AT+GTNMD)</div>
+    <div class="fg two" style="margin-bottom:14px">
+      <div class="f"><label>Mode Flags</label><span class="hint" style="display:block;margin-bottom:4px">Check any combination:</span>
+        <div class="f cb" style="margin-top:4px"><input type="checkbox" id="nmd_bit0"><label for="nmd_bit0">Bit0 – Suppress FRI/GEO when non-moving</label></div>
+        <div class="f cb" style="margin-top:4px"><input type="checkbox" id="nmd_bit1"><label for="nmd_bit1">Bit1 – Send GTNMR on non-movement detected</label></div>
+        <div class="f cb" style="margin-top:4px"><input type="checkbox" id="nmd_bit2" checked><label for="nmd_bit2">Bit2 – Send GTNMR on movement detected</label></div>
+        <div class="f cb" style="margin-top:4px"><input type="checkbox" id="nmd_bit3"><label for="nmd_bit3">Bit3 – Use rest intervals when non-moving</label></div>
+      </div>
+    </div>
+    <hr class="div">
+    <div class="fg three">
+      <div class="f"><label>Non-movement duration (×14s units)</label><input id="nmd_non_dur" type="number" value="2" min="1" max="255"><span class="hint">Default 2 = 28 seconds</span></div>
+      <div class="f"><label>Movement duration (×128ms units)</label><input id="nmd_move_dur" type="number" value="3" min="1" max="50"></div>
+      <div class="f"><label>Movement threshold (2–9)</label><input id="nmd_move_thresh" type="number" value="2" min="2" max="9"><span class="hint">Lower = more sensitive</span></div>
+      <div class="f"><label>Fix interval at rest (seconds)</label><input id="nmd_fix_rest" type="number" value="600" min="1" max="86400"><span class="hint">Requires Bit3 above</span></div>
+      <div class="f"><label>Send interval at rest (seconds)</label><input id="nmd_send_rest" type="number" value="600" min="5" max="86400"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">GPS-Assisted Motion (AT+GTGAM)</div>
+    <div class="fg two">
+      <div class="f cb"><input type="checkbox" id="gam_mode"><label for="gam_mode">Enable GPS-assisted motion measurement</label></div>
+      <div class="f cb"><input type="checkbox" id="gam_speed_mode" checked><label for="gam_speed_mode">Combine GPS speed with motion sensor</label></div>
+      <div class="f"><label>Motion speed threshold (km/h)</label><input id="gam_motion_speed" type="number" value="25" min="0" max="50"></div>
+      <div class="f"><label>Motion cumulative time (seconds)</label><input id="gam_motion_time" type="number" value="10" min="10" max="100"></div>
+      <div class="f"><label>Motionless cumulative time (seconds)</label><input id="gam_motionless_time" type="number" value="60" min="10" max="250"></div>
+      <div class="f"><label>GPS fix failure timeout (seconds)</label><input id="gam_gps_timeout" type="number" value="60" min="5" max="1800"></div>
+    </div>
+  </div>
+</div>
 
-// ── Config generator ──
-document.getElementById('btn_generate').addEventListener('click', generate);
+<!-- ── GEOFENCES ── -->
+<div class="section" id="sect-geofences">
+  <div class="section-title">Geofences</div>
+  <div class="section-desc">Up to 20 circular geo-fence zones (AT+GTGEO). Leave Mode=0 to disable a slot.</div>
+  <div class="note"><strong>Mode:</strong> 0=Disabled &nbsp; 1=Alert on Enter &nbsp; 2=Alert on Exit &nbsp; 3=Enter &amp; Exit</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="tbl" id="geo_table">
+      <thead><tr><th style="width:40px">#</th><th style="width:100px">Mode</th><th>Latitude</th><th>Longitude</th><th>Radius (m)</th><th>Check Interval (s)</th></tr></thead>
+      <tbody id="geo_tbody"></tbody>
+    </table>
+  </div>
+</div>
 
-function generate() {
-  const pw = v('password') || 'gl320m';
-  const devName = v('device_name') || 'gl320mg';
-  const host = v('server_host');
-  const port = v('server_port');
-  const proto = v('server_proto');
-  const hb = v('heartbeat');
-  const expiry = v('expiry') || '20491231235959';
-  const tzHours = parseInt(v('timezone')) || 0;
-  const tzStr = tzOffset(tzHours);
+<!-- ── SPEED & TEMPERATURE ── -->
+<div class="section" id="sect-alarms">
+  <div class="section-title">Speed &amp; Temperature Alarms</div>
+  <div class="section-desc">Speed alarm (AT+GTSPD) and temperature alarm (AT+GTTEM).</div>
+  <div class="card">
+    <div class="card-title">Speed Alarm (AT+GTSPD)</div>
+    <div class="fg two">
+      <div class="f"><label>Mode</label>
+        <select id="spd_mode">
+          <option value="0" selected>0 – Disabled</option>
+          <option value="1">1 – Alarm when speed INSIDE range</option>
+          <option value="2">2 – Alarm when speed OUTSIDE range</option>
+          <option value="3">3 – Alarm on inside or outside</option>
+          <option value="4">4 – Alarm on transition</option>
+        </select>
+      </div>
+      <div class="f"><label>Min speed (km/h)</label><input id="spd_min" type="number" value="0" min="0" max="400"></div>
+      <div class="f"><label>Max speed (km/h)</label><input id="spd_max" type="number" value="100" min="0" max="400"></div>
+      <div class="f"><label>Valid time before alarm (seconds)</label><input id="spd_valid" type="number" value="60" min="15" max="3600"></div>
+      <div class="f"><label>Repeat interval (seconds, 0=once)</label><input id="spd_interval" type="number" value="300" min="0" max="3600"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Temperature Alarm (AT+GTTEM)</div>
+    <div class="fg two">
+      <div class="f"><label>Mode</label>
+        <select id="tem_mode">
+          <option value="0" selected>0 – Disabled</option>
+          <option value="1">1 – Alarm when below Min</option>
+          <option value="2">2 – Alarm when inside range</option>
+          <option value="3">3 – Alarm when above Max</option>
+          <option value="4">4 – Alarm on entering/leaving range (once)</option>
+        </select>
+      </div>
+      <div class="f"><label>Min temperature (°C)</label><input id="tem_min" type="number" value="0" min="-20" max="60"></div>
+      <div class="f"><label>Max temperature (°C)</label><input id="tem_max" type="number" value="40" min="-20" max="60"></div>
+      <div class="f"><label>Duration before alarm (seconds)</label><input id="tem_dur" type="number" value="60" min="0" max="3600"></div>
+      <div class="f"><label>Repeat interval (seconds, 0=once)</label><input id="tem_interval" type="number" value="300" min="0" max="3600"></div>
+    </div>
+  </div>
+</div>
 
-  // AT+GTBSI — Base Station Info (APN for BS lookup; use first enabled APN)
-  let bsiApn = '', bsiUser = '', bsiPw = '';
-  for (let i = 0; i < APN_COUNT; i++) {
-    if (checked(`apn_en_${i}`)) {
-      bsiApn = document.getElementById(`apn_name_${i}`).value.trim();
-      bsiUser = document.getElementById(`apn_user_${i}`).value.trim();
-      bsiPw   = document.getElementById(`apn_pass_${i}`).value.trim();
-      break;
-    }
-  }
-  const gtbsi = `AT+GTBSI=${pw},${bsiApn},${bsiUser},${bsiPw},,,,,0,0,0,0,0,0,0,,FFFF$`;
+<!-- ── MOTION & HARSH ── -->
+<div class="section" id="sect-harsh">
+  <div class="section-title">Motion &amp; Harsh Behaviour</div>
+  <div class="section-desc">Fall detection (AT+GTMSA) and harsh braking/acceleration (AT+GTHBM).</div>
+  <div class="card">
+    <div class="card-title">Fall Detection / Motion Sensor Alarm (AT+GTMSA)</div>
+    <div class="fg two">
+      <div class="f cb"><input type="checkbox" id="msa_mode"><label for="msa_mode">Enable fall detection alarm</label></div>
+      <div class="f cb"><input type="checkbox" id="msa_send_last" checked><label for="msa_send_last">Send last position before alarm report</label></div>
+      <div class="f"><label>Sensitivity (1–10, lower=more sensitive)</label><input id="msa_sensitivity" type="number" value="5" min="1" max="10"></div>
+      <div class="f"><label>Cancel window (seconds)</label><input id="msa_timeout" type="number" value="5" min="5" max="10"><span class="hint">Press function key within this time to cancel</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Harsh Behaviour Monitoring (AT+GTHBM)</div>
+    <div class="note"><strong>Note:</strong> Requires GPS On Need = 2 (set in Global Config).</div>
+    <div class="fg two">
+      <div class="f cb"><input type="checkbox" id="hbm_mode"><label for="hbm_mode">Enable harsh braking/acceleration monitoring</label></div>
+      <div class="f"><label>Measurement window (3–5 seconds)</label><input id="hbm_dur" type="number" value="3" min="3" max="5"></div>
+    </div>
+    <hr class="div">
+    <div class="fg three">
+      <div class="f"><label>High speed threshold (km/h)</label><input id="hbm_high_speed" type="number" value="100" min="100" max="400"></div>
+      <div class="f"><label>High speed braking △V (km/h, 0=off)</label><input id="hbm_high_brake" type="number" value="0" min="0" max="100"></div>
+      <div class="f"><label>High speed accel △V (km/h, 0=off)</label><input id="hbm_high_accel" type="number" value="0" min="0" max="100"></div>
+      <div class="f"><label>Medium speed threshold (km/h)</label><input id="hbm_med_speed" type="number" value="60" min="20" max="100"></div>
+      <div class="f"><label>Medium speed braking △V (km/h, 0=off)</label><input id="hbm_med_brake" type="number" value="0" min="0" max="100"></div>
+      <div class="f"><label>Medium speed accel △V (km/h, 0=off)</label><input id="hbm_med_accel" type="number" value="0" min="0" max="100"></div>
+      <div class="f"><label>Low speed braking △V (km/h, 0=off)</label><input id="hbm_low_brake" type="number" value="0" min="0" max="100"></div>
+      <div class="f"><label>Low speed accel △V (km/h, 0=off)</label><input id="hbm_low_accel" type="number" value="0" min="0" max="100"></div>
+    </div>
+  </div>
+</div>
 
-  // AT+GTSRI — Server Report Info
-  const gtsri = `AT+GTSRI=${pw},1,,${proto},${host},${port},,0,,${hb},0,0,0,0,,FFFF$`;
+<!-- ── WATCHDOG ── -->
+<div class="section" id="sect-watchdog">
+  <div class="section-title">Watchdog</div>
+  <div class="section-desc">Automatic reboot to recover from hangs (AT+GTDOG).</div>
+  <div class="card">
+    <div class="fg two">
+      <div class="f"><label>Mode</label>
+        <select id="dog_mode">
+          <option value="0" selected>0 – Disabled</option>
+          <option value="1">1 – Reboot periodically</option>
+          <option value="2">2 – Reboot on ignition-on event</option>
+        </select>
+      </div>
+      <div class="f"><label>Reboot interval (1–30)</label><input id="dog_interval" type="number" value="7" min="1" max="30"></div>
+      <div class="f"><label>Interval unit</label>
+        <select id="dog_unit">
+          <option value="0" selected>Days</option>
+          <option value="1">Hours</option>
+        </select>
+      </div>
+      <div class="f"><label>Reboot time (HHMM)</label><input id="dog_time" value="0200" maxlength="4"></div>
+      <div class="f"><label>Ignition frequency (minutes, Mode 2)</label><input id="dog_ign_freq" type="number" value="60" min="10" max="120"></div>
+      <div class="f cb"><input type="checkbox" id="dog_report" checked><label for="dog_report">Send GPS report before reboot</label></div>
+    </div>
+  </div>
+</div>
 
-  // AT+GTQSS — Quick Start Settings
-  const gtqss = `AT+GTQSS=${pw},${bsiApn},,,1,,${proto},${host},${port},,0,,${hb},0,,,FFFF$`;
+<!-- ── FUNCTION KEY ── -->
+<div class="section" id="sect-funckey">
+  <div class="section-title">Function Key</div>
+  <div class="section-desc">Behaviour of the physical power and function keys (AT+GTFKS).</div>
+  <div class="card">
+    <div class="fg two">
+      <div class="f"><label>Power Key Mode</label>
+        <select id="fks_pwr_mode">
+          <option value="0">0 – Cannot power off</option>
+          <option value="1" selected>1 – Long press = power off</option>
+          <option value="2">2 – Long press = SOS mode</option>
+        </select>
+      </div>
+      <div class="f"><label>Charger behaviour</label>
+        <select id="fks_full_pwr">
+          <option value="0">0 – Charger only charges (no power-on)</option>
+          <option value="1" selected>1 – Charger insertion = full power on</option>
+          <option value="2">2 – Pure charging mode</option>
+        </select>
+      </div>
+      <div class="f"><label>Function Key Action</label>
+        <select id="fks_func_mode">
+          <option value="0">0 – Ignore</option>
+          <option value="1">1 – Toggle geo-fence 0</option>
+          <option value="2">2 – Geo-fence around current position</option>
+          <option value="3" selected>3 – SOS mode</option>
+          <option value="4">4 – Send location (+RESP:GTLOC)</option>
+        </select>
+      </div>
+      <div class="f"><label>SOS Report Mode</label>
+        <select id="fks_sos_mode">
+          <option value="1">1 – Report last GPS position</option>
+          <option value="2">2 – Get and report current position</option>
+          <option value="3" selected>3 – Last immediately, then current</option>
+        </select>
+      </div>
+      <div class="f"><label>Long-press duration (seconds)</label><input id="fks_first_time" type="number" value="3" min="1" max="99"></div>
+    </div>
+  </div>
+</div>
 
-  // AT+GTCFG — Global Config
-  // tz as signed int, tz offset as hhmm
-  const tzSignedInt = tzHours;
-  const gtcfg = `AT+GTCFG=${pw},${pw},${devName},0,0.6,1,5,001B,,,4A13,0,1,0,300,0,0,${expiry},${tzSignedInt},${tzStr},0,20,0,,FFFF$`;
+<!-- ── WORKING HOURS ── -->
+<div class="section" id="sect-workhours">
+  <div class="section-title">Working Hours</div>
+  <div class="section-desc">Hide location data outside working hours (AT+GTOWH).</div>
+  <div class="card">
+    <div class="fg two">
+      <div class="f"><label>Mode</label>
+        <select id="owh_mode">
+          <option value="0" selected>0 – Disabled</option>
+          <option value="1">1 – Hide outside hours + digital input</option>
+          <option value="2">2 – Hide only on digital input</option>
+          <option value="3">3 – Hide outside hours only</option>
+        </select>
+      </div>
+      <div class="f cb"><input type="checkbox" id="owh_rf_sleep"><label for="owh_rf_sleep">Shut down radio outside working hours</label></div>
+    </div>
+    <hr class="div">
+    <div style="margin-bottom:12px">
+      <div class="f"><label style="margin-bottom:8px">Working Days</label>
+        <div class="days">
+          <div class="day-cb"><input type="checkbox" id="owh_mon" checked><label for="owh_mon">Mon</label></div>
+          <div class="day-cb"><input type="checkbox" id="owh_tue" checked><label for="owh_tue">Tue</label></div>
+          <div class="day-cb"><input type="checkbox" id="owh_wed" checked><label for="owh_wed">Wed</label></div>
+          <div class="day-cb"><input type="checkbox" id="owh_thu" checked><label for="owh_thu">Thu</label></div>
+          <div class="day-cb"><input type="checkbox" id="owh_fri" checked><label for="owh_fri">Fri</label></div>
+          <div class="day-cb"><input type="checkbox" id="owh_sat"><label for="owh_sat">Sat</label></div>
+          <div class="day-cb"><input type="checkbox" id="owh_sun"><label for="owh_sun">Sun</label></div>
+        </div>
+      </div>
+    </div>
+    <div class="fg four">
+      <div class="f"><label>Period 1 Start (HHMM)</label><input id="owh_start1" value="0900" maxlength="4"></div>
+      <div class="f"><label>Period 1 End (HHMM)</label><input id="owh_end1" value="1200" maxlength="4"></div>
+      <div class="f"><label>Period 2 Start (HHMM)</label><input id="owh_start2" value="1300" maxlength="4"></div>
+      <div class="f"><label>Period 2 End (HHMM)</label><input id="owh_end2" value="1800" maxlength="4"></div>
+    </div>
+  </div>
+</div>
 
-  // AT+GTPIN — PIN
-  const gtpin = `AT+GTPIN=${pw},0,,,,,,,FFFF$`;
+<!-- ── SMS & ALERTS ── -->
+<div class="section" id="sect-smsalerts">
+  <div class="section-title">SMS &amp; Alerts</div>
+  <div class="section-desc">SMS whitelist (AT+GTWLT) and Google Maps SMS links (AT+GTGLM).</div>
+  <div class="card">
+    <div class="card-title">SMS Whitelist (AT+GTWLT)</div>
+    <div class="fg two">
+      <div class="f"><label>Number Filter</label>
+        <select id="wlt_filter">
+          <option value="0">0 – Never reply with Google Maps SMS</option>
+          <option value="1" selected>1 – Always reply to any number</option>
+          <option value="2">2 – Only reply to whitelist numbers</option>
+          <option value="3">3 – Filter both SMS and AT commands</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Google Maps SMS (AT+GTGLM)</div>
+    <div class="fg two">
+      <div class="f"><label>Google Mode</label>
+        <select id="glm_google_mode">
+          <option value="0" selected>0 – Disabled</option>
+          <option value="1">1 – SMS with Google Maps link + device name</option>
+          <option value="2">2 – SMS with Google Maps link (no name)</option>
+        </select>
+        <span class="hint">Sends SMS to direct numbers below on SOS/GEO/fall events</span>
+      </div>
+    </div>
+    <hr class="div">
+    <div class="fg three">
+      <div class="f"><label>Direct number 1</label><input id="glm_num1" placeholder="+447700..."></div>
+      <div class="f"><label>Direct number 2</label><input id="glm_num2"></div>
+      <div class="f"><label>Direct number 3</label><input id="glm_num3"></div>
+    </div>
+  </div>
+</div>
 
-  // AT+GTDOG — Watchdog
-  const dogEn = checked('dog_enable') ? '1' : '0';
-  const dogTo = v('dog_timeout') || '60';
-  const gtdog = `AT+GTDOG=${pw},${dogEn},${dogTo},7,0200,,1,0,0,,,,FFFF$`;
+<!-- ── OTA CONFIG ── -->
+<div class="section" id="sect-otacfg">
+  <div class="section-title">OTA Config Download</div>
+  <div class="section-desc">Tells the device to periodically fetch a new config file over HTTP (AT+GTUPC).</div>
+  <div class="note"><strong>URL:</strong> Set this to the full URL of the config file on cfg.jdwilsh.com, e.g. <code>http://cfg.jdwilsh.com/1.GL320M</code></div>
+  <div class="card">
+    <div class="fg two">
+      <div class="f cb"><input type="checkbox" id="upc_mode"><label for="upc_mode">Enable OTA config download</label></div>
+      <div class="f"><label>Config File URL</label><input id="upc_url" placeholder="http://cfg.jdwilsh.com/1.GL320M"></div>
+      <div class="f"><label>Check interval (hours, 0=once only)</label><input id="upc_interval" type="number" value="0" min="0" max="8760"></div>
+      <div class="f"><label>Max download retries (0–3)</label><input id="upc_max_retries" type="number" value="0" min="0" max="3"></div>
+      <div class="f"><label>Download timeout (minutes)</label><input id="upc_timeout" type="number" value="10" min="5" max="30"></div>
+      <div class="f cb"><input type="checkbox" id="upc_report"><label for="upc_report">Send report when config updated</label></div>
+    </div>
+  </div>
+</div>
 
-  // AT+GTTMA — Tamper (default)
-  const gttma = `AT+GTTMA=${pw},+,0,0,0,,,,,,FFFF$`;
+<!-- ── ADVANCED / OTHER ── -->
+<div class="section" id="sect-advanced">
+  <div class="section-title">Other Settings</div>
+  <div class="section-desc">Miscellaneous advanced configuration.</div>
+  <div class="card">
+    <div class="card-title">Jamming Detection (AT+GTJDC)</div>
+    <div class="fg two">
+      <div class="f"><label>Mode</label>
+        <select id="jdc_mode">
+          <option value="0" selected>0 – Disabled</option>
+          <option value="1">1 – Report on entering jamming</option>
+          <option value="2">2 – Report on entering and leaving</option>
+        </select>
+      </div>
+      <div class="f"><label>Jamming level</label>
+        <select id="jdc_level">
+          <option value="1">1 – Low (any 15s interference)</option>
+          <option value="2" selected>2 – Medium (causes network loss)</option>
+          <option value="3">3 – High (cannot rescan)</option>
+        </select>
+      </div>
+      <div class="f"><label>Enter jam timer (seconds)</label><input id="jdc_enter" type="number" value="10" min="0" max="300"></div>
+      <div class="f"><label>Quit jam timer (seconds)</label><input id="jdc_quit" type="number" value="10" min="0" max="3600"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Network Selection (AT+GTNTS)</div>
+    <div class="fg two">
+      <div class="f cb"><input type="checkbox" id="nts_enable"><label for="nts_enable">Enable network selection filtering</label></div>
+    </div>
+    <hr class="div">
+    <div class="fg three">
+      <div class="f"><label>Allowed operator 1 (MCC+MNC)</label><input id="nts_allow1" maxlength="10" placeholder="23430"></div>
+      <div class="f"><label>Allowed operator 2</label><input id="nts_allow2" maxlength="10"></div>
+      <div class="f"><label>Allowed operator 3</label><input id="nts_allow3" maxlength="10"></div>
+      <div class="f"><label>Blocked operator 1</label><input id="nts_block1" maxlength="10"></div>
+      <div class="f"><label>Blocked operator 2</label><input id="nts_block2" maxlength="10"></div>
+      <div class="f"><label>Blocked operator 3</label><input id="nts_block3" maxlength="10"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Serial Port (AT+GTURT)</div>
+    <div class="fg two">
+      <div class="f"><label>Baud Rate</label>
+        <select id="urt_baud">
+          <option value="5">9600</option>
+          <option value="12" selected>115200</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Preserve Device State (AT+GTPDS)</div>
+    <div class="fg two">
+      <div class="f"><label>Mode</label>
+        <select id="pds_mode">
+          <option value="0">0 – Disabled</option>
+          <option value="1" selected>1 – Preserve states across reboots</option>
+          <option value="2">2 – Reset all states then preserve</option>
+        </select>
+      </div>
+      <div class="f"><label>State Mask (HEX)</label><input id="pds_mask" value="000048" maxlength="6"><span class="hint">000048 = last position + charging state</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Report Control (AT+GTRPC)</div>
+    <div class="fg two">
+      <div class="f cb"><input type="checkbox" id="rpc_bat" checked><label for="rpc_bat">Include battery percentage in position reports</label></div>
+    </div>
+  </div>
+</div>
 
-  // AT+GTNMD — Normal mode (default)
-  const gtnmd = `AT+GTNMD=${pw},1,2,3,2,600,600,2,3,0,0,2,,,FFFF$`;
+<!-- ── MONITOR ── -->
+<div class="section" id="sect-monitor">
+  <div class="section-title">Tracker Activity</div>
+  <div class="section-desc">Live view parsed from the nginx access log on cfg.jdwilsh.com.</div>
+  <div class="monitor-bar">
+    <button class="btn btn-primary" id="btn_refresh_monitor">Refresh Now</button>
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+      <input type="checkbox" id="auto_refresh" checked> Auto-refresh every 30s
+    </label>
+    <span style="font-size:12px;color:var(--muted)"><span class="ref-dot" id="ref_dot"></span><span id="ref_label">Loading…</span></span>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="tbl" id="monitor_table">
+      <thead><tr><th>Name / IMEI</th><th>Last Seen</th><th>Config File</th><th>Status</th><th>Last IP</th><th></th></tr></thead>
+      <tbody id="monitor_tbody"><tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
 
-  // AT+GTFKS — Function keys (default)
-  const gtfks = `AT+GTFKS=${pw},1,1,0,0,0,3,3,4,4,3,FFFF$`;
+<!-- ── DEVICES ── -->
+<div class="section" id="sect-devices">
+  <div class="section-title">Device Names</div>
+  <div class="section-desc">Map IMEI numbers to friendly names shown in Tracker Activity.</div>
+  <div class="card">
+    <div class="card-title">Add / Update Device</div>
+    <div class="dev-form">
+      <div class="f"><label>IMEI (15 digits)</label><input id="new_imei" maxlength="15" placeholder="860201067895154"></div>
+      <div class="f"><label>Friendly Name</label><input id="new_name" placeholder="Ambulance 1"></div>
+      <button class="btn btn-primary" id="btn_save_device">Save</button>
+    </div>
+    <div id="dev_save_msg" class="status-msg"></div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="tbl">
+      <thead><tr><th>Name</th><th>IMEI</th><th></th></tr></thead>
+      <tbody id="devices_tbody"><tr><td colspan="3" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
 
-  // AT+GTNTS — Notification (default)
-  const gtnts = `AT+GTNTS=${pw},0,,,,,,,,,,,FFFF$`;
+<!-- ── OUTPUT ── -->
+<div class="section" id="sect-output">
+  <div class="section-title">Generate &amp; Save</div>
+  <div class="section-desc">Build the config file and save it to the server or download locally.</div>
+  <div class="card">
+    <div class="card-title">Config File</div>
+    <div class="cfg-file-bar">
+      <div class="f"><label>Filename on server</label><input id="cfg_filename" value="1.GL320M" placeholder="1.GL320M"><span class="hint">Served from cfg.jdwilsh.com/&lt;filename&gt;</span></div>
+      <button class="btn btn-outline" id="btn_load_server">Load from Server</button>
+    </div>
+    <div id="load_msg" class="status-msg" style="margin-bottom:12px"></div>
+  </div>
+  <div class="action-bar">
+    <button class="btn btn-primary" id="btn_generate">Generate Preview</button>
+    <button class="btn btn-success" id="btn_save_server">Save to Server</button>
+    <button class="btn btn-outline" id="btn_download">Download Locally</button>
+    <button class="btn btn-outline" id="btn_copy">Copy</button>
+    <span id="save_msg" class="status-msg"></span>
+  </div>
+  <textarea class="output" id="config_output" readonly placeholder="Click 'Generate Preview' to build the config file…"></textarea>
+</div>
 
-  // AT+GTOWH — Office Working Hours (default off)
-  const gtowh = `AT+GTOWH=${pw},0,1F,0900,1200,1300,1800,,,0,0,,,,,,,,FFFF$`;
-
-  // AT+GTSIM — SIM (default)
-  const gtsim = `AT+GTSIM=${pw},0,,0,,,,,,,,,,FFFF$`;
-
-  // AT+GTURT — UART (default)
-  const gturt = `AT+GTURT=${pw},,12,,,,,,,,FFFF$`;
-
-  // AT+GTJDC — Jamming (default off)
-  const gtjdc = `AT+GTJDC=${pw},0,2,,,10,10,,,,,,,FFFF$`;
-
-  // AT+GTAAC — Auto answer (default off)
-  const gtaac = `AT+GTAAC=${pw},0,,,FFFF$`;
-
-  // AT+GTAPN — APN slots
-  let apnLines = '';
-  for (let i = 0; i < APN_COUNT; i++) {
-    const en = checked(`apn_en_${i}`) ? '1' : '0';
-    const apn = document.getElementById(`apn_name_${i}`).value.trim();
-    const user = document.getElementById(`apn_user_${i}`).value.trim();
-    const pass = document.getElementById(`apn_pass_${i}`).value.trim();
-    apnLines += `AT+GTAPN=${pw},${i},${en},${apn},${user},${pass},,,,,,,FFFF$\n`;
-  }
-
-  // AT+GTFRI — Fixed Report Info
-  const friEn   = checked('fri_enable') ? '1' : '0';
-  const friOn   = v('fri_interval_on') || '60';
-  const friOff  = v('fri_interval_off') || '60';
-  const friBufOn  = v('fri_buf_on') || '180';
-  const friBufOff = v('fri_buf_off') || '180';
-  const friDistOn  = v('fri_dist_on') || '0';
-  const friDistOff = v('fri_dist_off') || '0';
-  const friCorner  = v('fri_corner') || '0';
-  const gtfri = `AT+GTFRI=${pw},${friEn},0,,,0000,0000,${friOn},${friOff},${friBufOn},${friBufOff},,${friDistOn},${friDistOff},${friCorner},5,50,5,0,00000000,FFFF$`;
-
-  // AT+GTGEO — Geofences (all 20 slots)
-  let geoLines = '';
-  const geoBlocks = document.querySelectorAll('.geo-block');
-  const geoData = [];
-  geoBlocks.forEach(block => {
-    geoData.push({
-      lat:    block.querySelector('.geo-lat').value.trim() || '0',
-      lng:    block.querySelector('.geo-lng').value.trim() || '0',
-      radius: block.querySelector('.geo-radius').value.trim() || '200',
-      mode:   block.querySelector('.geo-mode').value,
-    });
+</main>
+</div>
+<script>
+// ── Navigation ──────────────────────────────────────────────────────────────
+const navLinks = document.querySelectorAll('nav a');
+const sections = document.querySelectorAll('.section');
+navLinks.forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    const t = link.dataset.section;
+    navLinks.forEach(l => l.classList.remove('active'));
+    sections.forEach(s => s.classList.remove('active'));
+    link.classList.add('active');
+    document.getElementById('sect-' + t).classList.add('active');
+    if (t === 'monitor') loadMonitor();
+    if (t === 'devices') loadDevices();
   });
-  for (let i = 0; i < 20; i++) {
-    const g = geoData[i];
-    if (g && g.mode !== '0') {
-      geoLines += `AT+GTGEO=${pw},${i},${g.mode},${g.lat},${g.lng},${g.radius},0,0,,,,,,,,FFFF$\n`;
+});
+
+// ── Form helpers ─────────────────────────────────────────────────────────────
+function v(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
+function chk(id) { const e = document.getElementById(id); return (e && e.checked) ? '1' : '0'; }
+function setV(id, val) {
+  const e = document.getElementById(id);
+  if (!e || val === undefined || val === null) return;
+  if (e.type === 'checkbox') e.checked = (val === '1' || val === 'true' || val === true);
+  else e.value = val;
+}
+function pad(n, len) { return String(n).padStart(len, '0'); }
+function pw() { return v('cfg_password') || 'gl320m'; }
+const SN = 'FFFF';
+
+// ── Build APN table ──────────────────────────────────────────────────────────
+const APN_COUNT = 8;
+(function() {
+  const tb = document.getElementById('apn_tbody');
+  for (let i = 0; i < APN_COUNT; i++) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="text-align:center;font-weight:700;color:var(--muted)">${i}</td>
+      <td style="text-align:center"><input type="checkbox" id="apn_${i}_mode"></td>
+      <td><input id="apn_${i}_plmn" placeholder="e.g. 23430" maxlength="6"></td>
+      <td><input id="apn_${i}_apn" placeholder="e.g. internet"></td>
+      <td><input id="apn_${i}_user"></td>
+      <td><input id="apn_${i}_pw" type="password"></td>`;
+    tb.appendChild(tr);
+  }
+})();
+
+// ── Build Geofence table ─────────────────────────────────────────────────────
+const GEO_COUNT = 20;
+(function() {
+  const tb = document.getElementById('geo_tbody');
+  for (let i = 0; i < GEO_COUNT; i++) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="text-align:center;font-weight:700;color:var(--muted)">${i}</td>
+      <td><select id="geo_${i}_mode" style="font-size:12px;padding:4px 6px">
+        <option value="0" selected>0 – Off</option>
+        <option value="1">1 – Enter</option>
+        <option value="2">2 – Exit</option>
+        <option value="3">3 – Both</option>
+      </select></td>
+      <td><input id="geo_${i}_lat" type="number" step="0.000001" placeholder="51.5074"></td>
+      <td><input id="geo_${i}_lng" type="number" step="0.000001" placeholder="-0.1278"></td>
+      <td><input id="geo_${i}_radius" type="number" value="200" min="25" max="6000000"></td>
+      <td><input id="geo_${i}_check" type="number" value="30" min="0" max="86400"></td>`;
+    tb.appendChild(tr);
+  }
+})();
+
+// ── AT command builders ───────────────────────────────────────────────────────
+function buildGTBSI(p) {
+  const aacMode = parseInt(v('aac_mode')) || 0;
+  const manualNetreg = aacMode > 0 ? '1' : '0';
+  return `AT+GTBSI=${p},${v('bsi_lte_apn')},${v('bsi_lte_user')},${v('bsi_lte_pw')},,,` +
+    `,${v('bsi_net_mode')},${v('bsi_lte_mode')},${v('bsi_auth')},${manualNetreg},0,0,0,,${SN}$`;
+}
+
+function buildGTSRI(p) {
+  return `AT+GTSRI=${p},${v('sri_report_mode')},,${v('sri_buffer')},${v('sri_main_host')},${v('sri_main_port')},` +
+    `${v('sri_backup_host')},${v('sri_backup_port') || 0},,${v('sri_heartbeat')},${v('sri_sack')},0,0,0,,${SN}$`;
+}
+
+function buildGTQSS(p) {
+  return `AT+GTQSS=${p},${v('bsi_lte_apn')},,,${v('sri_report_mode')},,${v('sri_buffer')},` +
+    `${v('sri_main_host')},${v('sri_main_port')},${v('sri_backup_host')},${v('sri_backup_port') || 0},,` +
+    `${v('sri_heartbeat')},${v('sri_sack')},,,${SN}$`;
+}
+
+function buildGTCFG(p) {
+  const newPw = v('cfg_new_pw') || p;
+  return `AT+GTCFG=${p},${newPw},${v('cfg_device_name') || 'gl320mg'},` +
+    `${chk('cfg_odo_enable')},${v('cfg_odo_initial') || '0'},${v('cfg_gps_need')},${v('cfg_gps_delay') || 5},` +
+    `${v('cfg_report_mask') || '001B'},,,${v('cfg_event_mask') || '4A13'},0,${v('cfg_led')},` +
+    `${chk('cfg_info_enable')},${v('cfg_info_interval') || 300},0,${chk('cfg_expiry_enable')},` +
+    `${v('cfg_expiry_time') || '20491231235959'},${chk('cfg_agps')},0000,` +
+    `${chk('cfg_bat_switch')},${v('cfg_bat_low') || 20},${chk('cfg_walking_mode')},,${SN}$`;
+}
+
+function buildGTPIN(p) {
+  return `AT+GTPIN=${p},${chk('pin_auto')},${v('pin_code')},,,,,,${SN}$`;
+}
+
+function buildGTDOG(p) {
+  return `AT+GTDOG=${p},${v('dog_mode')},${v('dog_ign_freq') || 60},${v('dog_interval') || 7},` +
+    `${v('dog_time') || '0200'},,${chk('dog_report')},0,${v('dog_unit')},,,,${SN}$`;
+}
+
+function buildGTNMD(p) {
+  const bits = (parseInt(chk('nmd_bit0')) | (parseInt(chk('nmd_bit1'))<<1) |
+    (parseInt(chk('nmd_bit2'))<<2) | (parseInt(chk('nmd_bit3'))<<3));
+  return `AT+GTNMD=${p},${bits},${v('nmd_non_dur') || 2},${v('nmd_move_dur') || 3},` +
+    `${v('nmd_move_thresh') || 2},${v('nmd_fix_rest') || 600},${v('nmd_send_rest') || 600},2,3,0,0,2,,,${SN}$`;
+}
+
+function buildGTFKS(p) {
+  return `AT+GTFKS=${p},${v('fks_pwr_mode')},${v('fks_full_pwr')},${v('fks_func_mode')},0,0,` +
+    `${v('fks_sos_mode')},${v('fks_first_time') || 3},4,4,3,${SN}$`;
+}
+
+function buildGTNTS(p) {
+  const en = chk('nts_enable');
+  return `AT+GTNTS=${p},${en},,,${v('nts_allow1')},${v('nts_allow2')},${v('nts_allow3')},` +
+    `,${v('nts_block1')},${v('nts_block2')},${v('nts_block3')},,${SN}$`;
+}
+
+function buildGTOWH(p) {
+  let dayMask = 0;
+  if (document.getElementById('owh_mon').checked) dayMask |= 0x01;
+  if (document.getElementById('owh_tue').checked) dayMask |= 0x02;
+  if (document.getElementById('owh_wed').checked) dayMask |= 0x04;
+  if (document.getElementById('owh_thu').checked) dayMask |= 0x08;
+  if (document.getElementById('owh_fri').checked) dayMask |= 0x10;
+  if (document.getElementById('owh_sat').checked) dayMask |= 0x20;
+  if (document.getElementById('owh_sun').checked) dayMask |= 0x40;
+  const dm = dayMask.toString(16).toUpperCase().padStart(2,'0');
+  return `AT+GTOWH=${p},${v('owh_mode')},${dm},${v('owh_start1') || '0900'},${v('owh_end1') || '1200'},` +
+    `${v('owh_start2') || '1300'},${v('owh_end2') || '1800'},,,0,${chk('owh_rf_sleep')},,,,,,,,${SN}$`;
+}
+
+function buildGTSIM(p) {
+  return `AT+GTSIM=${p},${v('sim_mode')},${v('sim_iccid')},1,,,,,,,,,, ${SN}$`;
+}
+
+function buildGTURT(p) {
+  return `AT+GTURT=${p},,${v('urt_baud')},,,,,,,,${SN}$`;
+}
+
+function buildGTJDC(p) {
+  return `AT+GTJDC=${p},${v('jdc_mode')},${v('jdc_level')},,,${v('jdc_enter') || 10},` +
+    `${v('jdc_quit') || 10},,,,,,,${SN}$`;
+}
+
+function buildGTAAC(p) {
+  return `AT+GTAAC=${p},${v('aac_mode')},,,${SN}$`;
+}
+
+function buildGTAPNLines(p) {
+  const lines = [];
+  for (let i = 0; i < APN_COUNT; i++) {
+    const mode = document.getElementById(`apn_${i}_mode`).checked ? '1' : '0';
+    const plmn = v(`apn_${i}_plmn`);
+    const apn  = v(`apn_${i}_apn`);
+    const user = v(`apn_${i}_user`);
+    const pw2  = v(`apn_${i}_pw`);
+    lines.push(`AT+GTAPN=${p},${i},${mode},${plmn},${apn},${user},${pw2},,,,,${SN}$`);
+  }
+  return lines.join('\n');
+}
+
+function buildGTFRI(p) {
+  return `AT+GTFRI=${p},${v('fri_mode')},${chk('fri_discard')},,,` +
+    `${v('fri_begin') || '0000'},${v('fri_end') || '0000'},` +
+    `${v('fri_check_off') || 60},${v('fri_send_off') || 60},` +
+    `${v('fri_check_on') || 60},${v('fri_send_on') || 60},,` +
+    `${v('fri_distance') || 1000},${v('fri_mileage') || 1000},` +
+    `${v('fri_move_mode')},${v('fri_move_speed') || 5},${v('fri_move_dist') || 50},` +
+    `${v('fri_move_num') || 5},${v('fri_corner') || 0},00000000,${SN}$`;
+}
+
+function buildGTGEOLines(p) {
+  const lines = [];
+  for (let i = 0; i < GEO_COUNT; i++) {
+    const mode = v(`geo_${i}_mode`);
+    if (mode === '0') {
+      lines.push(`AT+GTGEO=${p},${i},0,0,0,50,0,0,,,,,,,,${SN}$`);
     } else {
-      geoLines += `AT+GTGEO=${pw},${i},0,0,0,50,0,0,,,,,,,,FFFF$\n`;
+      const lat   = v(`geo_${i}_lat`) || '0';
+      const lng   = v(`geo_${i}_lng`) || '0';
+      const rad   = v(`geo_${i}_radius`) || '200';
+      const check = v(`geo_${i}_check`) || '30';
+      lines.push(`AT+GTGEO=${p},${i},${mode},${lat},${lng},${rad},${check},0,,,,,,,,${SN}$`);
     }
   }
+  return lines.join('\n');
+}
 
-  // AT+GTSPD — Speed alarm
-  const spdEn   = checked('spd_enable') ? '1' : '0';
-  const spdSpd  = v('spd_threshold') || '100';
-  const spdDur  = v('spd_duration') || '60';
-  const gtspd = `AT+GTSPD=${pw},${spdEn},0,0,${spdDur},${spdSpd},,,,,,,,,,,,,,,,FFFF$`;
+function buildGTSPD(p) {
+  return `AT+GTSPD=${p},${v('spd_mode')},${v('spd_min') || 0},${v('spd_max') || 100},` +
+    `${v('spd_valid') || 60},${v('spd_interval') || 300},,,,,,,,,,,,,,,,${SN}$`;
+}
 
-  // AT+GTTEM — Temperature (default off)
-  const gttem = `AT+GTTEM=${pw},0,0,0,60,300,,,,,,,FFFF$`;
+function buildGTTEM(p) {
+  return `AT+GTTEM=${p},${v('tem_mode')},${v('tem_min') || 0},${v('tem_max') || 40},` +
+    `${v('tem_dur') || 60},${v('tem_interval') || 300},,,,,,,${SN}$`;
+}
 
-  // AT+GTMSA — Motion / Tow
-  const msaEn  = checked('msa_enable') ? '1' : '0';
-  const msaSens = v('msa_sensitivity') || '5';
-  const msaTime = v('msa_time') || '5';
-  const gtmsa = `AT+GTMSA=${pw},${msaEn},1,${msaSens},${msaTime},,,,FFFF$`;
+function buildGTMSA(p) {
+  return `AT+GTMSA=${p},${chk('msa_mode')},${chk('msa_send_last')},` +
+    `${v('msa_sensitivity') || 5},${v('msa_timeout') || 5},,,,${SN}$`;
+}
 
-  // AT+GTHBM — Harsh braking/acceleration (default off)
-  const gthbm = `AT+GTHBM=${pw},0,3,,100,0,0,,60,0,0,,,0,0,,,,,,,,,,FFFF$`;
+function buildGTHBM(p) {
+  return `AT+GTHBM=${p},${chk('hbm_mode')},${v('hbm_dur') || 3},,` +
+    `${v('hbm_high_speed') || 100},${v('hbm_high_brake') || 0},${v('hbm_high_accel') || 0},,` +
+    `${v('hbm_med_speed') || 60},${v('hbm_med_brake') || 0},${v('hbm_med_accel') || 0},,,` +
+    `${v('hbm_low_brake') || 0},${v('hbm_low_accel') || 0},,,,,,,,,,${SN}$`;
+}
 
-  // AT+GTDIS — Distance (default)
-  const gtdis = `AT+GTDIS=${pw},1,0,5,2,,,,,FFFF$`;
+function buildGTWLT(p) {
+  const n1 = v('glm_num1'); const n2 = v('glm_num2'); const n3 = v('glm_num3');
+  return `AT+GTWLT=${p},${v('wlt_filter')},1,1,,,,,,${SN}$`;
+}
 
-  // AT+GTDAT — Data (default)
-  const gtdat = `AT+GTDAT=${pw},0,,,0,,,,FFFF$`;
-
-  // AT+GTWLT — Whitelist (default)
-  const gtwlt = `AT+GTWLT=${pw},1,1,1,,,,,,FFFF$`;
-
-  // AT+GTGLM — Geo-live monitoring (default)
-  const gtglm = `AT+GTGLM=${pw},0,1,1,,,,,,FFFF$`;
-
-  // AT+GTUPC — Unplugged (default off)
-  const gtupc = `AT+GTUPC=${pw},0,10,0,0,0,,0,,,,FFFF$`;
-
-  // AT+GTPDS — Power down schedule
-  const pdsEn = checked('pds_enable') ? '1' : '0';
-  const pdsDel = v('pds_delay') || '0';
-  const pdsDelHex = pad(parseInt(pdsDel || 0).toString(16).toUpperCase(), 6);
-  const gtpds = `AT+GTPDS=${pw},${pdsEn},${pdsDelHex},,,,,,,FFFF$`;
-
-  // AT+GTGAM — GPS Antenna Monitor (default)
-  const gtgam = `AT+GTGAM=${pw},0,0,25,10,60,60,,,,,FFFF$`;
-
-  // AT+GTCMD — 32 entries (all disabled)
-  let cmdLines = '';
-  for (let i = 0; i < 32; i++) {
-    cmdLines += `AT+GTCMD=${pw},0,${i},,,,,,FFFF$\n`;
+function buildGTGLM(p) {
+  const n1 = v('glm_num1'); const n2 = v('glm_num2'); const n3 = v('glm_num3');
+  const count = [n1, n2, n3].filter(Boolean).length;
+  if (!count || v('glm_google_mode') === '0') {
+    return `AT+GTGLM=${p},0,1,1,,,,,,${SN}$`;
   }
+  const end = count;
+  const nums = [n1, n2, n3].slice(0, count).join(',');
+  const padding = ','.repeat(3 - count);
+  return `AT+GTGLM=${p},${v('glm_google_mode')},1,${end},${nums}${padding},,,${SN}$`;
+}
 
-  // AT+GTUDF — 32 entries (all blank)
-  let udfLines = '';
+function buildGTUPC(p) {
+  const mode = chk('upc_mode');
+  return `AT+GTUPC=${p},${v('upc_max_retries') || 0},${v('upc_timeout') || 10},0,` +
+    `${chk('upc_report')},${v('upc_interval') || 0},${v('upc_url')},${mode},,,,${SN}$`;
+}
+
+function buildGTPDS(p) {
+  return `AT+GTPDS=${p},${v('pds_mode')},${v('pds_mask') || '000048'},,,,,,,${SN}$`;
+}
+
+function buildGTGAM(p) {
+  const mode = chk('gam_mode');
+  const smode = chk('gam_speed_mode');
+  return `AT+GTGAM=${p},${mode},${smode},${v('gam_motion_speed') || 25},` +
+    `${v('gam_motion_time') || 10},${v('gam_motionless_time') || 60},` +
+    `${v('gam_gps_timeout') || 60},,,,,${SN}$`;
+}
+
+function buildGTCMDLines(p) {
+  const lines = [];
+  for (let i = 0; i < 32; i++) lines.push(`AT+GTCMD=${p},0,${i},,,,,,${SN}$`);
+  return lines.join('\n');
+}
+
+function buildGTUDFLines(p) {
+  const lines = [];
   for (let i = 0; i < 32; i++) {
-    udfLines += `AT+GTUDF=${pw},0,${i},0000000000000000,0,00000,00000,0000000000000000,0,,,,,FFFF$\n`;
+    lines.push(`AT+GTUDF=${p},0,${i},0000000000000000,0,00000,00000,0000000000000000,0,,,,,${SN}$`);
   }
+  return lines.join('\n');
+}
 
-  // AT+GTFVR — Firmware version / OTA URL
+function buildGTFVR(p) {
   const now = new Date();
-  const ts = [
-    now.getFullYear(),
-    pad(now.getMonth()+1,2),
-    pad(now.getDate(),2),
-    pad(now.getHours(),2),
-    pad(now.getMinutes(),2),
-    pad(now.getSeconds(),2)
-  ].join('');
-  const otaUrl = v('ota_url');
-  const gtfvr = `AT+GTFVR=${pw},,,,,,,,,,,,${ts},FFFF$`;
+  const ts = [now.getFullYear(), pad(now.getMonth()+1,2), pad(now.getDate(),2),
+    pad(now.getHours(),2), pad(now.getMinutes(),2), pad(now.getSeconds(),2)].join('');
+  return `AT+GTFVR=${p},,,,,,,,,,,,${ts},${SN}$`;
+}
 
-  // AT+GTRPC — Remote password change (disabled)
-  const gtrpc = `AT+GTRPC=${pw},1,,,,,,FFFF$`;
+function buildGTRPC(p) {
+  return `AT+GTRPC=${p},${chk('rpc_bat')},,,,,,${SN}$`;
+}
 
-  // ── Assemble ──
-  const now2 = new Date().toISOString();
+// ── Generate full config ──────────────────────────────────────────────────────
+function generate() {
+  const p = pw();
+  const devName = v('cfg_device_name') || 'gl320mg';
   const header = [
     `Device Name: ${devName}`,
     `Manage Tool Name: GL320MG-Config-Tool  Subversion: GL320MG-Config-Tool`,
@@ -831,218 +1088,376 @@ function generate() {
   ].join('\n');
 
   const body = [
-    gtbsi,
-    gtsri,
-    gtqss,
-    gtcfg,
-    gtpin,
-    gtdog,
-    gttma,
-    gtnmd,
-    gtfks,
-    gtnts,
-    gtowh,
-    gtsim,
-    gturt,
-    gtjdc,
-    gtaac,
-    apnLines.trim(),
-    gtfri,
-    geoLines.trim(),
-    gtspd,
-    gttem,
-    gtmsa,
-    gthbm,
-    gtdis,
-    gtdat,
-    gtwlt,
-    gtglm,
-    gtupc,
-    gtpds,
-    gtgam,
-    cmdLines.trim(),
-    udfLines.trim(),
-    gtfvr,
-    gtrpc,
+    buildGTBSI(p),
+    buildGTSRI(p),
+    buildGTQSS(p),
+    buildGTCFG(p),
+    buildGTPIN(p),
+    buildGTDOG(p),
+    `AT+GTTMA=${p},+,0,0,0,,,,,,${SN}$`,
+    buildGTNMD(p),
+    buildGTFKS(p),
+    buildGTNTS(p),
+    buildGTOWH(p),
+    buildGTSIM(p),
+    buildGTURT(p),
+    buildGTJDC(p),
+    buildGTAAC(p),
+    buildGTAPNLines(p),
+    buildGTFRI(p),
+    buildGTGEOLines(p),
+    buildGTSPD(p),
+    buildGTTEM(p),
+    buildGTMSA(p),
+    buildGTHBM(p),
+    `AT+GTDIS=${p},1,0,5,2,,,,,${SN}$`,
+    `AT+GTDAT=${p},0,,,0,,,,${SN}$`,
+    buildGTWLT(p),
+    buildGTGLM(p),
+    buildGTUPC(p),
+    buildGTPDS(p),
+    buildGTGAM(p),
+    buildGTCMDLines(p),
+    buildGTUDFLines(p),
+    buildGTFVR(p),
+    buildGTRPC(p),
   ].join('\n');
 
-  document.getElementById('config_output').value = header + '\n' + body + '\n';
+  const out = header + '\n' + body + '\n';
+  document.getElementById('config_output').value = out;
+  return out;
 }
 
-// ── Copy ──
-document.getElementById('btn_copy').addEventListener('click', () => {
-  const out = document.getElementById('config_output').value;
-  if (!out) return;
-  navigator.clipboard.writeText(out).then(() => {
-    const fb = document.getElementById('copy_feedback');
-    fb.classList.add('show');
-    setTimeout(() => fb.classList.remove('show'), 2000);
-  });
+// ── Load from server ──────────────────────────────────────────────────────────
+function showMsg(id, text, isErr) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'status-msg ' + (isErr ? 'err' : 'ok');
+}
+
+async function loadFromServer() {
+  const filename = v('cfg_filename');
+  if (!filename) return;
+  try {
+    const res = await fetch(`/api/config/${encodeURIComponent(filename)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    document.getElementById('config_output').value = text;
+    populateFromConfig(text);
+    showMsg('load_msg', `Loaded ${filename}`, false);
+  } catch (e) {
+    showMsg('load_msg', `Load failed: ${e.message}`, true);
+  }
+}
+
+function parseConfig(text) {
+  const cmds = {};
+  for (const line of text.split('\n')) {
+    const m = line.match(/^AT\+GT(\w+)=(.+?)\$?\s*$/);
+    if (!m) continue;
+    const name = m[1];
+    const params = m[2].split(',');
+    if (!cmds[name]) cmds[name] = [];
+    cmds[name].push(params);
+  }
+  return cmds;
+}
+
+function populateFromConfig(text) {
+  const cmds = parseConfig(text);
+
+  if (cmds.GTBSI) {
+    const p = cmds.GTBSI[0];
+    setV('bsi_lte_apn', p[1]); setV('bsi_lte_user', p[2]); setV('bsi_lte_pw', p[3]);
+    setV('bsi_net_mode', p[7]); setV('bsi_lte_mode', p[8]); setV('bsi_auth', p[9]);
+  }
+  if (cmds.GTSRI) {
+    const p = cmds.GTSRI[0];
+    setV('sri_report_mode', p[1]); setV('sri_buffer', p[3]);
+    setV('sri_main_host', p[4]); setV('sri_main_port', p[5]);
+    setV('sri_backup_host', p[6]); setV('sri_backup_port', p[7]);
+    setV('sri_heartbeat', p[9]); setV('sri_sack', p[10]);
+  }
+  if (cmds.GTCFG) {
+    const p = cmds.GTCFG[0];
+    setV('cfg_password', p[0]); setV('cfg_new_pw', ''); setV('cfg_device_name', p[2]);
+    setV('cfg_odo_enable', p[3]); setV('cfg_odo_initial', p[4]);
+    setV('cfg_gps_need', p[5]); setV('cfg_gps_delay', p[6]);
+    setV('cfg_report_mask', p[7]); setV('cfg_event_mask', p[10]);
+    setV('cfg_led', p[12]); setV('cfg_info_enable', p[13]); setV('cfg_info_interval', p[14]);
+    setV('cfg_expiry_enable', p[16]); setV('cfg_expiry_time', p[17]);
+    setV('cfg_agps', p[18]); setV('cfg_bat_switch', p[20]); setV('cfg_bat_low', p[21]);
+    setV('cfg_walking_mode', p[22]);
+  }
+  if (cmds.GTPIN) {
+    const p = cmds.GTPIN[0];
+    setV('pin_auto', p[1]); setV('pin_code', p[2]);
+  }
+  if (cmds.GTSIM) {
+    const p = cmds.GTSIM[0];
+    setV('sim_mode', p[1]); setV('sim_iccid', p[2]);
+  }
+  if (cmds.GTDOG) {
+    const p = cmds.GTDOG[0];
+    setV('dog_mode', p[1]); setV('dog_ign_freq', p[2]); setV('dog_interval', p[3]);
+    setV('dog_time', p[4]); setV('dog_report', p[6]); setV('dog_unit', p[8]);
+  }
+  if (cmds.GTNMD) {
+    const p = cmds.GTNMD[0];
+    const bits = parseInt(p[1]) || 0;
+    setV('nmd_bit0', bits & 1 ? '1' : '0'); setV('nmd_bit1', bits & 2 ? '1' : '0');
+    setV('nmd_bit2', bits & 4 ? '1' : '0'); setV('nmd_bit3', bits & 8 ? '1' : '0');
+    setV('nmd_non_dur', p[2]); setV('nmd_move_dur', p[3]); setV('nmd_move_thresh', p[4]);
+    setV('nmd_fix_rest', p[5]); setV('nmd_send_rest', p[6]);
+  }
+  if (cmds.GTFKS) {
+    const p = cmds.GTFKS[0];
+    setV('fks_pwr_mode', p[1]); setV('fks_full_pwr', p[2]); setV('fks_func_mode', p[3]);
+    setV('fks_sos_mode', p[6]); setV('fks_first_time', p[7]);
+  }
+  if (cmds.GTNTS) {
+    const p = cmds.GTNTS[0];
+    setV('nts_enable', p[1]);
+    setV('nts_allow1', p[4]); setV('nts_allow2', p[5]); setV('nts_allow3', p[6]);
+    setV('nts_block1', p[8]); setV('nts_block2', p[9]); setV('nts_block3', p[10]);
+  }
+  if (cmds.GTOWH) {
+    const p = cmds.GTOWH[0];
+    setV('owh_mode', p[1]);
+    const dm = parseInt(p[2], 16) || 0;
+    document.getElementById('owh_mon').checked = !!(dm & 0x01);
+    document.getElementById('owh_tue').checked = !!(dm & 0x02);
+    document.getElementById('owh_wed').checked = !!(dm & 0x04);
+    document.getElementById('owh_thu').checked = !!(dm & 0x08);
+    document.getElementById('owh_fri').checked = !!(dm & 0x10);
+    document.getElementById('owh_sat').checked = !!(dm & 0x20);
+    document.getElementById('owh_sun').checked = !!(dm & 0x40);
+    setV('owh_start1', p[3]); setV('owh_end1', p[4]); setV('owh_start2', p[5]); setV('owh_end2', p[6]);
+    setV('owh_rf_sleep', p[10]);
+  }
+  if (cmds.GTURT) { const p = cmds.GTURT[0]; setV('urt_baud', p[2]); }
+  if (cmds.GTJDC) {
+    const p = cmds.GTJDC[0];
+    setV('jdc_mode', p[1]); setV('jdc_level', p[2]); setV('jdc_enter', p[5]); setV('jdc_quit', p[6]);
+  }
+  if (cmds.GTAAC) { const p = cmds.GTAAC[0]; setV('aac_mode', p[1]); }
+  if (cmds.GTAPN) {
+    for (const p of cmds.GTAPN) {
+      const id = p[1];
+      if (id === undefined || id === '') continue;
+      const i = parseInt(id);
+      if (i < 0 || i >= APN_COUNT) continue;
+      const cb = document.getElementById(`apn_${i}_mode`);
+      if (cb) cb.checked = (p[2] === '1');
+      setV(`apn_${i}_plmn`, p[3]); setV(`apn_${i}_apn`, p[4]);
+      setV(`apn_${i}_user`, p[5]); setV(`apn_${i}_pw`, p[6]);
+    }
+  }
+  if (cmds.GTFRI) {
+    const p = cmds.GTFRI[0];
+    setV('fri_mode', p[1]); setV('fri_discard', p[2]);
+    setV('fri_begin', p[5]); setV('fri_end', p[6]);
+    setV('fri_check_off', p[7]); setV('fri_send_off', p[8]);
+    setV('fri_check_on', p[9]); setV('fri_send_on', p[10]);
+    setV('fri_distance', p[12]); setV('fri_mileage', p[13]);
+    setV('fri_move_mode', p[14]); setV('fri_move_speed', p[15]);
+    setV('fri_move_dist', p[16]); setV('fri_move_num', p[17]);
+    setV('fri_corner', p[18]);
+  }
+  if (cmds.GTGEO) {
+    for (const p of cmds.GTGEO) {
+      const i = parseInt(p[1]);
+      if (i < 0 || i >= GEO_COUNT) continue;
+      setV(`geo_${i}_mode`, p[2]); setV(`geo_${i}_lat`, p[3]); setV(`geo_${i}_lng`, p[4]);
+      setV(`geo_${i}_radius`, p[5]); setV(`geo_${i}_check`, p[6]);
+    }
+  }
+  if (cmds.GTSPD) {
+    const p = cmds.GTSPD[0];
+    setV('spd_mode', p[1]); setV('spd_min', p[2]); setV('spd_max', p[3]);
+    setV('spd_valid', p[4]); setV('spd_interval', p[5]);
+  }
+  if (cmds.GTTEM) {
+    const p = cmds.GTTEM[0];
+    setV('tem_mode', p[1]); setV('tem_min', p[2]); setV('tem_max', p[3]);
+    setV('tem_dur', p[4]); setV('tem_interval', p[5]);
+  }
+  if (cmds.GTMSA) {
+    const p = cmds.GTMSA[0];
+    setV('msa_mode', p[1]); setV('msa_send_last', p[2]);
+    setV('msa_sensitivity', p[3]); setV('msa_timeout', p[4]);
+  }
+  if (cmds.GTHBM) {
+    const p = cmds.GTHBM[0];
+    setV('hbm_mode', p[1]); setV('hbm_dur', p[2]);
+    setV('hbm_high_speed', p[4]); setV('hbm_high_brake', p[5]); setV('hbm_high_accel', p[6]);
+    setV('hbm_med_speed', p[8]); setV('hbm_med_brake', p[9]); setV('hbm_med_accel', p[10]);
+    setV('hbm_low_brake', p[13]); setV('hbm_low_accel', p[14]);
+  }
+  if (cmds.GTWLT) { const p = cmds.GTWLT[0]; setV('wlt_filter', p[1]); }
+  if (cmds.GTGLM) {
+    const p = cmds.GTGLM[0];
+    setV('glm_google_mode', p[1]);
+    const start = parseInt(p[2]) || 1;
+    const end   = parseInt(p[3]) || 1;
+    for (let i = 0; i < Math.min(end - start + 1, 3); i++) {
+      setV(`glm_num${i+1}`, p[4+i] || '');
+    }
+  }
+  if (cmds.GTUPC) {
+    const p = cmds.GTUPC[0];
+    setV('upc_max_retries', p[1]); setV('upc_timeout', p[2]);
+    setV('upc_report', p[4]); setV('upc_interval', p[5]); setV('upc_url', p[6]);
+    setV('upc_mode', p[7]);
+  }
+  if (cmds.GTPDS) { const p = cmds.GTPDS[0]; setV('pds_mode', p[1]); setV('pds_mask', p[2]); }
+  if (cmds.GTGAM) {
+    const p = cmds.GTGAM[0];
+    setV('gam_mode', p[1]); setV('gam_speed_mode', p[2]);
+    setV('gam_motion_speed', p[3]); setV('gam_motion_time', p[4]);
+    setV('gam_motionless_time', p[5]); setV('gam_gps_timeout', p[6]);
+  }
+  if (cmds.GTRPC) { const p = cmds.GTRPC[0]; setV('rpc_bat', p[1]); }
+}
+
+// ── Output buttons ────────────────────────────────────────────────────────────
+document.getElementById('btn_generate').addEventListener('click', generate);
+document.getElementById('btn_load_server').addEventListener('click', loadFromServer);
+
+document.getElementById('btn_save_server').addEventListener('click', async () => {
+  const out = generate();
+  const filename = v('cfg_filename');
+  if (!filename) { showMsg('save_msg', 'Enter a filename', true); return; }
+  try {
+    const res = await fetch(`/api/config/${encodeURIComponent(filename)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: out }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    showMsg('save_msg', `Saved to ${filename}`, false);
+  } catch (e) { showMsg('save_msg', `Save failed: ${e.message}`, true); }
 });
 
-// ── Download ──
+document.getElementById('btn_copy').addEventListener('click', () => {
+  const out = document.getElementById('config_output').value || generate();
+  navigator.clipboard.writeText(out).then(() => showMsg('save_msg', 'Copied!', false));
+});
+
 document.getElementById('btn_download').addEventListener('click', () => {
-  const out = document.getElementById('config_output').value;
-  if (!out) { generate(); }
-  const content = document.getElementById('config_output').value;
-  const blob = new Blob([content], { type: 'text/plain' });
+  const out = document.getElementById('config_output').value || generate();
+  const filename = v('cfg_filename') || 'config.GL320M';
+  const blob = new Blob([out], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'config.GL320M';
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
 });
 
-// ── Monitor & Devices ──────────────────────────────────────────────────────
-
+// ── Monitor ───────────────────────────────────────────────────────────────────
 const API = '/api';
+let monitorTimer = null;
 
-// Load monitor when section is first shown, and also on nav click
-let monitorLoaded = false;
-let devicesLoaded = false;
-
-// Override nav click to trigger loads
-links.forEach(link => {
-  link.addEventListener('click', () => {
-    const target = link.dataset.section;
-    if (target === 'monitor') { loadMonitor(); }
-    if (target === 'devices') { loadDevices(); }
-  });
-});
-
-// ── Helpers ──
-
-function relativeTime(isoStr) {
-  const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
-  if (diff < 0)    return 'just now';
-  if (diff < 60)   return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+function relTime(iso) {
+  const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return `${Math.floor(s/86400)}d ago`;
 }
-
-function statusBadge(code) {
-  if (code === 200) return `<span class="status-ok">200 OK</span>`;
-  if (code === 304) return `<span class="status-notmod">304 Not Modified</span>`;
-  if (code >= 400)  return `<span class="status-err">${code}</span>`;
-  return `<span class="tag">${code}</span>`;
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function statusBadge(c) {
+  if (c===200) return `<span class="badge badge-ok">200 OK</span>`;
+  if (c===304) return `<span class="badge badge-notmod">304 Not Modified</span>`;
+  if (c>=400)  return `<span class="badge badge-err">${c}</span>`;
+  return `<span class="badge badge-muted">${c}</span>`;
 }
-
-// ── Monitor ──
-
-let monitorRefreshTimer = null;
 
 async function loadMonitor() {
-  const dot   = document.getElementById('refresh_dot');
-  const label = document.getElementById('refresh_label');
-  dot.classList.remove('off');
-  label.textContent = 'Refreshing…';
+  const dot = document.getElementById('ref_dot');
+  const lbl = document.getElementById('ref_label');
+  dot.className = 'ref-dot';
+  lbl.textContent = 'Refreshing…';
   try {
     const res = await fetch(`${API}/trackers`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const trackers = await res.json();
-    renderMonitor(trackers);
-    label.textContent = `Last updated ${new Date().toLocaleTimeString()}`;
-    monitorLoaded = true;
-  } catch (err) {
-    label.textContent = `Error: ${err.message}`;
-    dot.classList.add('off');
+    const data = await res.json();
+    renderMonitor(data);
+    lbl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+  } catch (e) {
+    lbl.textContent = `Error: ${e.message}`;
+    dot.className = 'ref-dot off';
   }
 }
 
 function renderMonitor(trackers) {
+  // Clear any old history tbodies
+  document.querySelectorAll('.hist-group').forEach(el => el.remove());
   const tbody = document.getElementById('monitor_tbody');
   if (!trackers.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">No tracker activity found in log.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">No activity in log.</td></tr>';
     return;
   }
   tbody.innerHTML = '';
+  const tbl = document.getElementById('monitor_table');
   trackers.forEach(t => {
-    const displayName = t.name || null;
-    const nameHtml = displayName
-      ? `<span class="name-cell">${esc(displayName)}</span>`
-      : `<span class="name-cell unnamed">Unnamed</span>`;
-
-    const historyId = `hist_${t.imei}`;
-    const hasHistory = t.history && t.history.length > 1;
-
+    const nameHtml = t.name
+      ? `<strong>${esc(t.name)}</strong><br><span class="mono">${t.imei}</span>`
+      : `<span style="color:var(--muted);font-style:italic">Unnamed</span><br><span class="mono">${t.imei}</span>`;
+    const histId = `hist_${t.imei}`;
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td>
-        ${nameHtml}<br>
-        <span class="imei-code">${t.imei}</span>
-      </td>
-      <td title="${t.lastSeen}">${relativeTime(t.lastSeen)}</td>
+      <td>${nameHtml}</td>
+      <td title="${t.lastSeen}">${relTime(t.lastSeen)}</td>
       <td><code style="font-size:12px">${esc(t.lastConfig)}</code></td>
       <td>${statusBadge(t.lastStatus)}</td>
-      <td><span class="imei-code">${esc(t.lastIp)}</span></td>
-      <td>${hasHistory ? `<button class="history-toggle" onclick="toggleHistory('${historyId}', this)">History ▾</button>` : ''}</td>
-    `;
+      <td><span class="mono">${esc(t.lastIp)}</span></td>
+      <td>${t.history && t.history.length > 1 ? `<button class="hist-toggle" onclick="toggleHist('${histId}',this)">History ▾</button>` : ''}</td>`;
     tbody.appendChild(row);
-
-    if (hasHistory) {
-      const histGroup = document.createElement('tbody');
-      histGroup.id = historyId;
-      histGroup.className = 'history-rows';
+    if (t.history && t.history.length > 1) {
+      const hg = document.createElement('tbody');
+      hg.id = histId; hg.className = 'hist-group';
       t.history.forEach(h => {
         const hr = document.createElement('tr');
-        hr.className = 'history-row';
-        hr.innerHTML = `
-          <td colspan="2" title="${h.timestamp}">${relativeTime(h.timestamp)} &nbsp; <span style="color:var(--text)">${new Date(h.timestamp).toLocaleString()}</span></td>
-          <td><code style="font-size:12px">${esc(h.config)}</code></td>
-          <td>${statusBadge(h.status)}</td>
-          <td colspan="2"><span class="imei-code">${esc(h.ip)}</span></td>
-        `;
-        histGroup.appendChild(hr);
+        hr.className = 'hist-row';
+        hr.innerHTML = `<td colspan="2" title="${h.timestamp}">${relTime(h.timestamp)} &nbsp; <span style="color:var(--text)">${new Date(h.timestamp).toLocaleString()}</span></td><td><code style="font-size:12px">${esc(h.config)}</code></td><td>${statusBadge(h.status)}</td><td colspan="2"><span class="mono">${esc(h.ip)}</span></td>`;
+        hg.appendChild(hr);
       });
-      // Insert after current row's tbody (the main tbody)
-      // We'll append histGroup to the table directly
-      document.getElementById('monitor_table').appendChild(histGroup);
+      tbl.appendChild(hg);
     }
   });
 }
 
-function toggleHistory(id, btn) {
+function toggleHist(id, btn) {
   const el = document.getElementById(id);
   if (!el) return;
   const open = el.classList.toggle('open');
   btn.textContent = open ? 'History ▴' : 'History ▾';
 }
 
-function esc(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
 document.getElementById('btn_refresh_monitor').addEventListener('click', loadMonitor);
-
-// Auto-refresh
+document.getElementById('auto_refresh').addEventListener('change', scheduleAutoRefresh);
 function scheduleAutoRefresh() {
-  clearInterval(monitorRefreshTimer);
+  clearInterval(monitorTimer);
   if (document.getElementById('auto_refresh').checked) {
-    monitorRefreshTimer = setInterval(() => {
-      // Only refresh if monitor section is visible
-      if (document.getElementById('sect-monitor').classList.contains('active')) {
-        loadMonitor();
-      }
+    monitorTimer = setInterval(() => {
+      if (document.getElementById('sect-monitor').classList.contains('active')) loadMonitor();
     }, 30000);
   }
 }
-
-document.getElementById('auto_refresh').addEventListener('change', scheduleAutoRefresh);
 scheduleAutoRefresh();
 
-// ── Devices ──
-
+// ── Devices ───────────────────────────────────────────────────────────────────
 async function loadDevices() {
   try {
     const res = await fetch(`${API}/devices`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const devices = await res.json(); // { imei: name, ... }
-    renderDevices(devices);
-    devicesLoaded = true;
-  } catch (err) {
+    renderDevices(await res.json());
+  } catch (e) {
     document.getElementById('devices_tbody').innerHTML =
-      `<tr><td colspan="3" style="text-align:center;padding:32px;color:var(--danger)">Error loading devices: ${esc(err.message)}</td></tr>`;
+      `<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--danger)">Error: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -1050,23 +1465,20 @@ function renderDevices(devices) {
   const tbody = document.getElementById('devices_tbody');
   const entries = Object.entries(devices);
   if (!entries.length) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:32px;color:var(--muted)">No devices registered yet.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:32px;color:var(--muted)">No devices registered.</td></tr>';
     return;
   }
   tbody.innerHTML = '';
   entries.forEach(([imei, name]) => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
       <td><strong>${esc(name)}</strong></td>
-      <td><span class="imei-code">${esc(imei)}</span></td>
+      <td><span class="mono">${esc(imei)}</span></td>
       <td style="text-align:right">
-        <button class="btn btn-outline" style="padding:4px 12px;font-size:12px;margin-right:4px"
-          onclick="editDevice('${esc(imei)}','${esc(name).replace(/'/g,"\\'")}')">Edit</button>
-        <button class="btn btn-outline" style="padding:4px 12px;font-size:12px;color:var(--danger);border-color:var(--danger)"
-          onclick="deleteDevice('${esc(imei)}')">Delete</button>
-      </td>
-    `;
-    tbody.appendChild(row);
+        <button class="btn btn-outline btn-sm" style="margin-right:4px" onclick="editDevice('${esc(imei)}','${esc(name).replace(/'/g,"\\'")}')">Edit</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteDevice('${esc(imei)}')">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
   });
 }
 
@@ -1077,38 +1489,25 @@ function editDevice(imei, name) {
 }
 
 async function deleteDevice(imei) {
-  if (!confirm(`Remove name for IMEI ${imei}?`)) return;
-  try {
-    await fetch(`${API}/devices/${imei}`, { method: 'DELETE' });
-    loadDevices();
-    // Invalidate monitor cache on next load
-    monitorLoaded = false;
-  } catch (err) {
-    alert('Delete failed: ' + err.message);
-  }
+  if (!confirm(`Remove name for ${imei}?`)) return;
+  await fetch(`${API}/devices/${imei}`, { method: 'DELETE' });
+  loadDevices();
 }
 
 document.getElementById('btn_save_device').addEventListener('click', async () => {
-  const imei = document.getElementById('new_imei').value.trim();
-  const name = document.getElementById('new_name').value.trim();
-  if (!imei) { alert('IMEI is required'); return; }
+  const imei = v('new_imei'); const name = v('new_name');
+  if (!imei) { showMsg('dev_save_msg', 'IMEI required', true); return; }
   try {
     const res = await fetch(`${API}/devices`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ imei, name }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     document.getElementById('new_imei').value = '';
     document.getElementById('new_name').value = '';
-    const msg = document.getElementById('device_save_msg');
-    msg.style.display = 'block';
-    setTimeout(() => { msg.style.display = 'none'; }, 2000);
+    showMsg('dev_save_msg', 'Saved', false);
     loadDevices();
-    monitorLoaded = false;
-  } catch (err) {
-    alert('Save failed: ' + err.message);
-  }
+  } catch (e) { showMsg('dev_save_msg', `Error: ${e.message}`, true); }
 });
 </script>
 </body>

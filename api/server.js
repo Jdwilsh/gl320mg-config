@@ -5,7 +5,8 @@ const path = require("path");
 const app = express();
 const PORT = 3010;
 const LOG_FILE = "/var/log/nginx/cfg.access.log";
-const DEVICES_FILE = path.join(__dirname, "..", "devices.json");
+const DEVICES_FILE  = path.join(__dirname, "..", "devices.json");
+const CONFIGS_DIR   = path.join(__dirname, "..", "configs");
 
 app.use(express.json());
 
@@ -161,6 +162,44 @@ app.delete("/devices/:imei", (req, res) => {
   delete devices[req.params.imei];
   saveDevices(devices);
   logCache = null;
+  res.json({ ok: true });
+});
+
+// ── Config file management ────────────────────────────────────────────────────
+
+function safeConfigPath(name) {
+  if (!/^[\w.\-]+$/.test(name)) return null;
+  const resolved = path.resolve(CONFIGS_DIR, name);
+  if (!resolved.startsWith(path.resolve(CONFIGS_DIR) + path.sep) &&
+      resolved !== path.resolve(CONFIGS_DIR)) return null;
+  return resolved;
+}
+
+// GET /configs — list config files
+app.get("/configs", (req, res) => {
+  try {
+    if (!fs.existsSync(CONFIGS_DIR)) return res.json([]);
+    res.json(fs.readdirSync(CONFIGS_DIR).filter(f => /^[\w.\-]+$/.test(f)).sort());
+  } catch { res.json([]); }
+});
+
+// GET /config/:name — read a config file
+app.get("/config/:name", (req, res) => {
+  const fp = safeConfigPath(req.params.name);
+  if (!fp) return res.status(400).json({ error: "invalid filename" });
+  try {
+    res.type("text/plain").send(fs.readFileSync(fp, "utf8"));
+  } catch { res.status(404).json({ error: "not found" }); }
+});
+
+// POST /config/:name — write a config file
+app.post("/config/:name", (req, res) => {
+  const fp = safeConfigPath(req.params.name);
+  if (!fp) return res.status(400).json({ error: "invalid filename" });
+  const { content } = req.body;
+  if (!content) return res.status(400).json({ error: "content required" });
+  if (!fs.existsSync(CONFIGS_DIR)) fs.mkdirSync(CONFIGS_DIR, { recursive: true });
+  fs.writeFileSync(fp, content, "utf8");
   res.json({ ok: true });
 });
 
