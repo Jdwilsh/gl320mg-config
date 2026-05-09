@@ -1325,16 +1325,21 @@ function showMsg(id, text, isErr) {
   el.className = 'status-msg ' + (isErr ? 'err' : 'ok');
 }
 
+function applyConfigText(text, label) {
+  document.getElementById('config_output').value = text;
+  populateFromConfig(text);
+  saveFormState();
+  Object.keys(sectionBuilders).forEach(renderCmdPreview);
+  showMsg('load_msg', `${label} — applied as defaults`, false);
+}
+
 async function loadFromServer() {
   const filename = v('cfg_filename');
   if (!filename) return;
   try {
     const res = await apiFetch(`${API}/config/${encodeURIComponent(filename)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = await res.text();
-    document.getElementById('config_output').value = text;
-    populateFromConfig(text);
-    showMsg('load_msg', `Loaded ${filename}`, false);
+    applyConfigText(await res.text(), filename);
   } catch (e) {
     showMsg('load_msg', `Load failed: ${e.message}`, true);
   }
@@ -1552,11 +1557,7 @@ document.getElementById('file_import').addEventListener('change', e => {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = evt => {
-    const text = evt.target.result;
-    populateFromConfig(text);
-    saveFormState();
-    Object.keys(sectionBuilders).forEach(renderCmdPreview);
-    showMsg('load_msg', `Loaded ${file.name} — settings saved as defaults`, false);
+    applyConfigText(evt.target.result, file.name);
   };
   reader.readAsText(file);
   e.target.value = ''; // reset so same file can be reloaded if needed
