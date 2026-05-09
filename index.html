@@ -238,6 +238,12 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
           <option value="2">2 – Server sends SACK (no serial check)</option>
         </select>
       </div>
+      <div class="f"><label>SMS ACK Enable</label>
+        <select id="sri_sms_ack">
+          <option value="0" selected>0 – ACK via configured report mode</option>
+          <option value="1">1 – ACK via SMS to sender</option>
+        </select>
+      </div>
     </div>
   </div>
 </div>
@@ -1042,7 +1048,7 @@ function buildGTBSI(p) {
 
 function buildGTSRI(p) {
   return `AT+GTSRI=${p},${v('sri_report_mode')},,${v('sri_buffer')},${v('sri_main_host')},${v('sri_main_port')},` +
-    `${v('sri_backup_host')},${v('sri_backup_port') || 0},,${v('sri_heartbeat')},${v('sri_sack')},0,0,0,,${SN}$`;
+    `${v('sri_backup_host')},${v('sri_backup_port') || 0},,${v('sri_heartbeat')},${v('sri_sack')},${v('sri_sms_ack')},0,0,,${SN}$`;
 }
 
 function buildGTQSS(p) {
@@ -1373,7 +1379,7 @@ function populateFromConfig(text) {
     setV('sri_report_mode', p[1]); setV('sri_buffer', p[3]);
     setV('sri_main_host', p[4]); setV('sri_main_port', p[5]);
     setV('sri_backup_host', p[6]); setV('sri_backup_port', p[7]);
-    setV('sri_heartbeat', p[9]); setV('sri_sack', p[10]);
+    setV('sri_heartbeat', p[9]); setV('sri_sack', p[10]); setV('sri_sms_ack', p[11]);
   }
   if (cmds.GTCFG) {
     const p = cmds.GTCFG[0];
