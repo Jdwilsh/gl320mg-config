@@ -35,6 +35,18 @@ main{padding:24px 32px;min-width:0}
 /* Inline-style replacements for responsive overrides */
 .sect-col-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
 .gen-grid{display:grid;grid-template-columns:260px 1fr 280px;gap:16px;align-items:start}
+/* Stat cards */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;display:flex;flex-direction:column;gap:4px}
+.stat-num{font-size:28px;font-weight:700;line-height:1}
+.stat-lbl{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.stat-total .stat-num{color:var(--text)}
+.stat-active .stat-num{color:var(--success)}
+.stat-active{border-left:3px solid var(--success)}
+.stat-late .stat-num{color:var(--warn)}
+.stat-late{border-left:3px solid var(--warn)}
+.stat-overdue .stat-num{color:var(--danger)}
+.stat-overdue{border-left:3px solid var(--danger)}
 /* Mobile nav */
 .nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:4px 6px;color:var(--text);flex-direction:column;gap:4px;align-self:center}
 .nav-toggle span{display:block;width:20px;height:2px;background:currentColor;border-radius:2px}
@@ -50,6 +62,7 @@ main{padding:24px 32px;min-width:0}
   main{padding:16px}
   .cards-grid,.sect-col-grid,.gen-grid{grid-template-columns:1fr}
   .fg.two,.fg.three,.fg.four{grid-template-columns:1fr}
+  .stat-row{grid-template-columns:repeat(2,1fr)}
   .modal-box{padding:20px}
 }
 .card-title{font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:14px}
@@ -213,13 +226,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <a href="#" data-section="alarms"><span class="nav-cmd">AT+GTSPD / GTTEM</span><span class="nav-lbl">Speed &amp; Temperature</span></a>
   <a href="#" data-section="harsh"><span class="nav-cmd">AT+GTMSA / GTHBM</span><span class="nav-lbl">Harsh Events</span></a>
   <div class="nav-section">Behaviour</div>
-  <a href="#" data-section="watchdog"><span class="nav-cmd">AT+GTDOG</span><span class="nav-lbl">Watchdog</span></a>
-  <a href="#" data-section="funckey"><span class="nav-cmd">AT+GTFKS</span><span class="nav-lbl">Function Keys</span></a>
-  <a href="#" data-section="workhours"><span class="nav-cmd">AT+GTOWH</span><span class="nav-lbl">Working Hours</span></a>
+  <a href="#" data-section="behaviour"><span class="nav-cmd">AT+GTDOG / GTFKS / GTOWH</span><span class="nav-lbl">Watchdog, Keys &amp; Hours</span></a>
   <div class="nav-section">Comms</div>
-  <a href="#" data-section="smsalerts"><span class="nav-cmd">AT+GTWLT / GTGLM / GTNTS</span><span class="nav-lbl">SMS &amp; Alerts</span></a>
+  <a href="#" data-section="comms"><span class="nav-cmd">AT+GTWLT / GTGLM / GTUPC</span><span class="nav-lbl">SMS, Alerts &amp; OTA</span></a>
   <div class="nav-section">Advanced</div>
-  <a href="#" data-section="otacfg"><span class="nav-cmd">AT+GTUPC</span><span class="nav-lbl">OTA Config</span></a>
   <a href="#" data-section="advanced"><span class="nav-cmd">AT+GTJDC / GTPDS / GTDIS</span><span class="nav-lbl">Other Settings</span></a>
   <div class="nav-section">Output</div>
   <a href="#" data-section="output"><span class="nav-lbl">Generate &amp; Save</span></a>
@@ -313,9 +323,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="section-title">AT+GTAPN — APN List</div>
   <div class="section-desc">Up to 8 APN entries for automatic APN changeover. Enable auto-changeover below (AT+GTAAC).</div>
   <div class="card">
-    <div class="card-title">Auto APN Changeover (AT+GTAAC)</div>
-    <div class="fg two">
-      <div class="f"><label>Changeover Mode</label>
+    <div style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap">
+      <div class="f" style="min-width:260px;max-width:420px;flex:1">
+        <div class="card-title" style="margin-bottom:8px">Auto APN Changeover (AT+GTAAC)</div>
+        <label>Changeover Mode</label>
         <select id="aac_mode">
           <option value="0" selected>0 – Disabled</option>
           <option value="1">1 – Enabled (free APNs apply to any PLMN)</option>
@@ -323,6 +334,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
         </select>
         <span class="hint">Requires Manual Netreg=1 in GTBSI (set automatically)</span>
       </div>
+      <p style="font-size:12px;color:var(--muted);max-width:400px;line-height:1.6">Configure up to 8 APNs below. The device will cycle through them automatically if enabled.</p>
     </div>
   </div>
   <div class="card" style="padding:0;overflow:hidden">
@@ -337,6 +349,9 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section" id="sect-globalcfg">
   <div class="section-title">AT+GTCFG — Device Config</div>
   <div class="section-desc">Core device settings: password, GPS mode, reporting mask, events, LEDs, odometer.</div>
+  <div class="sect-col-grid" style="align-items:start">
+  <!-- Left col: smaller cards stacked -->
+  <div>
   <div class="cards-grid">
   <div class="card">
     <div class="card-title">Identity &amp; Password</div>
@@ -360,10 +375,32 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f cb"><input type="checkbox" id="cfg_agps"><label for="cfg_agps">Enable AGPS (faster first fix)</label></div>
     </div>
   </div>
-  </div><!-- end cards-grid -->
+  </div><!-- end inner cards-grid -->
+  <div class="cards-grid">
   <div class="card">
+    <div class="card-title">Battery &amp; Odometer</div>
+    <div class="fg">
+      <div class="f cb"><input type="checkbox" id="cfg_odo_enable"><label for="cfg_odo_enable">Enable odometer</label></div>
+      <div class="f"><label>ODO Initial Mileage (km)</label><input id="cfg_odo_initial" type="number" value="0" min="0" step="0.1"></div>
+      <div class="f cb"><input type="checkbox" id="cfg_bat_switch"><label for="cfg_bat_switch">Switch to internal battery on ext. loss</label></div>
+      <div class="f"><label>Battery Low Threshold (%)</label><input id="cfg_bat_low" type="number" value="20" min="0" max="30"><span class="hint">Triggers GTBPL event</span></div>
+      <div class="f cb"><input type="checkbox" id="cfg_walking_mode"><label for="cfg_walking_mode">Walking mode (pedestrian accuracy)</label></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Config Expiry</div>
+    <div class="fg">
+      <div class="f cb"><input type="checkbox" id="cfg_expiry_enable"><label for="cfg_expiry_enable">Enable expiry (stop all GPS after date)</label></div>
+      <div class="f"><label>Expiry Date/Time (YYYYMMDDHHmmss)</label><input id="cfg_expiry_time" value="20491231235959" maxlength="14"></div>
+    </div>
+  </div>
+  </div><!-- end battery+expiry cards-grid -->
+  </div><!-- end left col -->
+
+  <!-- Right col: Reporting & LEDs -->
+  <div class="card" style="margin-bottom:0">
     <div class="card-title">Reporting &amp; LEDs</div>
-    <div class="fg three">
+    <div class="fg two">
       <div class="f">
         <label>Report Item Mask — fields included in reports</label>
         <div class="cb-group">
@@ -393,6 +430,9 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
           <label><input type="checkbox" id="em_gtpfl" checked> Ext. power restored (GTPFL)</label>
         </div>
       </div>
+    </div>
+    <hr class="div">
+    <div class="fg three">
       <div class="f"><label>LED Mode</label>
         <select id="cfg_led">
           <option value="0">0 – GPS LED off after 150s</option>
@@ -400,29 +440,12 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
           <option value="2">2 – All LEDs off</option>
         </select>
       </div>
-      <div class="f cb"><input type="checkbox" id="cfg_info_enable"><label for="cfg_info_enable">Enable periodic device info reports</label></div>
+      <div class="f cb" style="padding-top:22px"><input type="checkbox" id="cfg_info_enable"><label for="cfg_info_enable">Enable periodic device info reports</label></div>
       <div class="f"><label>Info Report Interval (seconds)</label><input id="cfg_info_interval" type="number" value="300" min="30" max="86400"></div>
     </div>
   </div>
-  <div class="cards-grid">
-  <div class="card">
-    <div class="card-title">Battery &amp; Odometer</div>
-    <div class="fg">
-      <div class="f cb"><input type="checkbox" id="cfg_odo_enable"><label for="cfg_odo_enable">Enable odometer</label></div>
-      <div class="f"><label>ODO Initial Mileage (km)</label><input id="cfg_odo_initial" type="number" value="0" min="0" step="0.1"></div>
-      <div class="f cb"><input type="checkbox" id="cfg_bat_switch"><label for="cfg_bat_switch">Switch to internal battery on ext. loss</label></div>
-      <div class="f"><label>Battery Low Threshold (%)</label><input id="cfg_bat_low" type="number" value="20" min="0" max="30"><span class="hint">Triggers GTBPL event</span></div>
-      <div class="f cb"><input type="checkbox" id="cfg_walking_mode"><label for="cfg_walking_mode">Walking mode (pedestrian accuracy)</label></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">Config Expiry</div>
-    <div class="fg">
-      <div class="f cb"><input type="checkbox" id="cfg_expiry_enable"><label for="cfg_expiry_enable">Enable expiry (stop all GPS after date)</label></div>
-      <div class="f"><label>Expiry Date/Time (YYYYMMDDHHmmss)</label><input id="cfg_expiry_time" value="20491231235959" maxlength="14"></div>
-    </div>
-  </div>
-  </div><!-- end cards-grid -->
+
+  </div><!-- end outer sect-col-grid -->
 </div>
 
 <!-- ── SIM & PIN ── -->
@@ -527,21 +550,22 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="section-desc">Non-movement detection (AT+GTNMD), GPS-assisted motion measurement (AT+GTGAM), and local time offset (AT+GTTMA).</div>
   <div class="card">
     <div class="card-title">Non-Movement Detection (AT+GTNMD)</div>
-    <div class="fg two" style="margin-bottom:14px">
-      <div class="f"><label>Mode Flags</label><span class="hint" style="display:block;margin-bottom:4px">Check any combination:</span>
+    <div class="fg two">
+      <div class="f">
+        <label>Mode Flags</label>
+        <span class="hint" style="display:block;margin-bottom:6px">Check any combination:</span>
         <div class="f cb" style="margin-top:4px"><input type="checkbox" id="nmd_bit0"><label for="nmd_bit0">Bit0 – Suppress FRI/GEO when non-moving</label></div>
         <div class="f cb" style="margin-top:4px"><input type="checkbox" id="nmd_bit1"><label for="nmd_bit1">Bit1 – Send GTNMR on non-movement detected</label></div>
         <div class="f cb" style="margin-top:4px"><input type="checkbox" id="nmd_bit2" checked><label for="nmd_bit2">Bit2 – Send GTNMR on movement detected</label></div>
         <div class="f cb" style="margin-top:4px"><input type="checkbox" id="nmd_bit3"><label for="nmd_bit3">Bit3 – Use rest intervals when non-moving</label></div>
       </div>
-    </div>
-    <hr class="div">
-    <div class="fg three">
-      <div class="f"><label>Non-movement duration (×14s units)</label><input id="nmd_non_dur" type="number" value="2" min="1" max="255"><span class="hint">Default 2 = 28 seconds</span></div>
-      <div class="f"><label>Movement duration (×128ms units)</label><input id="nmd_move_dur" type="number" value="3" min="1" max="50"></div>
-      <div class="f"><label>Movement threshold (2–9)</label><input id="nmd_move_thresh" type="number" value="2" min="2" max="9"><span class="hint">Lower = more sensitive</span></div>
-      <div class="f"><label>Fix interval at rest (seconds)</label><input id="nmd_fix_rest" type="number" value="600" min="1" max="86400"><span class="hint">Requires Bit3 above</span></div>
-      <div class="f"><label>Send interval at rest (seconds)</label><input id="nmd_send_rest" type="number" value="600" min="5" max="86400"></div>
+      <div class="fg two">
+        <div class="f"><label>Non-movement duration (×14s units)</label><input id="nmd_non_dur" type="number" value="2" min="1" max="255"><span class="hint">Default 2 = 28 seconds</span></div>
+        <div class="f"><label>Movement duration (×128ms units)</label><input id="nmd_move_dur" type="number" value="3" min="1" max="50"></div>
+        <div class="f"><label>Movement threshold (2–9)</label><input id="nmd_move_thresh" type="number" value="2" min="2" max="9"><span class="hint">Lower = more sensitive</span></div>
+        <div class="f"><label>Fix interval at rest (seconds)</label><input id="nmd_fix_rest" type="number" value="600" min="1" max="86400"><span class="hint">Requires Bit3 above</span></div>
+        <div class="f"><label>Send interval at rest (seconds)</label><input id="nmd_send_rest" type="number" value="600" min="5" max="86400"></div>
+      </div>
     </div>
   </div>
   <div class="cards-grid">
@@ -674,11 +698,13 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   </div><!-- end cards-grid -->
 </div>
 
-<!-- ── WATCHDOG ── -->
-<div class="section" id="sect-watchdog">
-  <div class="section-title">AT+GTDOG — Watchdog</div>
-  <div class="section-desc">Automatic reboot to recover from hangs.</div>
+<!-- ── BEHAVIOUR ── -->
+<div class="section" id="sect-behaviour">
+  <div class="section-title">AT+GTDOG / GTFKS / GTOWH — Watchdog, Keys &amp; Hours</div>
+  <div class="section-desc">Automatic reboot (AT+GTDOG), function key behaviour (AT+GTFKS), and working hours mode (AT+GTOWH).</div>
+  <div class="cards-grid">
   <div class="card">
+    <div class="card-title">Watchdog (AT+GTDOG)</div>
     <div class="fg three">
       <div class="f"><label>Mode</label>
         <select id="dog_mode">
@@ -699,13 +725,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f cb"><input type="checkbox" id="dog_report" checked><label for="dog_report">Send GPS report before reboot</label></div>
     </div>
   </div>
-</div>
-
-<!-- ── FUNCTION KEY ── -->
-<div class="section" id="sect-funckey">
-  <div class="section-title">AT+GTFKS — Function Keys</div>
-  <div class="section-desc">Behaviour of the physical power and function keys.</div>
   <div class="card">
+    <div class="card-title">Function Keys (AT+GTFKS)</div>
     <div class="fg three">
       <div class="f"><label>Power Key Mode</label>
         <select id="fks_pwr_mode">
@@ -740,13 +761,9 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f"><label>Long-press duration (seconds)</label><input id="fks_first_time" type="number" value="3" min="1" max="99"></div>
     </div>
   </div>
-</div>
-
-<!-- ── WORKING HOURS ── -->
-<div class="section" id="sect-workhours">
-  <div class="section-title">AT+GTOWH — Working Hours</div>
-  <div class="section-desc">Hide location data outside working hours.</div>
+  </div><!-- end cards-grid -->
   <div class="card">
+    <div class="card-title">Working Hours (AT+GTOWH)</div>
     <div class="fg two">
       <div class="f"><label>Mode</label>
         <select id="owh_mode">
@@ -781,10 +798,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   </div>
 </div>
 
-<!-- ── SMS & ALERTS ── -->
-<div class="section" id="sect-smsalerts">
-  <div class="section-title">AT+GTNTS / GTWLT / GTGLM — Comms &amp; Alerts</div>
-  <div class="section-desc">Network selection (AT+GTNTS), SMS whitelist (AT+GTWLT), and Google Maps SMS links (AT+GTGLM).</div>
+<!-- ── COMMS & OTA ── -->
+<div class="section" id="sect-comms">
+  <div class="section-title">AT+GTWLT / GTGLM / GTUPC — SMS, Alerts &amp; OTA</div>
+  <div class="section-desc">SMS whitelist (AT+GTWLT), Google Maps SMS links (AT+GTGLM), and OTA config download (AT+GTUPC).</div>
   <div class="cards-grid">
   <div class="card">
     <div class="card-title">SMS Whitelist (AT+GTWLT)</div>
@@ -819,14 +836,9 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     </div>
   </div>
   </div><!-- end cards-grid -->
-</div>
-
-<!-- ── OTA CONFIG ── -->
-<div class="section" id="sect-otacfg">
-  <div class="section-title">AT+GTUPC — OTA Config Download</div>
-  <div class="section-desc">Tells the device to periodically fetch a new config file over HTTP.</div>
-  <div class="note"><strong>URL:</strong> Set to <code>http://cfg.jdwilsh.com/</code> (trailing slash) and each device will automatically request <code>http://cfg.jdwilsh.com/&lt;IMEI&gt;.ini</code> — allowing per-device configs. Or specify a full path for a shared config.</div>
+  <div class="note" style="margin-top:16px"><strong>OTA URL tip:</strong> Set to <code>http://cfg.jdwilsh.com/</code> (trailing slash) and each device will automatically request <code>/&lt;IMEI&gt;.ini</code> for per-device configs.</div>
   <div class="card">
+    <div class="card-title">OTA Config Download (AT+GTUPC)</div>
     <div class="fg three">
       <div class="f cb"><input type="checkbox" id="upc_mode"><label for="upc_mode">Enable OTA config download</label></div>
       <div class="f"><label>Config File URL</label><input id="upc_url" value="http://cfg.jdwilsh.com/" placeholder="http://cfg.jdwilsh.com/"></div>
@@ -951,34 +963,48 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section active" id="sect-monitor">
   <div class="section-title">Tracker Activity</div>
   <div class="section-desc">Live view parsed from the nginx access log on cfg.jdwilsh.com.</div>
-  <div class="card" style="margin-bottom:20px">
-    <div class="card-title">Config Templates</div>
-    <div class="tpl-grid" id="template_cards">
-      <span style="color:var(--muted);font-size:13px;align-self:center">No templates saved yet.</span>
-    </div>
-    <hr class="div">
-    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
-      <div class="f" style="flex:1;min-width:160px;max-width:260px">
-        <label>Save current settings as template</label>
-        <input id="new_template_name" placeholder="e.g. Bag Tracker">
+
+  <!-- Stats row -->
+  <div id="monitor_summary" style="margin-bottom:16px"></div>
+
+  <div class="sect-col-grid" style="grid-template-columns:300px 1fr;align-items:start">
+
+    <!-- Left: templates -->
+    <div>
+      <div class="card">
+        <div class="card-title">Config Templates</div>
+        <div class="tpl-grid" id="template_cards">
+          <span style="color:var(--muted);font-size:13px;align-self:center">No templates saved yet.</span>
+        </div>
+        <hr class="div">
+        <div class="f" style="margin-bottom:8px">
+          <label>Save current settings as template</label>
+          <input id="new_template_name" placeholder="e.g. Bag Tracker">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-outline btn-sm" id="btn_save_template">Save Template</button>
+          <span id="template_msg" class="status-msg"></span>
+        </div>
       </div>
-      <button class="btn btn-outline" id="btn_save_template">Save Template</button>
-      <span id="template_msg" class="status-msg"></span>
     </div>
-  </div>
-  <div class="monitor-bar">
-    <button class="btn btn-primary" id="btn_refresh_monitor">Refresh Now</button>
-    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-      <input type="checkbox" id="auto_refresh" checked> Auto-refresh every 30s
-    </label>
-    <span style="font-size:12px;color:var(--muted)"><span class="ref-dot" id="ref_dot"></span><span id="ref_label">Loading…</span></span>
-  </div>
-  <div id="monitor_summary"></div>
-  <div class="card" style="padding:0;overflow:hidden">
-    <table class="tbl" id="monitor_table">
-      <thead><tr><th>Name / IMEI</th><th>Last Seen</th><th>Config File</th><th>Status</th><th>Last IP</th><th></th></tr></thead>
-      <tbody id="monitor_tbody"><tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr></tbody>
-    </table>
+
+    <!-- Right: tracker table -->
+    <div>
+      <div class="monitor-bar" style="margin-bottom:12px">
+        <button class="btn btn-primary btn-sm" id="btn_refresh_monitor">Refresh</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="auto_refresh" checked> Auto-refresh every 30s
+        </label>
+        <span style="font-size:12px;color:var(--muted);margin-left:auto"><span class="ref-dot" id="ref_dot"></span><span id="ref_label">Loading…</span></span>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:0">
+        <table class="tbl" id="monitor_table">
+          <thead><tr><th>Name / IMEI</th><th>Last Seen</th><th>Config File</th><th>Status</th><th>Last IP</th><th></th></tr></thead>
+          <tbody id="monitor_tbody"><tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -2135,13 +2161,13 @@ function renderMonitor(trackers) {
     else if (h < 50) nLate++;
     else nOverdue++;
   });
-  const summaryParts = [];
-  if (nActive)  summaryParts.push(`<span class="badge badge-active">${nActive} active</span>`);
-  if (nLate)    summaryParts.push(`<span class="badge badge-late">${nLate} late</span>`);
-  if (nOverdue) summaryParts.push(`<span class="badge badge-overdue">${nOverdue} overdue</span>`);
-  summaryParts.push(`<span class="badge badge-muted">${trackers.length} total</span>`);
   document.getElementById('monitor_summary').innerHTML =
-    `<div style="display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap">${summaryParts.join('')}</div>`;
+    `<div class="stat-row">
+      <div class="stat-card stat-total"><div class="stat-num">${trackers.length}</div><div class="stat-lbl">Total</div></div>
+      <div class="stat-card stat-active"><div class="stat-num">${nActive}</div><div class="stat-lbl">Active</div></div>
+      <div class="stat-card stat-late"><div class="stat-num">${nLate}</div><div class="stat-lbl">Late</div></div>
+      <div class="stat-card stat-overdue"><div class="stat-num">${nOverdue}</div><div class="stat-lbl">Overdue</div></div>
+    </div>`;
   tbody.innerHTML = '';
   const tbl = document.getElementById('monitor_table');
   sortTrackers(trackers).forEach(t => {
