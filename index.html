@@ -30,6 +30,8 @@ main{padding:24px 32px;min-width:0}
 .section-title{font-size:20px;font-weight:700;margin-bottom:4px}
 .section-desc{color:var(--muted);font-size:13px;margin-bottom:20px}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-bottom:16px}
+.cards-grid>.card{margin-bottom:0}
 .card-title{font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:14px}
 .fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
 .fg.two{grid-template-columns:1fr 1fr}
@@ -313,9 +315,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section" id="sect-globalcfg">
   <div class="section-title">AT+GTCFG — Device Config</div>
   <div class="section-desc">Core device settings: password, GPS mode, reporting mask, events, LEDs, odometer.</div>
+  <div class="cards-grid">
   <div class="card">
     <div class="card-title">Identity &amp; Password</div>
-    <div class="fg three">
+    <div class="fg">
       <div class="f"><label>Current Password (auth)</label><input id="cfg_password" value="gl320m" maxlength="20"><span class="hint">Used to authenticate all commands</span></div>
       <div class="f"><label>New Password (leave blank to keep same)</label><input id="cfg_new_pw" maxlength="20" placeholder="(unchanged)"></div>
       <div class="f"><label>Device Name</label><input id="cfg_device_name" value="gl320mg" maxlength="20"></div>
@@ -323,7 +326,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   </div>
   <div class="card">
     <div class="card-title">GPS Behaviour</div>
-    <div class="fg three">
+    <div class="fg">
       <div class="f"><label>GPS On Need</label>
         <select id="cfg_gps_need">
           <option value="0">0 – Always on</option>
@@ -335,9 +338,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f cb"><input type="checkbox" id="cfg_agps"><label for="cfg_agps">Enable AGPS (faster first fix)</label></div>
     </div>
   </div>
+  </div><!-- end cards-grid -->
   <div class="card">
     <div class="card-title">Reporting &amp; LEDs</div>
-    <div class="fg two">
+    <div class="fg three">
       <div class="f">
         <label>Report Item Mask — fields included in reports</label>
         <div class="cb-group">
@@ -378,9 +382,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f"><label>Info Report Interval (seconds)</label><input id="cfg_info_interval" type="number" value="300" min="30" max="86400"></div>
     </div>
   </div>
+  <div class="cards-grid">
   <div class="card">
     <div class="card-title">Battery &amp; Odometer</div>
-    <div class="fg three">
+    <div class="fg">
       <div class="f cb"><input type="checkbox" id="cfg_odo_enable"><label for="cfg_odo_enable">Enable odometer</label></div>
       <div class="f"><label>ODO Initial Mileage (km)</label><input id="cfg_odo_initial" type="number" value="0" min="0" step="0.1"></div>
       <div class="f cb"><input type="checkbox" id="cfg_bat_switch"><label for="cfg_bat_switch">Switch to internal battery on ext. loss</label></div>
@@ -390,27 +395,29 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   </div>
   <div class="card">
     <div class="card-title">Config Expiry</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f cb"><input type="checkbox" id="cfg_expiry_enable"><label for="cfg_expiry_enable">Enable expiry (stop all GPS after date)</label></div>
       <div class="f"><label>Expiry Date/Time (YYYYMMDDHHmmss)</label><input id="cfg_expiry_time" value="20491231235959" maxlength="14"></div>
     </div>
   </div>
+  </div><!-- end cards-grid -->
 </div>
 
 <!-- ── SIM & PIN ── -->
 <div class="section" id="sect-simpin">
   <div class="section-title">AT+GTSIM / GTPIN — SIM &amp; PIN</div>
   <div class="section-desc">SIM PIN auto-unlock (AT+GTPIN) and SIM card binding (AT+GTSIM).</div>
+  <div class="cards-grid">
   <div class="card">
     <div class="card-title">SIM PIN (AT+GTPIN)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f cb"><input type="checkbox" id="pin_auto"><label for="pin_auto">Auto-unlock SIM PIN on power-on</label></div>
       <div class="f"><label>SIM PIN Code</label><input id="pin_code" maxlength="8" placeholder="4-8 digits (leave blank to clear)"><span class="hint">Leave blank if SIM has no PIN</span></div>
     </div>
   </div>
   <div class="card">
     <div class="card-title">SIM Binding (AT+GTSIM)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f"><label>ICCID Mode</label>
         <select id="sim_mode">
           <option value="0" selected>0 – No binding</option>
@@ -422,6 +429,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f"><label>ICCID (20 digits, Mode 2 only)</label><input id="sim_iccid" maxlength="20" placeholder="89441234..."></div>
     </div>
   </div>
+  </div><!-- end cards-grid -->
 </div>
 
 <!-- ── FIXED REPORTING ── -->
@@ -449,23 +457,26 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f"><label>Report Window End (HHMM)</label><input id="fri_end" value="0000" maxlength="4"></div>
     </div>
   </div>
+  <div class="cards-grid">
   <div class="card">
     <div class="card-title">Intervals — Ignition OFF</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f"><label>GPS Fix Interval (seconds)</label><input id="fri_check_off" type="number" value="60" min="1" max="86400"><span class="hint">&gt;60s = GPS turns off between fixes</span></div>
       <div class="f"><label>Report Send Interval (seconds)</label><input id="fri_send_off" type="number" value="60" min="1" max="86400"></div>
     </div>
   </div>
   <div class="card">
     <div class="card-title">Intervals — Ignition ON</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f"><label>GPS Fix Interval (seconds)</label><input id="fri_check_on" type="number" value="60" min="1" max="86400"></div>
       <div class="f"><label>Report Send Interval (seconds)</label><input id="fri_send_on" type="number" value="60" min="1" max="86400"></div>
     </div>
   </div>
+  </div><!-- end cards-grid -->
+  <div class="cards-grid">
   <div class="card">
     <div class="card-title">Distance / Mileage Triggers</div>
-    <div class="fg three">
+    <div class="fg">
       <div class="f"><label>Distance threshold (metres)</label><input id="fri_distance" type="number" value="1000" min="5" max="65535"></div>
       <div class="f"><label>Mileage threshold (metres)</label><input id="fri_mileage" type="number" value="1000" min="5" max="65535"></div>
       <div class="f"><label>Corner angle (0 = off)</label><input id="fri_corner" type="number" value="0" min="0" max="180"><span class="hint">Degrees of heading change to trigger extra report</span></div>
@@ -485,6 +496,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f"><label>Max reports while stationary</label><input id="fri_move_num" type="number" value="5" min="1" max="5"></div>
     </div>
   </div>
+  </div><!-- end cards-grid -->
 </div>
 
 <!-- ── MOTION DETECTION ── -->
@@ -510,9 +522,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f"><label>Send interval at rest (seconds)</label><input id="nmd_send_rest" type="number" value="600" min="5" max="86400"></div>
     </div>
   </div>
+  <div class="cards-grid">
   <div class="card">
     <div class="card-title">GPS-Assisted Motion (AT+GTGAM)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f cb"><input type="checkbox" id="gam_mode"><label for="gam_mode">Enable GPS-assisted motion measurement</label></div>
       <div class="f cb"><input type="checkbox" id="gam_speed_mode" checked><label for="gam_speed_mode">Combine GPS speed with motion sensor</label></div>
       <div class="f"><label>Motion speed threshold (km/h)</label><input id="gam_motion_speed" type="number" value="25" min="0" max="50"></div>
@@ -535,6 +548,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f cb" style="padding-top:22px"><input type="checkbox" id="tma_dst"><label for="tma_dst">Daylight saving time</label></div>
     </div>
   </div>
+  </div><!-- end cards-grid -->
 </div>
 
 <!-- ── GEOFENCES ── -->
@@ -562,9 +576,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section" id="sect-alarms">
   <div class="section-title">AT+GTSPD / GTTEM — Speed &amp; Temperature Alarms</div>
   <div class="section-desc">Speed alarm (AT+GTSPD) and temperature alarm (AT+GTTEM).</div>
+  <div class="cards-grid">
   <div class="card">
     <div class="card-title">Speed Alarm (AT+GTSPD)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f"><label>Mode</label>
         <select id="spd_mode">
           <option value="0" selected>0 – Disabled</option>
@@ -582,7 +597,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   </div>
   <div class="card">
     <div class="card-title">Temperature Alarm (AT+GTTEM)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f"><label>Mode</label>
         <select id="tem_mode">
           <option value="0" selected>0 – Disabled</option>
@@ -598,15 +613,17 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f"><label>Repeat interval (seconds, 0=once)</label><input id="tem_interval" type="number" value="300" min="0" max="3600"></div>
     </div>
   </div>
+  </div><!-- end cards-grid -->
 </div>
 
 <!-- ── MOTION & HARSH ── -->
 <div class="section" id="sect-harsh">
   <div class="section-title">AT+GTMSA / GTHBM — Fall &amp; Harsh Events</div>
   <div class="section-desc">Fall detection (AT+GTMSA) and harsh braking/acceleration monitoring (AT+GTHBM).</div>
+  <div class="cards-grid">
   <div class="card">
     <div class="card-title">Fall Detection / Motion Sensor Alarm (AT+GTMSA)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f cb"><input type="checkbox" id="msa_mode"><label for="msa_mode">Enable fall detection alarm</label></div>
       <div class="f cb"><input type="checkbox" id="msa_send_last" checked><label for="msa_send_last">Send last position before alarm report</label></div>
       <div class="f"><label>Sensitivity (1–10, lower=more sensitive)</label><input id="msa_sensitivity" type="number" value="5" min="1" max="10"></div>
@@ -616,7 +633,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="card">
     <div class="card-title">Harsh Behaviour Monitoring (AT+GTHBM)</div>
     <div class="note"><strong>Note:</strong> Requires GPS On Need = 2 (set in Global Config).</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f cb"><input type="checkbox" id="hbm_mode"><label for="hbm_mode">Enable harsh braking/acceleration monitoring</label></div>
       <div class="f"><label>Measurement window (3–5 seconds)</label><input id="hbm_dur" type="number" value="3" min="3" max="5"></div>
     </div>
@@ -632,6 +649,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f"><label>Low speed accel △V (km/h, 0=off)</label><input id="hbm_low_accel" type="number" value="0" min="0" max="100"></div>
     </div>
   </div>
+  </div><!-- end cards-grid -->
 </div>
 
 <!-- ── WATCHDOG ── -->
@@ -639,7 +657,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="section-title">AT+GTDOG — Watchdog</div>
   <div class="section-desc">Automatic reboot to recover from hangs.</div>
   <div class="card">
-    <div class="fg two">
+    <div class="fg three">
       <div class="f"><label>Mode</label>
         <select id="dog_mode">
           <option value="0" selected>0 – Disabled</option>
@@ -666,7 +684,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="section-title">AT+GTFKS — Function Keys</div>
   <div class="section-desc">Behaviour of the physical power and function keys.</div>
   <div class="card">
-    <div class="fg two">
+    <div class="fg three">
       <div class="f"><label>Power Key Mode</label>
         <select id="fks_pwr_mode">
           <option value="0">0 – Cannot power off</option>
@@ -745,9 +763,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section" id="sect-smsalerts">
   <div class="section-title">AT+GTNTS / GTWLT / GTGLM — Comms &amp; Alerts</div>
   <div class="section-desc">Network selection (AT+GTNTS), SMS whitelist (AT+GTWLT), and Google Maps SMS links (AT+GTGLM).</div>
+  <div class="cards-grid">
   <div class="card">
     <div class="card-title">SMS Whitelist (AT+GTWLT)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f"><label>Number Filter</label>
         <select id="wlt_filter">
           <option value="0">0 – Never reply with Google Maps SMS</option>
@@ -760,7 +779,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   </div>
   <div class="card">
     <div class="card-title">Google Maps SMS (AT+GTGLM)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f"><label>Google Mode</label>
         <select id="glm_google_mode">
           <option value="0" selected>0 – Disabled</option>
@@ -777,6 +796,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f"><label>Direct number 3</label><input id="glm_num3"></div>
     </div>
   </div>
+  </div><!-- end cards-grid -->
 </div>
 
 <!-- ── OTA CONFIG ── -->
@@ -785,7 +805,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="section-desc">Tells the device to periodically fetch a new config file over HTTP.</div>
   <div class="note"><strong>URL:</strong> Set to <code>http://cfg.jdwilsh.com/</code> (trailing slash) and each device will automatically request <code>http://cfg.jdwilsh.com/&lt;IMEI&gt;.ini</code> — allowing per-device configs. Or specify a full path for a shared config.</div>
   <div class="card">
-    <div class="fg two">
+    <div class="fg three">
       <div class="f cb"><input type="checkbox" id="upc_mode"><label for="upc_mode">Enable OTA config download</label></div>
       <div class="f"><label>Config File URL</label><input id="upc_url" value="http://cfg.jdwilsh.com/" placeholder="http://cfg.jdwilsh.com/"></div>
       <div class="f"><label>Check interval (hours, 0=once only)</label><input id="upc_interval" type="number" value="0" min="0" max="8760"></div>
@@ -800,9 +820,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section" id="sect-advanced">
   <div class="section-title">AT+GTJDC / GTPDS / GTDIS — Advanced Settings</div>
   <div class="section-desc">Jamming detection (AT+GTJDC), power-down state preservation (AT+GTPDS), digital input (AT+GTDIS), and other settings.</div>
+  <div class="cards-grid">
   <div class="card">
     <div class="card-title">Jamming Detection (AT+GTJDC)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f"><label>Mode</label>
         <select id="jdc_mode">
           <option value="0" selected>0 – Disabled</option>
@@ -823,7 +844,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   </div>
   <div class="card">
     <div class="card-title">Network Selection (AT+GTNTS)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f cb"><input type="checkbox" id="nts_enable"><label for="nts_enable">Enable network selection filtering</label></div>
     </div>
     <hr class="div">
@@ -836,9 +857,11 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f"><label>Blocked operator 3</label><input id="nts_block3" maxlength="10"></div>
     </div>
   </div>
+  </div><!-- end cards-grid -->
+  <div class="cards-grid">
   <div class="card">
     <div class="card-title">Serial Port (AT+GTURT)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f"><label>Baud Rate</label>
         <select id="urt_baud">
           <option value="5">9600</option>
@@ -849,7 +872,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   </div>
   <div class="card">
     <div class="card-title">Preserve Device State (AT+GTPDS)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f"><label>Mode</label>
         <select id="pds_mode">
           <option value="0">0 – Disabled</option>
@@ -871,15 +894,17 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       </div>
     </div>
   </div>
+  </div><!-- end cards-grid -->
+  <div class="cards-grid">
   <div class="card">
     <div class="card-title">Report Control (AT+GTRPC)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f cb"><input type="checkbox" id="rpc_bat" checked><label for="rpc_bat">Include battery percentage in position reports</label></div>
     </div>
   </div>
   <div class="card">
     <div class="card-title">Digital Input (AT+GTDIS)</div>
-    <div class="fg three">
+    <div class="fg">
       <div class="f"><label>Mode</label>
         <select id="dis_mode">
           <option value="0" selected>0 – Disabled</option>
@@ -897,6 +922,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       </div>
     </div>
   </div>
+  </div><!-- end cards-grid -->
 </div>
 
 <!-- ── MONITOR ── -->
