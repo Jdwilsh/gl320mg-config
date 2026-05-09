@@ -151,6 +151,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 .badge-active{background:#dcfce7;color:#15803d}
 .badge-late{background:#fef9c3;color:#854d0e}
 .badge-overdue{background:#fee2e2;color:#b91c1c}
+/* Disabled dependent fields */
+.field-disabled{opacity:.35;pointer-events:none;user-select:none}
 /* Modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9000;padding:16px}
 .modal-overlay.hidden{display:none}
@@ -2050,6 +2052,7 @@ async function applyTemplate(name) {
     const state = await res.json();
     Object.entries(state).forEach(([id, val]) => setV(id, val));
     saveFormState();
+    applyConditionals();
     Object.keys(sectionBuilders).forEach(renderCmdPreview);
     if (typeof renderGeoMap === 'function') renderGeoMap();
     showMsg('template_msg', `"${name}" loaded — edit settings and deploy below`, false);
@@ -2093,9 +2096,15 @@ let monitorTimer = null;
 function relTime(iso) {
   const s = Math.floor((Date.now() - new Date(iso)) / 1000);
   if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s/60)}m ago`;
-  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
-  return `${Math.floor(s/86400)}d ago`;
+  const sec = s % 60;
+  const m = Math.floor(s / 60);
+  if (s < 3600) return `${m}m ${sec}s ago`;
+  const h = Math.floor(s / 3600);
+  const min = Math.floor((s % 3600) / 60);
+  if (s < 86400) return `${h}h ${min}m ${sec}s ago`;
+  const d = Math.floor(s / 86400);
+  const hrs = Math.floor((s % 86400) / 3600);
+  return `${d}d ${hrs}h ${min}m ago`;
 }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function statusBadge(c) {
@@ -2104,11 +2113,16 @@ function statusBadge(c) {
   if (c>=400)  return `<span class="badge badge-err">${c}</span>`;
   return `<span class="badge badge-muted">${c}</span>`;
 }
+function otaInterval() {
+  const v = parseInt(document.getElementById('upc_interval')?.value);
+  return (v && v > 0) ? v : 24;
+}
 function healthBadge(lastSeen) {
   if (!lastSeen) return '';
+  const interval = otaInterval();
   const h = (Date.now() - new Date(lastSeen).getTime()) / 3600000;
-  if (h < 26)  return '<span class="badge badge-active">Active</span>';
-  if (h < 50)  return '<span class="badge badge-late">Late</span>';
+  if (h < interval + 2)       return '<span class="badge badge-active">Active</span>';
+  if (h < interval * 2 + 2)   return '<span class="badge badge-late">Late</span>';
   return `<span class="badge badge-overdue">Overdue ${Math.floor(h/24)}d</span>`;
 }
 
@@ -2151,11 +2165,12 @@ function renderMonitor(trackers) {
   }
   // Health summary counts
   let nActive = 0, nLate = 0, nOverdue = 0;
+  const interval = otaInterval();
   trackers.forEach(t => {
     if (!t.lastSeen) return;
     const h = (Date.now() - new Date(t.lastSeen).getTime()) / 3600000;
-    if (h < 26) nActive++;
-    else if (h < 50) nLate++;
+    if (h < interval + 2) nActive++;
+    else if (h < interval * 2 + 2) nLate++;
     else nOverdue++;
   });
   document.getElementById('monitor_summary').innerHTML =
@@ -2315,6 +2330,46 @@ document.getElementById('btn_save_device').addEventListener('click', async () =>
 
 // loadDevices() is called after auth check completes
 
+// ── Conditional field enabling/disabling ─────────────────────────────────────
+const conditionals = [
+  // select: enabled when value !== '0'
+  { ctrl: 'fri_mode',        type: 'select',   deps: ['fri_discard','fri_begin','fri_end','fri_check_off','fri_send_off','fri_check_on','fri_send_on','fri_distance','fri_mileage','fri_corner','fri_move_mode','fri_move_speed','fri_move_dist','fri_move_num'] },
+  { ctrl: 'fri_move_mode',   type: 'select',   deps: ['fri_move_speed','fri_move_dist','fri_move_num'] },
+  { ctrl: 'spd_mode',        type: 'select',   deps: ['spd_min','spd_max','spd_valid','spd_interval'] },
+  { ctrl: 'tem_mode',        type: 'select',   deps: ['tem_min','tem_max','tem_dur','tem_interval'] },
+  { ctrl: 'dog_mode',        type: 'select',   deps: ['dog_interval','dog_unit','dog_time','dog_ign_freq','dog_report'] },
+  { ctrl: 'owh_mode',        type: 'select',   deps: ['owh_rf_sleep','owh_mon','owh_tue','owh_wed','owh_thu','owh_fri','owh_sat','owh_sun','owh_start1','owh_end1','owh_start2','owh_end2'] },
+  { ctrl: 'jdc_mode',        type: 'select',   deps: ['jdc_level','jdc_enter','jdc_quit'] },
+  { ctrl: 'pds_mode',        type: 'select',   deps: ['pds_geo','pds_reset','pds_lastpos','pds_devstate','pds_extpwr','pds_charging','pds_digin'] },
+  { ctrl: 'dis_mode',        type: 'select',   deps: ['dis_debounce','dis_report_mode'] },
+  { ctrl: 'glm_google_mode', type: 'select',   deps: ['glm_num1','glm_num2','glm_num3'] },
+  // checkbox: enabled when checked
+  { ctrl: 'msa_mode',   type: 'checkbox', deps: ['msa_send_last','msa_sensitivity','msa_timeout'] },
+  { ctrl: 'hbm_mode',   type: 'checkbox', deps: ['hbm_dur','hbm_high_speed','hbm_high_brake','hbm_high_accel','hbm_med_speed','hbm_med_brake','hbm_med_accel','hbm_low_brake','hbm_low_accel'] },
+  { ctrl: 'upc_mode',   type: 'checkbox', deps: ['upc_url','upc_interval','upc_max_retries','upc_timeout','upc_report'] },
+  { ctrl: 'nts_enable', type: 'checkbox', deps: ['nts_allow1','nts_allow2','nts_allow3','nts_block1','nts_block2','nts_block3'] },
+  { ctrl: 'gam_mode',   type: 'checkbox', deps: ['gam_speed_mode','gam_motion_speed','gam_motion_time','gam_motionless_time','gam_gps_timeout'] },
+];
+
+function setDepEnabled(ids, enabled) {
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = !enabled;
+    const wrapper = el.closest('.f') || el.parentElement;
+    if (wrapper) wrapper.classList.toggle('field-disabled', !enabled);
+  });
+}
+
+function applyConditionals() {
+  conditionals.forEach(rule => {
+    const ctrl = document.getElementById(rule.ctrl);
+    if (!ctrl) return;
+    const enabled = rule.type === 'checkbox' ? ctrl.checked : ctrl.value !== '0';
+    setDepEnabled(rule.deps, enabled);
+  });
+}
+
 // ── Form persistence (localStorage) ──────────────────────────────────────
 const FORM_KEY = 'tracker_form_state';
 
@@ -2335,12 +2390,13 @@ function loadFormState() {
   } catch {}
 }
 
-// Save on any form change
-document.querySelector('main').addEventListener('input',  saveFormState);
-document.querySelector('main').addEventListener('change', saveFormState);
+// Save on any form change and re-evaluate conditionals
+document.querySelector('main').addEventListener('input',  () => { saveFormState(); applyConditionals(); });
+document.querySelector('main').addEventListener('change', () => { saveFormState(); applyConditionals(); });
 
 // Restore on load (APN/GEO tables are already built by their IIFEs at this point)
 loadFormState();
+applyConditionals();
 
 // ── Live command preview ───────────────────────────────────────────────────
 const sectionBuilders = {
