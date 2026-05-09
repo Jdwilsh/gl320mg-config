@@ -135,7 +135,6 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 .badge-change{background:#dbeafe;color:#1d4ed8}
 .badge-first{background:#f3e8ff;color:#7c3aed}
 /* Geofence map */
-#geo_map{height:420px}
 .geo-pin-active{background:var(--accent-bg)!important;border-color:var(--accent)!important;color:var(--accent)!important}
 .map-hint{font-size:12px;color:var(--muted);padding:6px 2px}
 /* Templates */
@@ -207,9 +206,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section" id="sect-connectivity">
   <div class="section-title">AT+GTBSI / GTSRI — Connectivity</div>
   <div class="section-desc">Network mode and LTE APN (AT+GTBSI), reporting server settings (AT+GTSRI).</div>
-  <div class="card">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+  <div class="card" style="margin-bottom:0">
     <div class="card-title">Network &amp; APN (AT+GTBSI)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f"><label>LTE APN</label><input id="bsi_lte_apn" placeholder="e.g. internet"></div>
       <div class="f"><label>APN Username</label><input id="bsi_lte_user"></div>
       <div class="f"><label>APN Password</label><input id="bsi_lte_pw" type="password"></div>
@@ -241,9 +241,9 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       </div>
     </div>
   </div>
-  <div class="card">
+  <div class="card" style="margin-bottom:0">
     <div class="card-title">Reporting Server (AT+GTSRI)</div>
-    <div class="fg two">
+    <div class="fg">
       <div class="f"><label>Report Mode</label>
         <select id="sri_report_mode">
           <option value="0">0 – Stop (disabled)</option>
@@ -281,6 +281,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       </div>
     </div>
   </div>
+  </div><!-- end connectivity grid -->
 </div>
 
 <!-- ── APN LIST ── -->
@@ -541,16 +542,20 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="section-title">AT+GTGEO — Geofences</div>
   <div class="section-desc">Up to 20 circular geo-fence zones. Leave Mode=0 to disable a slot.</div>
   <div class="note"><strong>Mode:</strong> 0=Disabled &nbsp; 1=Alert on Enter &nbsp; 2=Alert on Exit &nbsp; 3=Enter &amp; Exit</div>
-  <div class="card" style="padding:0;overflow:hidden">
-    <table class="tbl" id="geo_table">
-      <thead><tr><th style="width:40px">#</th><th style="width:110px">Mode</th><th>Latitude</th><th>Longitude</th><th>Radius (m)</th><th>Check Interval (s)</th><th style="width:60px"></th></tr></thead>
-      <tbody id="geo_tbody"></tbody>
-    </table>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:0">
+      <table class="tbl" id="geo_table">
+        <thead><tr><th style="width:32px">#</th><th style="width:100px">Mode</th><th>Latitude</th><th>Longitude</th><th>Radius (m)</th><th>Check (s)</th><th style="width:50px"></th></tr></thead>
+        <tbody id="geo_tbody"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:0">
+        <div id="geo_map" style="height:520px"></div>
+      </div>
+      <p class="map-hint" id="map_hint" style="margin:0">Click a <strong>Pin</strong> button in the table to select a zone, then click the map to place its centre.</p>
+    </div>
   </div>
-  <div class="card" style="padding:0;overflow:hidden;margin-top:0;border-top:none;border-radius:0 0 var(--radius) var(--radius)">
-    <div id="geo_map"></div>
-  </div>
-  <p class="map-hint" id="map_hint">Click a <strong>Pin</strong> button in the table to select a zone, then click the map to place its centre.</p>
 </div>
 
 <!-- ── SPEED & TEMPERATURE ── -->
@@ -954,62 +959,61 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section" id="sect-output">
   <div class="section-title">Generate &amp; Save</div>
   <div class="section-desc">Build the config file from your current settings, then save or deploy it.</div>
-  <div style="display:grid;grid-template-columns:1fr 270px;gap:16px;align-items:stretch">
+  <div style="display:grid;grid-template-columns:260px 1fr 280px;gap:16px;align-items:start">
 
-    <!-- LEFT: action bar + textarea -->
-    <div style="display:flex;flex-direction:column">
-      <div class="action-bar" style="margin-bottom:10px;flex-shrink:0">
+    <!-- LEFT: file + load -->
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">File</div>
+      <div class="f" style="margin-bottom:10px">
+        <label>Filename on server</label>
+        <input id="cfg_filename" value="1.cfg" placeholder="1.cfg">
+        <span class="hint">Served at cfg.jdwilsh.com/&lt;filename&gt;</span>
+      </div>
+      <div class="f" style="margin-bottom:12px">
+        <label>Or use device IMEI</label>
+        <div style="display:flex;gap:8px">
+          <select id="cfg_device_select" style="flex:1"><option value="">— select device —</option></select>
+          <button class="btn btn-outline btn-sm" id="btn_use_device" style="white-space:nowrap;align-self:flex-end">Use</button>
+        </div>
+      </div>
+      <hr class="div">
+      <div class="card-title" style="margin-bottom:8px">Load Config</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" style="flex:1" id="btn_load_server">From Server</button>
+        <button class="btn btn-outline btn-sm" style="flex:1" id="btn_load_file">From File</button>
+        <input type="file" id="file_import" accept=".cfg,.ini,.GL320M,.txt" style="display:none">
+      </div>
+      <div style="margin-top:6px"><span id="load_msg" class="status-msg"></span></div>
+    </div>
+
+    <!-- MIDDLE: action bar + preview -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="action-bar" style="margin-bottom:0">
         <button class="btn btn-primary" id="btn_generate">Generate</button>
         <button class="btn btn-outline" id="btn_save_server">Save to Server</button>
         <button class="btn btn-outline" id="btn_download">Download</button>
         <button class="btn btn-outline" id="btn_copy">Copy</button>
         <span id="save_msg" class="status-msg"></span>
       </div>
-      <textarea class="output" id="config_output" readonly placeholder="Click Generate to build the config file…" style="flex:1;min-height:360px;resize:none;margin-bottom:0"></textarea>
+      <textarea class="output" id="config_output" readonly placeholder="Click Generate to build the config file…" style="height:520px;resize:vertical;margin-bottom:0"></textarea>
     </div>
 
-    <!-- RIGHT: file settings + deploy -->
-    <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
-      <div class="card" style="margin-bottom:0;flex-shrink:0">
-        <div class="card-title">File</div>
-        <div class="f" style="margin-bottom:10px">
-          <label>Filename on server</label>
-          <input id="cfg_filename" value="1.cfg" placeholder="1.cfg">
-          <span class="hint">Served at cfg.jdwilsh.com/&lt;filename&gt;</span>
-        </div>
-        <div class="f" style="margin-bottom:12px">
-          <label>Or use device IMEI</label>
-          <div style="display:flex;gap:8px">
-            <select id="cfg_device_select" style="flex:1"><option value="">— select device —</option></select>
-            <button class="btn btn-outline btn-sm" id="btn_use_device" style="white-space:nowrap;align-self:flex-end">Use</button>
-          </div>
-        </div>
-        <hr class="div">
-        <div class="card-title" style="margin-bottom:8px">Load Config</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-outline btn-sm" style="flex:1" id="btn_load_server">From Server</button>
-          <button class="btn btn-outline btn-sm" style="flex:1" id="btn_load_file">From File</button>
-          <input type="file" id="file_import" accept=".cfg,.ini,.GL320M,.txt" style="display:none">
-        </div>
-        <div style="margin-top:6px"><span id="load_msg" class="status-msg"></span></div>
+    <!-- RIGHT: deploy -->
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">Deploy to Devices</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Only changed commands are sent. Devices must be registered first.</p>
+      <div id="deploy_device_list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;max-height:340px;overflow-y:auto">
+        <span style="color:var(--muted);font-size:13px">No devices registered.</span>
       </div>
-
-      <div class="card" style="margin-bottom:0;flex:1;display:flex;flex-direction:column">
-        <div class="card-title">Deploy to Devices</div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Only changed commands are sent. Devices must be registered first.</p>
-        <div id="deploy_device_list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;overflow-y:auto">
-          <span style="color:var(--muted);font-size:13px">No devices registered.</span>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" id="btn_deploy_all">All</button>
-          <button class="btn btn-outline btn-sm" id="btn_deploy_none">None</button>
-          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
-            <input type="checkbox" id="deploy_force_full"> Force full
-          </label>
-        </div>
-        <button class="btn btn-primary" id="btn_deploy_selected" style="width:100%">Deploy to Selected</button>
-        <div style="margin-top:8px"><span id="deploy_msg" class="status-msg"></span></div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" id="btn_deploy_all">All</button>
+        <button class="btn btn-outline btn-sm" id="btn_deploy_none">None</button>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
+          <input type="checkbox" id="deploy_force_full"> Force full
+        </label>
       </div>
+      <button class="btn btn-primary" id="btn_deploy_selected" style="width:100%">Deploy to Selected</button>
+      <div style="margin-top:8px"><span id="deploy_msg" class="status-msg"></span></div>
     </div>
 
   </div>
