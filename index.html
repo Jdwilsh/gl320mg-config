@@ -149,7 +149,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <a href="#" data-section="simpin"><span class="nav-cmd">AT+GTSIM / GTPIN</span><span class="nav-lbl">SIM &amp; PIN</span></a>
   <div class="nav-section">Reporting</div>
   <a href="#" data-section="reporting"><span class="nav-cmd">AT+GTFRI</span><span class="nav-lbl">Fixed Reports</span></a>
-  <a href="#" data-section="motion"><span class="nav-cmd">AT+GTNMD / GTGAM</span><span class="nav-lbl">Motion Detection</span></a>
+  <a href="#" data-section="motion"><span class="nav-cmd">AT+GTNMD / GTGAM / GTTMA</span><span class="nav-lbl">Motion Detection</span></a>
   <a href="#" data-section="geofences"><span class="nav-cmd">AT+GTGEO</span><span class="nav-lbl">Geofences</span></a>
   <div class="nav-section">Alarms</div>
   <a href="#" data-section="alarms"><span class="nav-cmd">AT+GTSPD / GTTEM</span><span class="nav-lbl">Speed &amp; Temperature</span></a>
@@ -162,7 +162,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <a href="#" data-section="smsalerts"><span class="nav-cmd">AT+GTNTS / GTWLT / GTGLM</span><span class="nav-lbl">SMS &amp; Alerts</span></a>
   <div class="nav-section">Advanced</div>
   <a href="#" data-section="otacfg"><span class="nav-cmd">AT+GTUPC</span><span class="nav-lbl">OTA Config</span></a>
-  <a href="#" data-section="advanced"><span class="nav-cmd">AT+GTJDC / GTPDS / Other</span><span class="nav-lbl">Other Settings</span></a>
+  <a href="#" data-section="advanced"><span class="nav-cmd">AT+GTJDC / GTPDS / GTDIS</span><span class="nav-lbl">Other Settings</span></a>
   <div class="nav-section">Output</div>
   <a href="#" data-section="output"><span class="nav-lbl">Generate &amp; Save</span></a>
 </nav>
@@ -453,8 +453,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── MOTION DETECTION ── -->
 <div class="section" id="sect-motion">
-  <div class="section-title">AT+GTNMD / GTGAM — Motion Detection</div>
-  <div class="section-desc">Non-movement detection (AT+GTNMD) and GPS-assisted motion measurement (AT+GTGAM).</div>
+  <div class="section-title">AT+GTNMD / GTGAM / GTTMA — Motion Detection</div>
+  <div class="section-desc">Non-movement detection (AT+GTNMD), GPS-assisted motion measurement (AT+GTGAM), and local time offset (AT+GTTMA).</div>
   <div class="card">
     <div class="card-title">Non-Movement Detection (AT+GTNMD)</div>
     <div class="fg two" style="margin-bottom:14px">
@@ -483,6 +483,20 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f"><label>Motion cumulative time (seconds)</label><input id="gam_motion_time" type="number" value="10" min="10" max="100"></div>
       <div class="f"><label>Motionless cumulative time (seconds)</label><input id="gam_motionless_time" type="number" value="60" min="10" max="250"></div>
       <div class="f"><label>GPS fix failure timeout (seconds)</label><input id="gam_gps_timeout" type="number" value="60" min="5" max="1800"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Local Time Offset (AT+GTTMA)</div>
+    <div class="fg four">
+      <div class="f"><label>Sign</label>
+        <select id="tma_sign">
+          <option value="+" selected>+ (ahead of UTC)</option>
+          <option value="-">- (behind UTC)</option>
+        </select>
+      </div>
+      <div class="f"><label>Hour offset (0–12)</label><input id="tma_hour" type="number" value="0" min="0" max="12"></div>
+      <div class="f"><label>Minute offset (0–59)</label><input id="tma_min" type="number" value="0" min="0" max="59"></div>
+      <div class="f cb" style="padding-top:22px"><input type="checkbox" id="tma_dst"><label for="tma_dst">Daylight saving time</label></div>
     </div>
   </div>
 </div>
@@ -740,8 +754,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── ADVANCED / OTHER ── -->
 <div class="section" id="sect-advanced">
-  <div class="section-title">AT+GTJDC / GTPDS / Other — Advanced Settings</div>
-  <div class="section-desc">Jamming detection (AT+GTJDC), power-down state preservation (AT+GTPDS), and other settings.</div>
+  <div class="section-title">AT+GTJDC / GTPDS / GTDIS — Advanced Settings</div>
+  <div class="section-desc">Jamming detection (AT+GTJDC), power-down state preservation (AT+GTPDS), digital input (AT+GTDIS), and other settings.</div>
   <div class="card">
     <div class="card-title">Jamming Detection (AT+GTJDC)</div>
     <div class="fg two">
@@ -817,6 +831,26 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     <div class="card-title">Report Control (AT+GTRPC)</div>
     <div class="fg two">
       <div class="f cb"><input type="checkbox" id="rpc_bat" checked><label for="rpc_bat">Include battery percentage in position reports</label></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Digital Input (AT+GTDIS)</div>
+    <div class="fg three">
+      <div class="f"><label>Mode</label>
+        <select id="dis_mode">
+          <option value="0" selected>0 – Disabled</option>
+          <option value="1">1 – Report +RESP:GTDIS on state change</option>
+          <option value="2">2 – High=sleep, Low=wake</option>
+          <option value="3">3 – Low triggers SOS event</option>
+        </select>
+      </div>
+      <div class="f"><label>Debounce time (×10 ms, 0–20)</label><input id="dis_debounce" type="number" value="5" min="0" max="20"><span class="hint">e.g. 5 = 50 ms</span></div>
+      <div class="f"><label>Report Mode</label>
+        <select id="dis_report_mode">
+          <option value="1">1 – Last fixed position</option>
+          <option value="2" selected>2 – Current position</option>
+        </select>
+      </div>
     </div>
   </div>
 </div>
@@ -1279,6 +1313,17 @@ function buildGTRPC(p) {
   return `AT+GTRPC=${p},${chk('rpc_bat')},,,,,,${SN}$`;
 }
 
+function buildGTTMA(p) {
+  const h = String(parseInt(v('tma_hour')) || 0).padStart(2, '0');
+  const m = String(parseInt(v('tma_min'))  || 0).padStart(2, '0');
+  const dst = document.getElementById('tma_dst').checked ? '1' : '0';
+  return `AT+GTTMA=${p},${v('tma_sign') || '+'},${h},${m},${dst},,,,,,${SN}$`;
+}
+
+function buildGTDIS(p) {
+  return `AT+GTDIS=${p},1,${v('dis_mode')},${v('dis_debounce')},${v('dis_report_mode')},,,,,${SN}$`;
+}
+
 // ── Generate full config ──────────────────────────────────────────────────────
 function generate() {
   const p = pw();
@@ -1289,7 +1334,7 @@ function generate() {
     buildGTCFG(p),
     buildGTPIN(p),
     buildGTDOG(p),
-    `AT+GTTMA=${p},+,0,0,0,,,,,,${SN}$`,
+    buildGTTMA(p),
     buildGTNMD(p),
     buildGTFKS(p),
     buildGTNTS(p),
@@ -1305,7 +1350,7 @@ function generate() {
     buildGTTEM(p),
     buildGTMSA(p),
     buildGTHBM(p),
-    `AT+GTDIS=${p},1,0,5,2,,,,,${SN}$`,
+    buildGTDIS(p),
     `AT+GTDAT=${p},0,,,0,,,,${SN}$`,
     buildGTWLT(p),
     buildGTGLM(p),
@@ -1551,6 +1596,15 @@ function populateFromConfig(text) {
     setV('gam_motionless_time', p[5]); setV('gam_gps_timeout', p[6]);
   }
   if (cmds.GTRPC) { const p = cmds.GTRPC[0]; setV('rpc_bat', p[1]); }
+  if (cmds.GTTMA) {
+    const p = cmds.GTTMA[0];
+    setV('tma_sign', p[1]); setV('tma_hour', parseInt(p[2]) || 0); setV('tma_min', parseInt(p[3]) || 0);
+    document.getElementById('tma_dst').checked = (p[4] === '1');
+  }
+  if (cmds.GTDIS) {
+    const p = cmds.GTDIS[0];
+    setV('dis_mode', p[2]); setV('dis_debounce', p[3]); setV('dis_report_mode', p[4]);
+  }
 }
 
 // ── Output buttons ────────────────────────────────────────────────────────────
@@ -1906,7 +1960,7 @@ const sectionBuilders = {
   globalcfg:    p => [buildGTCFG(p)],
   simpin:       p => [buildGTPIN(p), buildGTSIM(p)],
   reporting:    p => [buildGTFRI(p)],
-  motion:       p => [`AT+GTTMA=${p},+,0,0,0,,,,,,FFFF$`, buildGTNMD(p), buildGTGAM(p)],
+  motion:       p => [buildGTTMA(p), buildGTNMD(p), buildGTGAM(p)],
   geofences:    p => buildGTGEOLines(p).split('\n').filter(line => {
                        if (!line) return false;
                        const m = line.split(',')[2]; return m && m !== '0';
@@ -1918,7 +1972,7 @@ const sectionBuilders = {
   workhours:    p => [buildGTOWH(p)],
   smsalerts:    p => [buildGTWLT(p), buildGTGLM(p)],
   otacfg:       p => [buildGTUPC(p)],
-  advanced:     p => [buildGTJDC(p), buildGTNTS(p), buildGTURT(p), buildGTPDS(p), buildGTRPC(p)],
+  advanced:     p => [buildGTJDC(p), buildGTNTS(p), buildGTURT(p), buildGTPDS(p), buildGTRPC(p), buildGTDIS(p)],
 };
 
 function renderCmdPreview(sectionId) {
