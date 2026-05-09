@@ -143,7 +143,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <a href="#" data-section="devices"><span class="nav-lbl">Device Names</span></a>
   <div class="nav-section">Network</div>
   <a href="#" data-section="connectivity"><span class="nav-cmd">AT+GTBSI / GTSRI</span><span class="nav-lbl">Connectivity</span></a>
-  <a href="#" data-section="apnlist"><span class="nav-cmd">AT+GTAPN</span><span class="nav-lbl">APN List</span></a>
+  <a href="#" data-section="apnlist"><span class="nav-cmd">AT+GTAPN / GTAAC</span><span class="nav-lbl">APN List</span></a>
   <div class="nav-section">Device</div>
   <a href="#" data-section="globalcfg"><span class="nav-cmd">AT+GTCFG</span><span class="nav-lbl">Device Config</span></a>
   <a href="#" data-section="simpin"><span class="nav-cmd">AT+GTSIM / GTPIN</span><span class="nav-lbl">SIM &amp; PIN</span></a>
@@ -153,13 +153,13 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <a href="#" data-section="geofences"><span class="nav-cmd">AT+GTGEO</span><span class="nav-lbl">Geofences</span></a>
   <div class="nav-section">Alarms</div>
   <a href="#" data-section="alarms"><span class="nav-cmd">AT+GTSPD / GTTEM</span><span class="nav-lbl">Speed &amp; Temperature</span></a>
-  <a href="#" data-section="harsh"><span class="nav-cmd">AT+GTMSA / GTHBM</span><span class="nav-lbl">Fall &amp; Harsh Events</span></a>
+  <a href="#" data-section="harsh"><span class="nav-cmd">AT+GTMSA / GTHBM</span><span class="nav-lbl">Harsh Events</span></a>
   <div class="nav-section">Behaviour</div>
   <a href="#" data-section="watchdog"><span class="nav-cmd">AT+GTDOG</span><span class="nav-lbl">Watchdog</span></a>
   <a href="#" data-section="funckey"><span class="nav-cmd">AT+GTFKS</span><span class="nav-lbl">Function Keys</span></a>
   <a href="#" data-section="workhours"><span class="nav-cmd">AT+GTOWH</span><span class="nav-lbl">Working Hours</span></a>
   <div class="nav-section">Comms</div>
-  <a href="#" data-section="smsalerts"><span class="nav-cmd">AT+GTNTS / GTWLT / GTGLM</span><span class="nav-lbl">SMS &amp; Alerts</span></a>
+  <a href="#" data-section="smsalerts"><span class="nav-cmd">AT+GTWLT / GTGLM / GTNTS</span><span class="nav-lbl">SMS &amp; Alerts</span></a>
   <div class="nav-section">Advanced</div>
   <a href="#" data-section="otacfg"><span class="nav-cmd">AT+GTUPC</span><span class="nav-lbl">OTA Config</span></a>
   <a href="#" data-section="advanced"><span class="nav-cmd">AT+GTJDC / GTPDS / GTDIS</span><span class="nav-lbl">Other Settings</span></a>
@@ -898,41 +898,55 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <!-- ── OUTPUT ── -->
 <div class="section" id="sect-output">
   <div class="section-title">Generate &amp; Save</div>
-  <div class="section-desc">Build the config file and save it to the server or download locally.</div>
+  <div class="section-desc">Build the config file from your current settings, then save it to the server or download it locally.</div>
   <div class="card">
-    <div class="card-title">Config File</div>
-    <div class="cfg-file-bar">
-      <div class="f"><label>Filename on server</label><input id="cfg_filename" value="1.cfg" placeholder="1.cfg"><span class="hint">Served from cfg.jdwilsh.com/&lt;filename&gt;</span></div>
-      <div class="f"><label>Or pick a device</label><select id="cfg_device_select"><option value="">— select device —</option></select><button class="btn btn-outline btn-sm" id="btn_use_device">Use IMEI filename</button></div>
+    <div class="card-title">File</div>
+    <div class="fg two" style="margin-bottom:14px">
+      <div class="f">
+        <label>Filename on server</label>
+        <input id="cfg_filename" value="1.cfg" placeholder="1.cfg">
+        <span class="hint">Served at cfg.jdwilsh.com/&lt;filename&gt;</span>
+      </div>
+      <div class="f">
+        <label>Set from registered device</label>
+        <div style="display:flex;gap:8px">
+          <select id="cfg_device_select" style="flex:1"><option value="">— select device —</option></select>
+          <button class="btn btn-outline btn-sm" id="btn_use_device" style="white-space:nowrap;align-self:flex-end;margin-bottom:1px">Use</button>
+        </div>
+      </div>
+    </div>
+    <hr class="div">
+    <div class="card-title" style="margin-bottom:10px">Load Existing Config</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <button class="btn btn-outline" id="btn_load_server">Load from Server</button>
       <button class="btn btn-outline" id="btn_load_file">Load from File</button>
       <input type="file" id="file_import" accept=".cfg,.ini,.GL320M,.txt" style="display:none">
+      <span id="load_msg" class="status-msg"></span>
     </div>
-    <div id="load_msg" class="status-msg" style="margin-bottom:12px"></div>
   </div>
   <div class="action-bar">
-    <button class="btn btn-primary" id="btn_generate">Generate Preview</button>
+    <button class="btn btn-primary" id="btn_generate">Generate</button>
     <button class="btn btn-success" id="btn_save_server">Save to Server</button>
-    <button class="btn btn-outline" id="btn_download">Download Locally</button>
+    <button class="btn btn-outline" id="btn_download">Download</button>
     <button class="btn btn-outline" id="btn_copy">Copy</button>
     <span id="save_msg" class="status-msg"></span>
   </div>
-  <textarea class="output" id="config_output" readonly placeholder="Click 'Generate Preview' to build the config file…"></textarea>
+  <textarea class="output" id="config_output" readonly placeholder="Click 'Generate' to build the config file…"></textarea>
   <div class="card" style="margin-top:16px">
     <div class="card-title">Deploy to Multiple Devices</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Saves the current config as <code>&lt;IMEI&gt;.ini</code> for each selected device. Devices must be registered in Device Names first.</p>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Generates and saves the config as <code>&lt;IMEI&gt;.ini</code> for each selected device. Only changed commands are written (delta deploy). Devices must be registered under Device Names first.</p>
     <div id="deploy_device_list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
       <span style="color:var(--muted);font-size:13px">No devices registered.</span>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn btn-outline btn-sm" id="btn_deploy_all">Select All</button>
       <button class="btn btn-outline btn-sm" id="btn_deploy_none">Deselect All</button>
       <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin-left:8px">
-        <input type="checkbox" id="deploy_force_full"> Force full config (ignore delta)
+        <input type="checkbox" id="deploy_force_full"> Force full config (skip delta)
       </label>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <button class="btn btn-success" id="btn_deploy_selected">Save to Selected Devices</button>
+      <button class="btn btn-success" id="btn_deploy_selected">Deploy to Selected Devices</button>
       <span id="deploy_msg" class="status-msg"></span>
     </div>
   </div>
@@ -1771,6 +1785,17 @@ async function loadMonitor() {
   }
 }
 
+function sortTrackers(trackers) {
+  return trackers.slice().sort((a, b) => {
+    const na = (a.name || '').trim().toLowerCase();
+    const nb = (b.name || '').trim().toLowerCase();
+    if (na && !nb) return -1;
+    if (!na && nb) return 1;
+    if (na && nb) return na.localeCompare(nb);
+    return a.imei.localeCompare(b.imei);
+  });
+}
+
 function renderMonitor(trackers) {
   // Clear any old history tbodies
   document.querySelectorAll('.hist-group').forEach(el => el.remove());
@@ -1781,7 +1806,7 @@ function renderMonitor(trackers) {
   }
   tbody.innerHTML = '';
   const tbl = document.getElementById('monitor_table');
-  trackers.forEach(t => {
+  sortTrackers(trackers).forEach(t => {
     const nameHtml = t.name
       ? `<strong>${esc(t.name)}</strong><br><span class="mono">${t.imei}</span>`
       : `<span style="color:var(--muted);font-style:italic">Unnamed</span><br><span class="mono">${t.imei}</span>`;
@@ -1843,7 +1868,7 @@ async function loadDevices() {
 function renderDevices(devices) {
   const tbody = document.getElementById('devices_tbody');
   const sel = document.getElementById('cfg_device_select');
-  const entries = Object.entries(devices);
+  const entries = Object.entries(devices).sort(([, a], [, b]) => a.localeCompare(b));
   if (!entries.length) {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted)">No devices registered.</td></tr>';
     sel.innerHTML = '<option value="">— select device —</option>';
