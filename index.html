@@ -1327,10 +1327,12 @@ function showMsg(id, text, isErr) {
 
 function applyConfigText(text, label) {
   document.getElementById('config_output').value = text;
+  const cmds = parseConfig(text);
   populateFromConfig(text);
   saveFormState();
   Object.keys(sectionBuilders).forEach(renderCmdPreview);
-  showMsg('load_msg', `${label} — applied as defaults`, false);
+  const n = Object.keys(cmds).length;
+  showMsg('load_msg', `${label} — ${n} commands applied as defaults`, false);
 }
 
 async function loadFromServer() {
@@ -1347,10 +1349,10 @@ async function loadFromServer() {
 
 function parseConfig(text) {
   const cmds = {};
-  for (const line of text.split('\n')) {
-    const m = line.match(/^AT\+GT(\w+)=(.+?)\$?\s*$/);
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(/^AT\+(GT\w+)=(.+?)\$?\s*$/);
     if (!m) continue;
-    const name = m[1];
+    const name = m[1]; // e.g. 'GTBSI', 'GTSRI'
     const params = m[2].split(',');
     if (!cmds[name]) cmds[name] = [];
     cmds[name].push(params);
