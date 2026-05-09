@@ -865,6 +865,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f"><label>Filename on server</label><input id="cfg_filename" value="1.cfg" placeholder="1.cfg"><span class="hint">Served from cfg.jdwilsh.com/&lt;filename&gt;</span></div>
       <div class="f"><label>Or pick a device</label><select id="cfg_device_select"><option value="">— select device —</option></select><button class="btn btn-outline btn-sm" id="btn_use_device">Use IMEI filename</button></div>
       <button class="btn btn-outline" id="btn_load_server">Load from Server</button>
+      <button class="btn btn-outline" id="btn_load_file">Load from File</button>
+      <input type="file" id="file_import" accept=".cfg,.ini,.GL320M,.txt" style="display:none">
     </div>
     <div id="load_msg" class="status-msg" style="margin-bottom:12px"></div>
   </div>
@@ -1541,6 +1543,24 @@ function populateFromConfig(text) {
 // ── Output buttons ────────────────────────────────────────────────────────────
 document.getElementById('btn_generate').addEventListener('click', generate);
 document.getElementById('btn_load_server').addEventListener('click', loadFromServer);
+
+document.getElementById('btn_load_file').addEventListener('click', () => {
+  document.getElementById('file_import').click();
+});
+document.getElementById('file_import').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    const text = evt.target.result;
+    populateFromConfig(text);
+    saveFormState();
+    Object.keys(sectionBuilders).forEach(renderCmdPreview);
+    showMsg('load_msg', `Loaded ${file.name} — settings saved as defaults`, false);
+  };
+  reader.readAsText(file);
+  e.target.value = ''; // reset so same file can be reloaded if needed
+});
 
 document.getElementById('btn_use_device').addEventListener('click', () => {
   const sel = document.getElementById('cfg_device_select');
