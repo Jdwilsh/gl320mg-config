@@ -322,10 +322,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section" id="sect-apnlist">
   <div class="section-title">AT+GTAPN — APN List</div>
   <div class="section-desc">Up to 8 APN entries for automatic APN changeover. Enable auto-changeover below (AT+GTAAC).</div>
-  <div class="card">
-    <div style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap">
-      <div class="f" style="min-width:260px;max-width:420px;flex:1">
-        <div class="card-title" style="margin-bottom:8px">Auto APN Changeover (AT+GTAAC)</div>
+  <div style="display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">Auto APN Changeover (AT+GTAAC)</div>
+      <div class="f" style="margin-bottom:10px">
         <label>Changeover Mode</label>
         <select id="aac_mode">
           <option value="0" selected>0 – Disabled</option>
@@ -334,14 +334,14 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
         </select>
         <span class="hint">Requires Manual Netreg=1 in GTBSI (set automatically)</span>
       </div>
-      <p style="font-size:12px;color:var(--muted);max-width:400px;line-height:1.6">Configure up to 8 APNs below. The device will cycle through them automatically if enabled.</p>
+      <p style="font-size:12px;color:var(--muted);line-height:1.6">Configure up to 8 APN slots. The device will cycle through them automatically when changeover is enabled.</p>
     </div>
-  </div>
-  <div class="card" style="padding:0;overflow:hidden">
-    <table class="tbl" id="apn_table">
-      <thead><tr><th style="width:50px">Slot</th><th style="width:70px">Enable</th><th>PLMN (MCC+MNC)</th><th>APN</th><th>Username</th><th>Password</th></tr></thead>
-      <tbody id="apn_tbody"></tbody>
-    </table>
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:0">
+      <table class="tbl" id="apn_table">
+        <thead><tr><th style="width:44px">Slot</th><th style="width:60px">Enable</th><th>PLMN (MCC+MNC)</th><th>APN</th><th>Username</th><th>Password</th></tr></thead>
+        <tbody id="apn_tbody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -967,7 +967,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <!-- Stats row -->
   <div id="monitor_summary" style="margin-bottom:16px"></div>
 
-  <div class="sect-col-grid" style="grid-template-columns:300px 1fr;align-items:start">
+  <div class="sect-col-grid" style="grid-template-columns:minmax(280px,380px) 1fr;align-items:start">
 
     <!-- Left: templates -->
     <div>
@@ -2359,11 +2359,8 @@ const sectionBuilders = {
                      }),
   alarms:       p => [buildGTSPD(p), buildGTTEM(p)],
   harsh:        p => [buildGTMSA(p), buildGTHBM(p)],
-  watchdog:     p => [buildGTDOG(p)],
-  funckey:      p => [buildGTFKS(p)],
-  workhours:    p => [buildGTOWH(p)],
-  smsalerts:    p => [buildGTWLT(p), buildGTGLM(p)],
-  otacfg:       p => [buildGTUPC(p)],
+  behaviour:    p => [buildGTDOG(p), buildGTFKS(p), buildGTOWH(p)],
+  comms:        p => [buildGTWLT(p), buildGTGLM(p), buildGTUPC(p)],
   advanced:     p => [buildGTJDC(p), buildGTNTS(p), buildGTURT(p), buildGTPDS(p), buildGTRPC(p), buildGTDIS(p)],
 };
 
