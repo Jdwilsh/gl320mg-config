@@ -10,6 +10,7 @@ const DEVICES_FILE  = path.join(__dirname, "..", "devices.json");
 const CONFIGS_DIR   = path.join(__dirname, "..", "configs");
 const DEPLOYED_DIR  = path.join(__dirname, "..", "deployed");
 const AUTH_FILE     = path.join(__dirname, "..", "auth.json");
+const TEMPLATES_DIR = path.join(__dirname, '..', 'templates');
 
 app.use(express.json());
 
@@ -121,6 +122,14 @@ function saveDevices(devices) {
 // ── Deployed state ────────────────────────────────────────────────────────────
 function safeImei(imei) { return /^\d{15}$/.test(imei) ? imei : null; }
 
+function safeTemplatePath(name) {
+  if (!/^[\w.\- ]+$/.test(name)) return null;
+  const safe = name.replace(/\s+/g, '_');
+  const resolved = path.resolve(TEMPLATES_DIR, safe + '.json');
+  if (!resolved.startsWith(path.resolve(TEMPLATES_DIR) + path.sep)) return null;
+  return resolved;
+}
+
 function loadDeployed(imei) {
   try {
     const fp = path.join(DEPLOYED_DIR, `${imei}.json`);
@@ -179,6 +188,43 @@ app.post("/deployed/:imei", (req, res) => {
   const { state } = req.body;
   if (!state || typeof state !== "object") return res.status(400).json({ error: "state required" });
   saveDeployed(imei, state);
+  res.json({ ok: true });
+});
+
+// ── Templates ─────────────────────────────────────────────────────────────────
+app.get('/templates', (req, res) => {
+  try {
+    if (!fs.existsSync(TEMPLATES_DIR)) return res.json([]);
+    res.json(
+      fs.readdirSync(TEMPLATES_DIR)
+        .filter(f => f.endsWith('.json'))
+        .map(f => f.replace(/_/g, ' ').replace(/\.json$/, ''))
+        .sort()
+    );
+  } catch { res.json([]); }
+});
+
+app.get('/template/:name', (req, res) => {
+  const fp = safeTemplatePath(req.params.name);
+  if (!fp) return res.status(400).json({ error: 'Invalid name' });
+  try { res.json(JSON.parse(fs.readFileSync(fp, 'utf8'))); }
+  catch { res.status(404).json({ error: 'Not found' }); }
+});
+
+app.post('/template/:name', (req, res) => {
+  const fp = safeTemplatePath(req.params.name);
+  if (!fp) return res.status(400).json({ error: 'Invalid name' });
+  const { state } = req.body;
+  if (!state || typeof state !== 'object') return res.status(400).json({ error: 'state required' });
+  if (!fs.existsSync(TEMPLATES_DIR)) fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
+  fs.writeFileSync(fp, JSON.stringify(state, null, 2));
+  res.json({ ok: true });
+});
+
+app.delete('/template/:name', (req, res) => {
+  const fp = safeTemplatePath(req.params.name);
+  if (!fp) return res.status(400).json({ error: 'Invalid name' });
+  try { fs.unlinkSync(fp); } catch {}
   res.json({ ok: true });
 });
 

@@ -100,6 +100,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 .cmd-text{font-family:'SF Mono','Fira Code',monospace;font-size:12px;color:#d4d8e4;line-height:1.6;word-break:break-all;flex:1;white-space:pre-wrap}
 .cmd-copy{background:rgba(255,255,255,.08);border:none;color:#6b7a95;padding:3px 9px;border-radius:4px;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:inherit}
 .cmd-copy:hover{background:rgba(255,255,255,.16);color:#d4d8e4}
+/* Leaflet box-sizing fix (global reset breaks SVG renderer) */
+.leaflet-container,.leaflet-container *{box-sizing:content-box}
 /* Login screen */
 #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999}
 #login-screen.hidden{display:none}
@@ -136,6 +138,11 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 #geo_map{height:420px}
 .geo-pin-active{background:var(--accent-bg)!important;border-color:var(--accent)!important;color:var(--accent)!important}
 .map-hint{font-size:12px;color:var(--muted);padding:6px 2px}
+/* Templates */
+.tpl-grid{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;min-height:48px}
+.tpl-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;min-width:130px;display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+.tpl-name{font-weight:600;font-size:13px;line-height:1.4}
+.tpl-actions{display:flex;gap:6px}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -891,6 +898,21 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section active" id="sect-monitor">
   <div class="section-title">Tracker Activity</div>
   <div class="section-desc">Live view parsed from the nginx access log on cfg.jdwilsh.com.</div>
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">Config Templates</div>
+    <div class="tpl-grid" id="template_cards">
+      <span style="color:var(--muted);font-size:13px;align-self:center">No templates saved yet.</span>
+    </div>
+    <hr class="div">
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div class="f" style="flex:1;min-width:160px;max-width:260px">
+        <label>Save current settings as template</label>
+        <input id="new_template_name" placeholder="e.g. Bag Tracker">
+      </div>
+      <button class="btn btn-outline" id="btn_save_template">Save Template</button>
+      <span id="template_msg" class="status-msg"></span>
+    </div>
+  </div>
   <div class="monitor-bar">
     <button class="btn btn-primary" id="btn_refresh_monitor">Refresh Now</button>
     <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
@@ -931,57 +953,65 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <!-- ── OUTPUT ── -->
 <div class="section" id="sect-output">
   <div class="section-title">Generate &amp; Save</div>
-  <div class="section-desc">Build the config file from your current settings, then save it to the server or download it locally.</div>
-  <div class="card">
-    <div class="card-title">File</div>
-    <div class="fg two" style="margin-bottom:14px">
-      <div class="f">
-        <label>Filename on server</label>
-        <input id="cfg_filename" value="1.cfg" placeholder="1.cfg">
-        <span class="hint">Served at cfg.jdwilsh.com/&lt;filename&gt;</span>
+  <div class="section-desc">Build the config file from your current settings, then save or deploy it.</div>
+  <div style="display:grid;grid-template-columns:1fr 270px;gap:16px;align-items:start">
+
+    <!-- LEFT: action bar + textarea -->
+    <div>
+      <div class="action-bar" style="margin-bottom:10px">
+        <button class="btn btn-primary" id="btn_generate">Generate</button>
+        <button class="btn btn-outline" id="btn_save_server">Save to Server</button>
+        <button class="btn btn-outline" id="btn_download">Download</button>
+        <button class="btn btn-outline" id="btn_copy">Copy</button>
+        <span id="save_msg" class="status-msg"></span>
       </div>
-      <div class="f">
-        <label>Set from registered device</label>
-        <div style="display:flex;gap:8px">
-          <select id="cfg_device_select" style="flex:1"><option value="">— select device —</option></select>
-          <button class="btn btn-outline btn-sm" id="btn_use_device" style="white-space:nowrap;align-self:flex-end;margin-bottom:1px">Use</button>
+      <textarea class="output" id="config_output" readonly placeholder="Click Generate to build the config file…" style="height:520px;margin-bottom:0"></textarea>
+    </div>
+
+    <!-- RIGHT: file settings + deploy -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title">File</div>
+        <div class="f" style="margin-bottom:10px">
+          <label>Filename on server</label>
+          <input id="cfg_filename" value="1.cfg" placeholder="1.cfg">
+          <span class="hint">Served at cfg.jdwilsh.com/&lt;filename&gt;</span>
         </div>
+        <div class="f" style="margin-bottom:12px">
+          <label>Or use device IMEI</label>
+          <div style="display:flex;gap:8px">
+            <select id="cfg_device_select" style="flex:1"><option value="">— select device —</option></select>
+            <button class="btn btn-outline btn-sm" id="btn_use_device" style="white-space:nowrap;align-self:flex-end">Use</button>
+          </div>
+        </div>
+        <hr class="div">
+        <div class="card-title" style="margin-bottom:8px">Load Config</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" style="flex:1" id="btn_load_server">From Server</button>
+          <button class="btn btn-outline btn-sm" style="flex:1" id="btn_load_file">From File</button>
+          <input type="file" id="file_import" accept=".cfg,.ini,.GL320M,.txt" style="display:none">
+        </div>
+        <div style="margin-top:6px"><span id="load_msg" class="status-msg"></span></div>
+      </div>
+
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title">Deploy to Devices</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Only changed commands are sent. Devices must be registered first.</p>
+        <div id="deploy_device_list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+          <span style="color:var(--muted);font-size:13px">No devices registered.</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" id="btn_deploy_all">All</button>
+          <button class="btn btn-outline btn-sm" id="btn_deploy_none">None</button>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
+            <input type="checkbox" id="deploy_force_full"> Force full
+          </label>
+        </div>
+        <button class="btn btn-primary" id="btn_deploy_selected" style="width:100%">Deploy to Selected</button>
+        <div style="margin-top:8px"><span id="deploy_msg" class="status-msg"></span></div>
       </div>
     </div>
-    <hr class="div">
-    <div class="card-title" style="margin-bottom:10px">Load Existing Config</div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <button class="btn btn-outline" id="btn_load_server">Load from Server</button>
-      <button class="btn btn-outline" id="btn_load_file">Load from File</button>
-      <input type="file" id="file_import" accept=".cfg,.ini,.GL320M,.txt" style="display:none">
-      <span id="load_msg" class="status-msg"></span>
-    </div>
-  </div>
-  <div class="action-bar">
-    <button class="btn btn-primary" id="btn_generate">Generate</button>
-    <button class="btn btn-success" id="btn_save_server">Save to Server</button>
-    <button class="btn btn-outline" id="btn_download">Download</button>
-    <button class="btn btn-outline" id="btn_copy">Copy</button>
-    <span id="save_msg" class="status-msg"></span>
-  </div>
-  <textarea class="output" id="config_output" readonly placeholder="Click 'Generate' to build the config file…"></textarea>
-  <div class="card" style="margin-top:16px">
-    <div class="card-title">Deploy to Multiple Devices</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Generates and saves the config as <code>&lt;IMEI&gt;.ini</code> for each selected device. Only changed commands are written (delta deploy). Devices must be registered under Device Names first.</p>
-    <div id="deploy_device_list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
-      <span style="color:var(--muted);font-size:13px">No devices registered.</span>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-      <button class="btn btn-outline btn-sm" id="btn_deploy_all">Select All</button>
-      <button class="btn btn-outline btn-sm" id="btn_deploy_none">Deselect All</button>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin-left:8px">
-        <input type="checkbox" id="deploy_force_full"> Force full config (skip delta)
-      </label>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <button class="btn btn-success" id="btn_deploy_selected">Deploy to Selected Devices</button>
-      <span id="deploy_msg" class="status-msg"></span>
-    </div>
+
   </div>
 </div>
 
@@ -994,7 +1024,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     <p class="modal-sub" id="deploy-modal-sub"></p>
     <div id="deploy-modal-body"></div>
     <div class="modal-footer">
-      <button class="btn btn-success" id="btn_confirm_deploy">Confirm &amp; Deploy</button>
+      <button class="btn btn-primary" id="btn_confirm_deploy">Confirm &amp; Deploy</button>
       <button class="btn btn-outline" id="btn_cancel_deploy">Cancel</button>
       <span id="deploy_modal_msg" class="status-msg"></span>
     </div>
@@ -1061,6 +1091,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     hideLoginScreen();
     loadMonitor();
     loadDevices();
+    loadTemplates();
   } catch {
     errEl.textContent = 'Could not reach server';
     errEl.style.display = 'inline-block';
@@ -1078,7 +1109,7 @@ document.getElementById('btn_logout').addEventListener('click', () => {
   if (!authToken) { showLoginScreen(); return; }
   try {
     const res = await apiFetch(`${API}/devices`);
-    if (res.ok) { hideLoginScreen(); loadMonitor(); loadDevices(); }
+    if (res.ok) { hideLoginScreen(); loadMonitor(); loadDevices(); loadTemplates(); }
   } catch { /* apiFetch already showed login screen */ }
 })();
 
@@ -1868,6 +1899,80 @@ document.getElementById('btn_confirm_deploy').addEventListener('click', async ()
   loadDevices();
 });
 
+// ── Templates ─────────────────────────────────────────────────────────────────
+async function loadTemplates() {
+  try {
+    const res = await apiFetch(`${API}/templates`);
+    if (!res.ok) return;
+    renderTemplates(await res.json());
+  } catch {}
+}
+
+function renderTemplates(names) {
+  const grid = document.getElementById('template_cards');
+  if (!grid) return;
+  if (!names.length) {
+    grid.innerHTML = '<span style="color:var(--muted);font-size:13px;align-self:center">No templates saved yet.</span>';
+    return;
+  }
+  grid.innerHTML = '';
+  names.forEach(name => {
+    const card = document.createElement('div');
+    card.className = 'tpl-card';
+    card.innerHTML = `
+      <div class="tpl-name">${esc(name)}</div>
+      <div class="tpl-actions">
+        <button class="btn btn-primary btn-sm" onclick="applyTemplate(${JSON.stringify(name)})">Load</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteTemplate(${JSON.stringify(name)})">×</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+async function applyTemplate(name) {
+  try {
+    const res = await apiFetch(`${API}/template/${encodeURIComponent(name.replace(/\s+/g, '_'))}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const state = await res.json();
+    Object.entries(state).forEach(([id, val]) => setV(id, val));
+    saveFormState();
+    Object.keys(sectionBuilders).forEach(renderCmdPreview);
+    if (typeof renderGeoMap === 'function') renderGeoMap();
+    showMsg('template_msg', `"${name}" loaded — edit settings and deploy below`, false);
+  } catch (e) {
+    showMsg('template_msg', `Failed to load: ${e.message}`, true);
+  }
+}
+
+async function deleteTemplate(name) {
+  if (!confirm(`Delete template "${name}"?`)) return;
+  try {
+    await apiFetch(`${API}/template/${encodeURIComponent(name.replace(/\s+/g, '_'))}`, { method: 'DELETE' });
+    loadTemplates();
+  } catch {}
+}
+
+document.getElementById('btn_save_template').addEventListener('click', async () => {
+  const name = document.getElementById('new_template_name').value.trim();
+  if (!name) { showMsg('template_msg', 'Enter a template name', true); return; }
+  const state = {};
+  document.querySelectorAll('main input[id], main select[id]').forEach(el => {
+    state[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+  });
+  try {
+    const res = await apiFetch(`${API}/template/${encodeURIComponent(name.replace(/\s+/g, '_'))}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    document.getElementById('new_template_name').value = '';
+    showMsg('template_msg', `"${name}" saved`, false);
+    loadTemplates();
+  } catch (e) {
+    showMsg('template_msg', `Save failed: ${e.message}`, true);
+  }
+});
+
 // ── Monitor ───────────────────────────────────────────────────────────────────
 let monitorTimer = null;
 
@@ -2245,7 +2350,7 @@ function renderGeoMap() {
     const radius = parseInt(document.getElementById(`geo_${i}_radius`).value) || 200;
     if (!lat || !lng) continue;
     const col = modeColors[mode] || '#2563eb';
-    const c = L.circle([lat, lng], { radius, color: col, fillColor: col, fillOpacity: 0.13, weight: 2 })
+    const c = L.circle([lat, lng], { radius, color: col, fillColor: col, fillOpacity: 0.2, weight: 2 })
       .addTo(geoMap)
       .bindPopup(`<strong>Zone ${i}</strong><br>${modeLabels[mode] || mode}<br>Radius: ${radius} m`);
     geoCircles.push(c);
