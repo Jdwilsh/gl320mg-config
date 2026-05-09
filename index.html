@@ -35,6 +35,7 @@ main{padding:24px 32px;min-width:0}
 /* Inline-style replacements for responsive overrides */
 .sect-col-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
 .gen-grid{display:grid;grid-template-columns:260px 1fr 280px;gap:16px;align-items:start}
+.monitor-grid{display:grid;grid-template-columns:minmax(280px,380px) 1fr;gap:16px;align-items:start}
 /* Stat cards */
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
 .stat-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;display:flex;flex-direction:column;gap:4px}
@@ -60,7 +61,7 @@ main{padding:24px 32px;min-width:0}
   nav{position:fixed;top:56px;left:0;width:240px;height:calc(100vh - 56px);transform:translateX(-100%);transition:transform .2s ease;z-index:100;box-shadow:4px 0 16px rgba(0,0,0,.15)}
   nav.nav-open{transform:translateX(0)}
   main{padding:16px}
-  .cards-grid,.sect-col-grid,.gen-grid{grid-template-columns:1fr}
+  .cards-grid,.sect-col-grid,.gen-grid,.monitor-grid{grid-template-columns:1fr}
   .fg.two,.fg.three,.fg.four{grid-template-columns:1fr}
   .stat-row{grid-template-columns:repeat(2,1fr)}
   .modal-box{padding:20px}
@@ -966,7 +967,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <!-- Stats row -->
   <div id="monitor_summary" style="margin-bottom:16px"></div>
 
-  <div class="sect-col-grid" style="grid-template-columns:minmax(280px,380px) 1fr;align-items:start">
+  <div class="monitor-grid">
 
     <!-- Left: templates -->
     <div>
@@ -997,10 +998,12 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
         <span style="font-size:12px;color:var(--muted);margin-left:auto"><span class="ref-dot" id="ref_dot"></span><span id="ref_label">Loading…</span></span>
       </div>
       <div class="card" style="padding:0;overflow:hidden;margin-bottom:0">
-        <table class="tbl" id="monitor_table">
-          <thead><tr><th>Name / IMEI</th><th>Last Seen</th><th>Config File</th><th>Status</th><th>Last IP</th><th></th></tr></thead>
-          <tbody id="monitor_tbody"><tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr></tbody>
-        </table>
+        <div style="overflow-x:auto">
+          <table class="tbl" id="monitor_table">
+            <thead><tr><th>Name / IMEI</th><th>Last Seen</th><th>Config File</th><th>Status</th><th>Last IP</th><th></th></tr></thead>
+            <tbody id="monitor_tbody"><tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -1034,7 +1037,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="section-desc">Build the config file from your current settings, then save or deploy it.</div>
 
   <!-- Top row: file controls + deploy side by side -->
-  <div class="cards-grid" style="grid-template-columns:1fr 1fr">
+  <div class="cards-grid">
 
     <!-- File & Load card -->
     <div class="card" style="margin-bottom:0">
