@@ -110,7 +110,35 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 .login-card button{width:100%;padding:10px;margin-top:4px}
 /* Deploy diff badge */
 .diff-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#fef9c3;color:#854d0e;margin-left:8px}
+/* Health badges */
+.badge-active{background:#dcfce7;color:#15803d}
+.badge-late{background:#fef9c3;color:#854d0e}
+.badge-overdue{background:#fee2e2;color:#b91c1c}
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9000;padding:16px}
+.modal-overlay.hidden{display:none}
+.modal-box{background:var(--panel);border-radius:12px;padding:28px;max-width:700px;width:100%;max-height:82vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25)}
+.modal-box h3{font-size:17px;font-weight:700;margin-bottom:6px}
+.modal-sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+.modal-footer{display:flex;gap:10px;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.diff-device{border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.diff-device-hdr{padding:10px 14px;background:var(--bg);font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.diff-device-hdr:hover{background:var(--border)}
+.diff-device-body{display:none;padding:10px 14px;border-top:1px solid var(--border)}
+.diff-device-body.open{display:block}
+.diff-line{margin-bottom:8px;font-size:11px;font-family:'SF Mono','Fira Code',monospace;word-break:break-all;line-height:1.5}
+.diff-line .cmd-key{display:block;font-weight:700;color:var(--muted);font-size:10px;margin-bottom:1px}
+.diff-line .old{color:var(--danger);text-decoration:line-through;display:block;opacity:.8}
+.diff-line .new{color:var(--success);display:block}
+.badge-change{background:#dbeafe;color:#1d4ed8}
+.badge-first{background:#f3e8ff;color:#7c3aed}
+/* Geofence map */
+#geo_map{height:420px}
+.geo-pin-active{background:var(--accent-bg)!important;border-color:var(--accent)!important;color:var(--accent)!important}
+.map-hint{font-size:12px;color:var(--muted);padding:6px 2px}
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <!-- ── LOGIN SCREEN ── -->
@@ -508,10 +536,14 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="note"><strong>Mode:</strong> 0=Disabled &nbsp; 1=Alert on Enter &nbsp; 2=Alert on Exit &nbsp; 3=Enter &amp; Exit</div>
   <div class="card" style="padding:0;overflow:hidden">
     <table class="tbl" id="geo_table">
-      <thead><tr><th style="width:40px">#</th><th style="width:100px">Mode</th><th>Latitude</th><th>Longitude</th><th>Radius (m)</th><th>Check Interval (s)</th></tr></thead>
+      <thead><tr><th style="width:40px">#</th><th style="width:110px">Mode</th><th>Latitude</th><th>Longitude</th><th>Radius (m)</th><th>Check Interval (s)</th><th style="width:60px"></th></tr></thead>
       <tbody id="geo_tbody"></tbody>
     </table>
   </div>
+  <div class="card" style="padding:0;overflow:hidden;margin-top:0;border-top:none;border-radius:0 0 var(--radius) var(--radius)">
+    <div id="geo_map"></div>
+  </div>
+  <p class="map-hint" id="map_hint">Click a <strong>Pin</strong> button in the table to select a zone, then click the map to place its centre.</p>
 </div>
 
 <!-- ── SPEED & TEMPERATURE ── -->
@@ -866,6 +898,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     </label>
     <span style="font-size:12px;color:var(--muted)"><span class="ref-dot" id="ref_dot"></span><span id="ref_label">Loading…</span></span>
   </div>
+  <div id="monitor_summary"></div>
   <div class="card" style="padding:0;overflow:hidden">
     <table class="tbl" id="monitor_table">
       <thead><tr><th>Name / IMEI</th><th>Last Seen</th><th>Config File</th><th>Status</th><th>Last IP</th><th></th></tr></thead>
@@ -954,6 +987,20 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 </main>
 </div>
+
+<div class="modal-overlay hidden" id="deploy-modal">
+  <div class="modal-box">
+    <h3>Confirm Deploy</h3>
+    <p class="modal-sub" id="deploy-modal-sub"></p>
+    <div id="deploy-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-success" id="btn_confirm_deploy">Confirm &amp; Deploy</button>
+      <button class="btn btn-outline" id="btn_cancel_deploy">Cancel</button>
+      <span id="deploy_modal_msg" class="status-msg"></span>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Navigation ──────────────────────────────────────────────────────────────
 const navLinks = document.querySelectorAll('nav a');
@@ -968,6 +1015,7 @@ navLinks.forEach(link => {
     document.getElementById('sect-' + t).classList.add('active');
     if (t === 'monitor') loadMonitor();
     if (t === 'devices') loadDevices();
+    if (t === 'geofences') setTimeout(initGeoMap, 60);
   });
 });
 // ── Auth ─────────────────────────────────────────────────────────────────────
@@ -1081,7 +1129,8 @@ const GEO_COUNT = 20;
       <td><input id="geo_${i}_lat" type="number" step="0.000001" placeholder="51.5074"></td>
       <td><input id="geo_${i}_lng" type="number" step="0.000001" placeholder="-0.1278"></td>
       <td><input id="geo_${i}_radius" type="number" value="200" min="25" max="6000000"></td>
-      <td><input id="geo_${i}_check" type="number" value="30" min="0" max="86400"></td>`;
+      <td><input id="geo_${i}_check" type="number" value="30" min="0" max="86400"></td>
+      <td style="text-align:center"><button class="btn btn-outline btn-sm" id="geo_pin_${i}" onclick="geoSelectRow(${i})">Pin</button></td>`;
     tb.appendChild(tr);
   }
 })();
@@ -1694,60 +1743,129 @@ function parseConfigToMap(text) {
   return map;
 }
 
+let pendingDeploy = null;
+
 document.getElementById('btn_deploy_selected').addEventListener('click', async () => {
   const cbs = [...document.querySelectorAll('.deploy-cb:checked')];
   if (!cbs.length) { showMsg('deploy_msg', 'No devices selected', true); return; }
   const forceFull = document.getElementById('deploy_force_full').checked;
   const fullOut = generate();
   const newMap = parseConfigToMap(fullOut);
-  const total = Object.keys(newMap).length;
-  let ok = 0, skipped = 0, fail = 0;
 
-  for (const cb of cbs) {
+  showMsg('deploy_msg', 'Computing changes…', false);
+
+  const tasks = await Promise.all(cbs.map(async cb => {
     const imei = cb.dataset.imei;
-    const filename = cb.dataset.file;
+    const file = cb.dataset.file;
+    const name = cb.closest('label').querySelector('strong')?.textContent || imei;
+    let oldMap = {};
+    if (!forceFull) {
+      try {
+        const r = await apiFetch(`${API}/deployed/${imei}`);
+        const data = r.ok ? await r.json() : null;
+        if (data) oldMap = data;
+      } catch {}
+    }
+    const isFirst = !forceFull && Object.keys(oldMap).length === 0;
+    const changed = forceFull
+      ? Object.entries(newMap).map(([k, v]) => ({ key: k, old: null, new: v }))
+      : Object.entries(newMap).filter(([k, v]) => oldMap[k] !== v).map(([k, v]) => ({ key: k, old: oldMap[k] || null, new: v }));
+    return { imei, file, name, changed, isFirst };
+  }));
+
+  showMsg('deploy_msg', '');
+  pendingDeploy = { tasks, newMap, fullOut };
+  openDeployModal(tasks);
+});
+
+function openDeployModal(tasks) {
+  const totalChanges = tasks.reduce((s, t) => s + t.changed.length, 0);
+  const nSkipped = tasks.filter(t => !t.isFirst && t.changed.length === 0).length;
+  document.getElementById('deploy-modal-sub').textContent =
+    totalChanges === 0 && nSkipped === tasks.length
+      ? 'All selected devices are already up to date — nothing to deploy.'
+      : `${tasks.length} device${tasks.length !== 1 ? 's' : ''} · ${totalChanges} command${totalChanges !== 1 ? 's' : ''} will change` +
+        (nSkipped ? ` · ${nSkipped} unchanged (will be skipped)` : '');
+
+  const body = document.getElementById('deploy-modal-body');
+  body.innerHTML = '';
+  tasks.forEach(t => {
+    const hasChanges = t.changed.length > 0;
+    const labelText = t.isFirst ? 'First deploy' : hasChanges ? `${t.changed.length} change${t.changed.length !== 1 ? 's' : ''}` : 'No changes';
+    const labelClass = t.isFirst ? 'badge badge-first' : hasChanges ? 'badge badge-change' : 'badge badge-muted';
+    const div = document.createElement('div');
+    div.className = 'diff-device';
+    const bodyOpen = (hasChanges || t.isFirst) ? ' open' : '';
+    div.innerHTML = `
+      <div class="diff-device-hdr" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span><strong>${esc(t.name)}</strong> <span class="mono" style="font-weight:400;font-size:11px;margin-left:4px">${esc(t.imei)}</span></span>
+        <span class="${labelClass}">${labelText}</span>
+      </div>
+      <div class="diff-device-body${bodyOpen}">
+        ${t.isFirst
+          ? '<p style="font-size:12px;color:var(--muted)">No previous deploy recorded — full config will be sent.</p>'
+          : !hasChanges
+          ? '<p style="font-size:12px;color:var(--muted)">Config matches last deployed state. This device will be skipped.</p>'
+          : t.changed.map(c => `<div class="diff-line">
+              <span class="cmd-key">${esc(c.key)}</span>
+              ${c.old ? `<span class="old">${esc(c.old)}</span>` : ''}
+              <span class="new">${esc(c.new)}</span>
+            </div>`).join('')}
+      </div>`;
+    body.appendChild(div);
+  });
+
+  document.getElementById('btn_confirm_deploy').disabled = (totalChanges === 0 && !tasks.some(t => t.isFirst));
+  document.getElementById('deploy-modal').classList.remove('hidden');
+}
+
+document.getElementById('btn_cancel_deploy').addEventListener('click', () => {
+  document.getElementById('deploy-modal').classList.add('hidden');
+  pendingDeploy = null;
+});
+
+document.getElementById('deploy-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('deploy-modal')) {
+    document.getElementById('deploy-modal').classList.add('hidden');
+    pendingDeploy = null;
+  }
+});
+
+document.getElementById('btn_confirm_deploy').addEventListener('click', async () => {
+  if (!pendingDeploy) return;
+  const { tasks, newMap, fullOut } = pendingDeploy;
+  pendingDeploy = null;
+  document.getElementById('btn_confirm_deploy').disabled = true;
+  document.getElementById('btn_confirm_deploy').textContent = 'Deploying…';
+
+  let ok = 0, skipped = 0, fail = 0;
+  for (const t of tasks) {
+    if (!t.isFirst && t.changed.length === 0) { skipped++; continue; }
     try {
-      let deployContent = fullOut;
-      let changedCount = total;
-
-      if (!forceFull) {
-        const depRes = await apiFetch(`${API}/deployed/${imei}`);
-        const oldMap = depRes.ok ? await depRes.json() : null;
-        if (oldMap) {
-          const changedLines = Object.entries(newMap)
-            .filter(([k, line]) => oldMap[k] !== line)
-            .map(([, line]) => line);
-          changedCount = changedLines.length;
-          if (changedCount === 0) { skipped++; continue; }
-          deployContent = changedLines.join('\n') + '\n';
-        }
-      }
-
-      // Write config file (delta or full)
-      const cfgRes = await apiFetch(`${API}/config/${encodeURIComponent(filename)}`, {
+      const deployContent = t.isFirst ? fullOut : t.changed.map(c => c.new).join('\n') + '\n';
+      const cfgRes = await apiFetch(`${API}/config/${encodeURIComponent(t.file)}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: deployContent }),
       });
       if (!cfgRes.ok) throw new Error(`HTTP ${cfgRes.status}`);
-
-      // Update stored deployed state with the full new config
-      await apiFetch(`${API}/deployed/${imei}`, {
+      await apiFetch(`${API}/deployed/${t.imei}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ state: newMap }),
       });
-
-      // Update the badge on the checkbox label
-      const badge = cb.closest('label').querySelector('.diff-badge');
-      if (badge) badge.remove();
       ok++;
     } catch { fail++; }
   }
+
+  document.getElementById('deploy-modal').classList.add('hidden');
+  document.getElementById('btn_confirm_deploy').disabled = false;
+  document.getElementById('btn_confirm_deploy').textContent = 'Confirm & Deploy';
 
   const parts = [];
   if (ok)      parts.push(`${ok} deployed`);
   if (skipped) parts.push(`${skipped} unchanged`);
   if (fail)    parts.push(`${fail} failed`);
   showMsg('deploy_msg', parts.join(', '), fail > 0);
+  loadDevices();
 });
 
 // ── Monitor ───────────────────────────────────────────────────────────────────
@@ -1766,6 +1884,13 @@ function statusBadge(c) {
   if (c===304) return `<span class="badge badge-notmod">304 Not Modified</span>`;
   if (c>=400)  return `<span class="badge badge-err">${c}</span>`;
   return `<span class="badge badge-muted">${c}</span>`;
+}
+function healthBadge(lastSeen) {
+  if (!lastSeen) return '';
+  const h = (Date.now() - new Date(lastSeen).getTime()) / 3600000;
+  if (h < 26)  return '<span class="badge badge-active">Active</span>';
+  if (h < 50)  return '<span class="badge badge-late">Late</span>';
+  return `<span class="badge badge-overdue">Overdue ${Math.floor(h/24)}d</span>`;
 }
 
 async function loadMonitor() {
@@ -1802,14 +1927,31 @@ function renderMonitor(trackers) {
   const tbody = document.getElementById('monitor_tbody');
   if (!trackers.length) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">No activity in log.</td></tr>';
+    document.getElementById('monitor_summary').innerHTML = '';
     return;
   }
+  // Health summary counts
+  let nActive = 0, nLate = 0, nOverdue = 0;
+  trackers.forEach(t => {
+    if (!t.lastSeen) return;
+    const h = (Date.now() - new Date(t.lastSeen).getTime()) / 3600000;
+    if (h < 26) nActive++;
+    else if (h < 50) nLate++;
+    else nOverdue++;
+  });
+  const summaryParts = [];
+  if (nActive)  summaryParts.push(`<span class="badge badge-active">${nActive} active</span>`);
+  if (nLate)    summaryParts.push(`<span class="badge badge-late">${nLate} late</span>`);
+  if (nOverdue) summaryParts.push(`<span class="badge badge-overdue">${nOverdue} overdue</span>`);
+  summaryParts.push(`<span class="badge badge-muted">${trackers.length} total</span>`);
+  document.getElementById('monitor_summary').innerHTML =
+    `<div style="display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap">${summaryParts.join('')}</div>`;
   tbody.innerHTML = '';
   const tbl = document.getElementById('monitor_table');
   sortTrackers(trackers).forEach(t => {
     const nameHtml = t.name
-      ? `<strong>${esc(t.name)}</strong><br><span class="mono">${t.imei}</span>`
-      : `<span style="color:var(--muted);font-style:italic">Unnamed</span><br><span class="mono">${t.imei}</span>`;
+      ? `<strong>${esc(t.name)}</strong> ${healthBadge(t.lastSeen)}<br><span class="mono">${t.imei}</span>`
+      : `<span style="color:var(--muted);font-style:italic">Unnamed</span> ${healthBadge(t.lastSeen)}<br><span class="mono">${t.imei}</span>`;
     const histId = `hist_${t.imei}`;
     const row = document.createElement('tr');
     row.innerHTML = `
@@ -2054,11 +2196,17 @@ Object.keys(sectionBuilders).forEach(id => {
 // Re-render on any form change within a section
 document.querySelector('main').addEventListener('input',  e => {
   const sect = e.target.closest('.section');
-  if (sect) renderCmdPreview(sect.id.replace('sect-', ''));
+  if (!sect) return;
+  const id = sect.id.replace('sect-', '');
+  renderCmdPreview(id);
+  if (id === 'geofences') renderGeoMap();
 });
 document.querySelector('main').addEventListener('change', e => {
   const sect = e.target.closest('.section');
-  if (sect) renderCmdPreview(sect.id.replace('sect-', ''));
+  if (!sect) return;
+  const id = sect.id.replace('sect-', '');
+  renderCmdPreview(id);
+  if (id === 'geofences') renderGeoMap();
 });
 
 // Re-render when switching to a section
@@ -2066,6 +2214,75 @@ navLinks.forEach(link => link.addEventListener('click', () => {
   const t = link.dataset.section;
   if (sectionBuilders[t]) setTimeout(() => renderCmdPreview(t), 0);
 }));
+
+// ── Geofence Map ──────────────────────────────────────────────────────────────
+let geoMap = null;
+let geoCircles = [];
+let geoSelectedRow = null;
+
+function initGeoMap() {
+  if (geoMap) { setTimeout(() => geoMap.invalidateSize(), 50); renderGeoMap(); return; }
+  geoMap = L.map('geo_map').setView([54.0, -2.5], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 18,
+  }).addTo(geoMap);
+  geoMap.on('click', onGeoMapClick);
+  renderGeoMap();
+}
+
+function renderGeoMap() {
+  if (!geoMap) return;
+  geoCircles.forEach(c => geoMap.removeLayer(c));
+  geoCircles = [];
+  const modeColors = ['', '#2563eb', '#dc2626', '#d97706'];
+  const modeLabels = ['', 'Enter', 'Exit', 'Enter & Exit'];
+  for (let i = 0; i < GEO_COUNT; i++) {
+    const mode = parseInt(document.getElementById(`geo_${i}_mode`).value);
+    if (!mode) continue;
+    const lat = parseFloat(document.getElementById(`geo_${i}_lat`).value);
+    const lng = parseFloat(document.getElementById(`geo_${i}_lng`).value);
+    const radius = parseInt(document.getElementById(`geo_${i}_radius`).value) || 200;
+    if (!lat || !lng) continue;
+    const col = modeColors[mode] || '#2563eb';
+    const c = L.circle([lat, lng], { radius, color: col, fillColor: col, fillOpacity: 0.13, weight: 2 })
+      .addTo(geoMap)
+      .bindPopup(`<strong>Zone ${i}</strong><br>${modeLabels[mode] || mode}<br>Radius: ${radius} m`);
+    geoCircles.push(c);
+  }
+  if (geoCircles.length > 0) {
+    try { geoMap.fitBounds(L.featureGroup(geoCircles).getBounds().pad(0.2)); } catch {}
+  }
+}
+
+function geoSelectRow(i) {
+  if (geoSelectedRow !== null) {
+    const prev = document.getElementById(`geo_pin_${geoSelectedRow}`);
+    if (prev) { prev.textContent = 'Pin'; prev.classList.remove('geo-pin-active'); }
+  }
+  if (geoSelectedRow === i) {
+    geoSelectedRow = null;
+    document.getElementById('map_hint').innerHTML = 'Click a <strong>Pin</strong> button in the table to select a zone, then click the map to place its centre.';
+    if (geoMap) geoMap.getContainer().style.cursor = '';
+    return;
+  }
+  geoSelectedRow = i;
+  const btn = document.getElementById(`geo_pin_${i}`);
+  if (btn) { btn.textContent = 'Placing…'; btn.classList.add('geo-pin-active'); }
+  document.getElementById('map_hint').innerHTML = `Placing <strong>Zone ${i}</strong> — click the map to set its centre. Click Pin again to cancel.`;
+  if (geoMap) geoMap.getContainer().style.cursor = 'crosshair';
+}
+
+function onGeoMapClick(e) {
+  if (geoSelectedRow === null) return;
+  const i = geoSelectedRow;
+  document.getElementById(`geo_${i}_lat`).value = e.latlng.lat.toFixed(6);
+  document.getElementById(`geo_${i}_lng`).value = e.latlng.lng.toFixed(6);
+  saveFormState();
+  renderGeoMap();
+  renderCmdPreview('geofences');
+  geoSelectRow(i); // deselect (toggle off)
+}
 </script>
 </body>
 </html>
