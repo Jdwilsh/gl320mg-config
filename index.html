@@ -32,6 +32,26 @@ main{padding:24px 32px;min-width:0}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
 .cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-bottom:16px}
 .cards-grid>.card{margin-bottom:0}
+/* Inline-style replacements for responsive overrides */
+.sect-col-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.gen-grid{display:grid;grid-template-columns:260px 1fr 280px;gap:16px;align-items:start}
+/* Mobile nav */
+.nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:4px 6px;color:var(--text);flex-direction:column;gap:4px;align-self:center}
+.nav-toggle span{display:block;width:20px;height:2px;background:currentColor;border-radius:2px}
+.nav-overlay{display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.3)}
+.nav-overlay.open{display:block}
+/* ── Responsive ── */
+@media(max-width:768px){
+  .nav-toggle{display:flex}
+  header .subtitle{display:none}
+  .layout{grid-template-columns:1fr}
+  nav{position:fixed;top:56px;left:0;width:240px;height:calc(100vh - 56px);transform:translateX(-100%);transition:transform .2s ease;z-index:100;box-shadow:4px 0 16px rgba(0,0,0,.15)}
+  nav.nav-open{transform:translateX(0)}
+  main{padding:16px}
+  .cards-grid,.sect-col-grid,.gen-grid{grid-template-columns:1fr}
+  .fg.two,.fg.three,.fg.four{grid-template-columns:1fr}
+  .modal-box{padding:20px}
+}
 .card-title{font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:14px}
 .fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
 .fg.two{grid-template-columns:1fr 1fr}
@@ -168,10 +188,12 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 </div>
 
 <header>
+  <button class="nav-toggle" id="nav_toggle" aria-label="Menu"><span></span><span></span><span></span></button>
   <h1>GL320MG Config Tool</h1>
   <span class="subtitle">Queclink GL320MG &bull; OTA Configuration Generator</span>
   <span style="margin-left:auto"><button class="btn btn-outline btn-sm" id="btn_logout">Sign out</button></span>
 </header>
+<div class="nav-overlay" id="nav_overlay"></div>
 <div class="layout">
 <nav id="sidebar">
   <div class="nav-section">Dashboard</div>
@@ -208,7 +230,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section" id="sect-connectivity">
   <div class="section-title">AT+GTBSI / GTSRI — Connectivity</div>
   <div class="section-desc">Network mode and LTE APN (AT+GTBSI), reporting server settings (AT+GTSRI).</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+  <div class="sect-col-grid">
   <div class="card" style="margin-bottom:0">
     <div class="card-title">Network &amp; APN (AT+GTBSI)</div>
     <div class="fg">
@@ -556,7 +578,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="section-title">AT+GTGEO — Geofences</div>
   <div class="section-desc">Up to 20 circular geo-fence zones. Leave Mode=0 to disable a slot.</div>
   <div class="note"><strong>Mode:</strong> 0=Disabled &nbsp; 1=Alert on Enter &nbsp; 2=Alert on Exit &nbsp; 3=Enter &amp; Exit</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+  <div class="sect-col-grid">
     <div class="card" style="padding:0;overflow:hidden;margin-bottom:0">
       <table class="tbl" id="geo_table">
         <thead><tr><th style="width:32px">#</th><th style="width:100px">Mode</th><th>Latitude</th><th>Longitude</th><th>Radius (m)</th><th>Check (s)</th><th style="width:50px"></th></tr></thead>
@@ -985,7 +1007,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section" id="sect-output">
   <div class="section-title">Generate &amp; Save</div>
   <div class="section-desc">Build the config file from your current settings, then save or deploy it.</div>
-  <div style="display:grid;grid-template-columns:260px 1fr 280px;gap:16px;align-items:start">
+  <div class="gen-grid">
 
     <!-- LEFT: file + load -->
     <div class="card" style="margin-bottom:0">
@@ -1065,6 +1087,15 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 // ── Navigation ──────────────────────────────────────────────────────────────
 const navLinks = document.querySelectorAll('nav a');
 const sections = document.querySelectorAll('.section');
+const sidebar = document.getElementById('sidebar');
+const navOverlay = document.getElementById('nav_overlay');
+function closeNav() { sidebar.classList.remove('nav-open'); navOverlay.classList.remove('open'); }
+document.getElementById('nav_toggle').addEventListener('click', () => {
+  sidebar.classList.toggle('nav-open');
+  navOverlay.classList.toggle('open');
+});
+navOverlay.addEventListener('click', closeNav);
+
 navLinks.forEach(link => {
   link.addEventListener('click', e => {
     e.preventDefault();
@@ -1073,6 +1104,7 @@ navLinks.forEach(link => {
     sections.forEach(s => s.classList.remove('active'));
     link.classList.add('active');
     document.getElementById('sect-' + t).classList.add('active');
+    closeNav();
     if (t === 'monitor') loadMonitor();
     if (t === 'devices') loadDevices();
     if (t === 'geofences') setTimeout(initGeoMap, 60);
