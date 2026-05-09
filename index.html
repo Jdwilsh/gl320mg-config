@@ -1007,23 +1007,34 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section" id="sect-output">
   <div class="section-title">Generate &amp; Save</div>
   <div class="section-desc">Build the config file from your current settings, then save or deploy it.</div>
-  <div class="gen-grid">
 
-    <!-- LEFT: file + load -->
+  <!-- Top row: file controls + deploy side by side -->
+  <div class="cards-grid" style="grid-template-columns:1fr 1fr">
+
+    <!-- File & Load card -->
     <div class="card" style="margin-bottom:0">
       <div class="card-title">File</div>
-      <div class="f" style="margin-bottom:10px">
-        <label>Filename on server</label>
-        <input id="cfg_filename" value="1.cfg" placeholder="1.cfg">
-        <span class="hint">Served at cfg.jdwilsh.com/&lt;filename&gt;</span>
-      </div>
-      <div class="f" style="margin-bottom:12px">
-        <label>Or use device IMEI</label>
-        <div style="display:flex;gap:8px">
-          <select id="cfg_device_select" style="flex:1"><option value="">— select device —</option></select>
-          <button class="btn btn-outline btn-sm" id="btn_use_device" style="white-space:nowrap;align-self:flex-end">Use</button>
+      <div class="fg" style="margin-bottom:12px">
+        <div class="f">
+          <label>Filename on server</label>
+          <input id="cfg_filename" value="1.cfg" placeholder="1.cfg">
+          <span class="hint">Served at cfg.jdwilsh.com/&lt;filename&gt;</span>
+        </div>
+        <div class="f">
+          <label>Or use device IMEI</label>
+          <div style="display:flex;gap:8px">
+            <select id="cfg_device_select" style="flex:1"><option value="">— select device —</option></select>
+            <button class="btn btn-outline btn-sm" id="btn_use_device" style="white-space:nowrap;align-self:flex-end">Use</button>
+          </div>
         </div>
       </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="btn_generate" style="flex:1">Generate</button>
+        <button class="btn btn-outline" id="btn_save_server" style="flex:1">Save to Server</button>
+        <button class="btn btn-outline" id="btn_download" style="flex:1">Download</button>
+        <button class="btn btn-outline" id="btn_copy" style="flex:1">Copy</button>
+      </div>
+      <div style="margin-top:8px"><span id="save_msg" class="status-msg"></span></div>
       <hr class="div">
       <div class="card-title" style="margin-bottom:8px">Load Config</div>
       <div style="display:flex;gap:8px">
@@ -1034,23 +1045,11 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div style="margin-top:6px"><span id="load_msg" class="status-msg"></span></div>
     </div>
 
-    <!-- MIDDLE: action bar + preview -->
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div class="action-bar" style="margin-bottom:0">
-        <button class="btn btn-primary" id="btn_generate">Generate</button>
-        <button class="btn btn-outline" id="btn_save_server">Save to Server</button>
-        <button class="btn btn-outline" id="btn_download">Download</button>
-        <button class="btn btn-outline" id="btn_copy">Copy</button>
-        <span id="save_msg" class="status-msg"></span>
-      </div>
-      <textarea class="output" id="config_output" readonly placeholder="Click Generate to build the config file…" style="height:520px;resize:vertical;margin-bottom:0"></textarea>
-    </div>
-
-    <!-- RIGHT: deploy -->
+    <!-- Deploy card -->
     <div class="card" style="margin-bottom:0">
       <div class="card-title">Deploy to Devices</div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Only changed commands are sent. Devices must be registered first.</p>
-      <div id="deploy_device_list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;max-height:340px;overflow-y:auto">
+      <div id="deploy_device_list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;max-height:280px;overflow-y:auto">
         <span style="color:var(--muted);font-size:13px">No devices registered.</span>
       </div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
@@ -1064,7 +1063,22 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div style="margin-top:8px"><span id="deploy_msg" class="status-msg"></span></div>
     </div>
 
+  </div><!-- end cards-grid -->
+
+  <!-- Collapsible preview -->
+  <div style="margin-top:4px">
+    <button id="btn_toggle_preview" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:6px;padding:4px 0">
+      <span id="preview_arrow" style="font-size:10px">▶</span> Show config preview
+    </button>
+    <div id="preview_wrap" style="display:none;margin-top:8px">
+      <div class="action-bar" style="margin-bottom:8px">
+        <span style="font-size:12px;color:var(--muted);flex:1">Raw config output — read-only</span>
+        <span id="save_msg2" class="status-msg"></span>
+      </div>
+      <textarea class="output" id="config_output" readonly placeholder="Click Generate above to build the config file…" style="height:400px;resize:vertical;width:100%"></textarea>
+    </div>
   </div>
+
 </div>
 
 </main>
@@ -1521,6 +1535,11 @@ function generate() {
 
   const out = body + '\n';
   document.getElementById('config_output').value = out;
+  // Auto-open preview so user can see generation succeeded
+  const wrap = document.getElementById('preview_wrap');
+  const btn = document.getElementById('btn_toggle_preview');
+  wrap.style.display = 'block';
+  btn.innerHTML = '<span id="preview_arrow" style="font-size:10px">▼</span> Hide config preview';
   return out;
 }
 
@@ -1764,6 +1783,16 @@ function populateFromConfig(text) {
 }
 
 // ── Output buttons ────────────────────────────────────────────────────────────
+document.getElementById('btn_toggle_preview').addEventListener('click', () => {
+  const wrap = document.getElementById('preview_wrap');
+  const arrow = document.getElementById('preview_arrow');
+  const btn = document.getElementById('btn_toggle_preview');
+  const open = wrap.style.display === 'none';
+  wrap.style.display = open ? 'block' : 'none';
+  arrow.textContent = open ? '▼' : '▶';
+  btn.innerHTML = `<span id="preview_arrow" style="font-size:10px">${open ? '▼' : '▶'}</span> ${open ? 'Hide' : 'Show'} config preview`;
+});
+
 document.getElementById('btn_generate').addEventListener('click', generate);
 document.getElementById('btn_load_server').addEventListener('click', loadFromServer);
 
