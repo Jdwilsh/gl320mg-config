@@ -954,23 +954,23 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <div class="section" id="sect-output">
   <div class="section-title">Generate &amp; Save</div>
   <div class="section-desc">Build the config file from your current settings, then save or deploy it.</div>
-  <div style="display:grid;grid-template-columns:1fr 270px;gap:16px;align-items:start">
+  <div style="display:grid;grid-template-columns:1fr 270px;gap:16px;align-items:stretch">
 
     <!-- LEFT: action bar + textarea -->
-    <div>
-      <div class="action-bar" style="margin-bottom:10px">
+    <div style="display:flex;flex-direction:column">
+      <div class="action-bar" style="margin-bottom:10px;flex-shrink:0">
         <button class="btn btn-primary" id="btn_generate">Generate</button>
         <button class="btn btn-outline" id="btn_save_server">Save to Server</button>
         <button class="btn btn-outline" id="btn_download">Download</button>
         <button class="btn btn-outline" id="btn_copy">Copy</button>
         <span id="save_msg" class="status-msg"></span>
       </div>
-      <textarea class="output" id="config_output" readonly placeholder="Click Generate to build the config file…" style="height:520px;margin-bottom:0"></textarea>
+      <textarea class="output" id="config_output" readonly placeholder="Click Generate to build the config file…" style="flex:1;min-height:360px;resize:none;margin-bottom:0"></textarea>
     </div>
 
     <!-- RIGHT: file settings + deploy -->
-    <div style="display:flex;flex-direction:column;gap:14px">
-      <div class="card" style="margin-bottom:0">
+    <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+      <div class="card" style="margin-bottom:0;flex-shrink:0">
         <div class="card-title">File</div>
         <div class="f" style="margin-bottom:10px">
           <label>Filename on server</label>
@@ -994,10 +994,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
         <div style="margin-top:6px"><span id="load_msg" class="status-msg"></span></div>
       </div>
 
-      <div class="card" style="margin-bottom:0">
+      <div class="card" style="margin-bottom:0;flex:1;display:flex;flex-direction:column">
         <div class="card-title">Deploy to Devices</div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Only changed commands are sent. Devices must be registered first.</p>
-        <div id="deploy_device_list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+        <div id="deploy_device_list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;overflow-y:auto">
           <span style="color:var(--muted);font-size:13px">No devices registered.</span>
         </div>
         <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
@@ -2147,10 +2147,13 @@ function renderDevices(devices) {
     deployList.innerHTML = '';
     entries.forEach(([imei, name]) => {
       const lbl = document.createElement('label');
-      lbl.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer';
-      lbl.innerHTML = `<input type="checkbox" class="deploy-cb" data-imei="${esc(imei)}" data-file="${esc(imei)}.ini" checked>
-        <strong>${esc(name)}</strong><span class="mono">${esc(imei)}.ini</span>
-        <span class="diff-badge" id="diff_${esc(imei)}">…</span>`;
+      lbl.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;min-width:0';
+      lbl.innerHTML = `<input type="checkbox" class="deploy-cb" data-imei="${esc(imei)}" data-file="${esc(imei)}.ini" checked style="flex-shrink:0">
+        <span style="flex:1;min-width:0;overflow:hidden">
+          <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</strong>
+          <span class="mono" style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">${esc(imei)}.ini</span>
+        </span>
+        <span class="diff-badge" id="diff_${esc(imei)}" style="flex-shrink:0">…</span>`;
       deployList.appendChild(lbl);
       // Async: fetch deployed state and show diff count
       apiFetch(`${API}/deployed/${imei}`).then(r => r.json()).then(oldMap => {
