@@ -1364,7 +1364,7 @@ function buildGTOWH(p) {
 }
 
 function buildGTSIM(p) {
-  return `AT+GTSIM=${p},${v('sim_mode')},${v('sim_iccid')},1,,,,,,,,,, ${SN}$`;
+  return `AT+GTSIM=${p},${v('sim_mode')},${v('sim_iccid')},1,,,,,,,,,,${SN}$`;
 }
 
 function buildGTURT(p) {
