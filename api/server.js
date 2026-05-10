@@ -144,10 +144,39 @@ function saveDeployed(imei, state) {
   fs.writeFileSync(path.join(DEPLOYED_DIR, `${imei}.json`), JSON.stringify(state));
 }
 
+// ── Auto-cleanup: delete .ini after confirmed delivery ────────────────────────
+function cleanupDeliveredConfigs(trackers) {
+  if (!fs.existsSync(CONFIGS_DIR)) return;
+  let cleaned = false;
+  for (const [imei, tracker] of Object.entries(trackers)) {
+    const filename = `${imei}.ini`;
+    const configPath = safeConfigPath(filename);
+    if (!configPath || !fs.existsSync(configPath)) continue;
+    let fileMtime;
+    try { fileMtime = fs.statSync(configPath).mtimeMs; } catch { continue; }
+    // Only delete if the tracker's most recent request was a successful download
+    // of this specific file, AND that request happened after the file was written
+    // (guards against stale log entries deleting a freshly deployed config)
+    if (tracker.lastConfig === filename &&
+        (tracker.lastStatus === 200 || tracker.lastStatus === 206) &&
+        new Date(tracker.lastSeen).getTime() >= fileMtime) {
+      try {
+        fs.unlinkSync(configPath);
+        console.log(`[cleanup] Deleted delivered config: ${filename}`);
+        cleaned = true;
+      } catch (e) {
+        console.error(`[cleanup] Failed to delete ${filename}:`, e.message);
+      }
+    }
+  }
+  if (cleaned) logCache = null;
+}
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 app.get("/trackers", (req, res) => {
   const trackers = readLog();
+  cleanupDeliveredConfigs(trackers);
   const devices  = loadDevices();
   const result = Object.values(trackers).map(t => ({ ...t, name: devices[t.imei] || null }));
   result.sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));

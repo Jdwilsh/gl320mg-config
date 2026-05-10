@@ -1500,12 +1500,6 @@ function buildGTUDFLines(p) {
   return lines.join('\n');
 }
 
-function buildGTFVR(p) {
-  const now = new Date();
-  const ts = [now.getFullYear(), pad(now.getMonth()+1,2), pad(now.getDate(),2),
-    pad(now.getHours(),2), pad(now.getMinutes(),2), pad(now.getSeconds(),2)].join('');
-  return `AT+GTFVR=${p},,,,,,,,,,,,${ts},${SN}$`;
-}
 
 function buildGTRPC(p) {
   const mask = chk('rpc_bat') === '1' ? '0001' : '0000';
@@ -1557,7 +1551,6 @@ function generate() {
     buildGTGAM(p),
     buildGTCMDLines(p),
     buildGTUDFLines(p),
-    buildGTFVR(p),
     buildGTRPC(p),
   ].join('\n');
 
