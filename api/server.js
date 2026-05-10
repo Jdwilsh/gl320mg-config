@@ -24,14 +24,17 @@ app.use((req, res, next) => {
 });
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-const sessions = new Set();
-
 function loadAuthHash() {
   try {
     if (fs.existsSync(AUTH_FILE))
       return JSON.parse(fs.readFileSync(AUTH_FILE, "utf8")).hash || null;
   } catch {}
   return null;
+}
+
+// Derive a stable token from the password hash — survives server restarts
+function deriveToken(hash) {
+  return crypto.createHmac("sha256", hash).update("tracker-session-v1").digest("hex");
 }
 
 // POST /login — unprotected
@@ -41,9 +44,7 @@ app.post("/login", (req, res) => {
   const submitted = crypto.createHash("sha256")
     .update(req.body.password || "").digest("hex");
   if (submitted !== hash) return res.status(401).json({ error: "Incorrect password" });
-  const token = crypto.randomBytes(32).toString("hex");
-  sessions.add(token);
-  res.json({ token });
+  res.json({ token: deriveToken(hash) });
 });
 
 // Auth middleware — applied to all routes below
@@ -51,7 +52,7 @@ app.use((req, res, next) => {
   const hash = loadAuthHash();
   if (!hash) return next(); // no password configured — open access (dev)
   const bearer = (req.headers.authorization || "").replace(/^Bearer\s+/, "");
-  if (!sessions.has(bearer)) return res.status(401).json({ error: "Unauthorized" });
+  if (bearer !== deriveToken(hash)) return res.status(401).json({ error: "Unauthorized" });
   next();
 });
 
