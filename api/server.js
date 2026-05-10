@@ -178,7 +178,11 @@ app.get("/trackers", (req, res) => {
   const trackers = readLog();
   cleanupDeliveredConfigs(trackers);
   const devices  = loadDevices();
-  const result = Object.values(trackers).map(t => ({ ...t, name: devices[t.imei] || null }));
+  const result = Object.values(trackers).map(t => ({
+    ...t,
+    name: devices[t.imei] || null,
+    configPending: fs.existsSync(path.join(CONFIGS_DIR, `${t.imei}.ini`)),
+  }));
   result.sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
   res.json(result);
 });
