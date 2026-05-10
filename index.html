@@ -1364,7 +1364,7 @@ function buildGTOWH(p) {
 }
 
 function buildGTSIM(p) {
-  return `AT+GTSIM=${p},${v('sim_mode')},${v('sim_iccid')},1,,,,,,,,,,${SN}$`;
+  return `AT+GTSIM=${p},${v('sim_mode')},${v('sim_iccid')},0,,,,,,,,,,${SN}$`;
 }
 
 function buildGTURT(p) {
@@ -1508,7 +1508,8 @@ function buildGTFVR(p) {
 }
 
 function buildGTRPC(p) {
-  return `AT+GTRPC=${p},${chk('rpc_bat')},,,,,,${SN}$`;
+  const mask = chk('rpc_bat') === '1' ? '0001' : '0000';
+  return `AT+GTRPC=${p},${mask},,,,,,${SN}$`;
 }
 
 function buildGTTMA(p) {
@@ -1528,7 +1529,6 @@ function generate() {
   const body = [
     buildGTBSI(p),
     buildGTSRI(p),
-    buildGTQSS(p),
     buildGTCFG(p),
     buildGTPIN(p),
     buildGTDOG(p),
@@ -2403,7 +2403,7 @@ applyConditionals();
 
 // ── Live command preview ───────────────────────────────────────────────────
 const sectionBuilders = {
-  connectivity: p => [buildGTBSI(p), buildGTSRI(p), buildGTQSS(p)],
+  connectivity: p => [buildGTBSI(p), buildGTSRI(p)],
   apnlist:      p => buildGTAPNLines(p).split('\n').filter(Boolean).concat(buildGTAAC(p)),
   globalcfg:    p => [buildGTCFG(p)],
   simpin:       p => [buildGTPIN(p), buildGTSIM(p)],
