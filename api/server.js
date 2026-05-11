@@ -80,27 +80,36 @@ function readLog() {
   const now = Date.now();
   if (logCache && now - logCacheTime < 10000) return logCache;
   const trackers = {};
-  try {
-    const lines = fs.readFileSync(LOG_FILE, "utf8").split("\n");
-    for (const line of lines) {
-      if (!line) continue;
-      const entry = parseLogLine(line);
-      if (!entry) continue;
-      if (!trackers[entry.imei]) {
-        trackers[entry.imei] = {
-          imei: entry.imei, lastSeen: entry.timestamp,
-          lastIp: entry.ip, lastConfig: entry.config,
-          lastStatus: entry.status, history: [],
-        };
+  // Read rotated files oldest-first so newer entries always win the lastSeen/lastStatus fields
+  const files = [];
+  for (let i = 5; i >= 1; i--) {
+    const f = `${LOG_FILE}.${i}`;
+    try { if (fs.existsSync(f)) files.push(f); } catch {}
+  }
+  files.push(LOG_FILE);
+  for (const file of files) {
+    try {
+      const lines = fs.readFileSync(file, "utf8").split("\n");
+      for (const line of lines) {
+        if (!line) continue;
+        const entry = parseLogLine(line);
+        if (!entry) continue;
+        if (!trackers[entry.imei]) {
+          trackers[entry.imei] = {
+            imei: entry.imei, lastSeen: entry.timestamp,
+            lastIp: entry.ip, lastConfig: entry.config,
+            lastStatus: entry.status, history: [],
+          };
+        }
+        const t = trackers[entry.imei];
+        if (t.history.length < 20) t.history.push(entry);
+        if (entry.timestamp >= t.lastSeen) {
+          t.lastSeen = entry.timestamp; t.lastIp = entry.ip;
+          t.lastConfig = entry.config; t.lastStatus = entry.status;
+        }
       }
-      const t = trackers[entry.imei];
-      if (t.history.length < 20) t.history.push(entry);
-      if (entry.timestamp >= t.lastSeen) {
-        t.lastSeen = entry.timestamp; t.lastIp = entry.ip;
-        t.lastConfig = entry.config; t.lastStatus = entry.status;
-      }
-    }
-  } catch (err) { console.error("Error reading log:", err.message); }
+    } catch (err) { console.error(`Error reading log ${file}:`, err.message); }
+  }
   for (const t of Object.values(trackers))
     t.history.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   logCache = trackers;
