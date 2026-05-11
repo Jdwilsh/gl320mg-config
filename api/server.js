@@ -14,10 +14,11 @@ const CONFIGS_DIR   = path.join(__dirname, "..", "configs");
 const DEPLOYED_DIR  = path.join(__dirname, "..", "deployed");
 const AUTH_FILE     = path.join(__dirname, "..", "auth.json");
 const TEMPLATES_DIR = path.join(__dirname, '..', 'templates');
+const LOG_FILE      = '/var/log/nginx/cfg.access.log';
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 initSchema();
-runMigration(db, { DEVICES_FILE, DEPLOYED_DIR, TEMPLATES_DIR });
+runMigration(db, { DEVICES_FILE, DEPLOYED_DIR, TEMPLATES_DIR, LOG_FILE });
 
 // logWatcher must be required AFTER initSchema (prepared statements need tables)
 const { startLogWatcher } = require('./logWatcher');
