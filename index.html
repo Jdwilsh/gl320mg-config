@@ -2034,12 +2034,22 @@ function renderTemplates(names) {
   names.forEach(name => {
     const card = document.createElement('div');
     card.className = 'tpl-card';
-    card.innerHTML = `
-      <div class="tpl-name">${esc(name)}</div>
-      <div class="tpl-actions">
-        <button class="btn btn-primary btn-sm" onclick="applyTemplate(${JSON.stringify(name)})">Load</button>
-        <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteTemplate(${JSON.stringify(name)})">×</button>
-      </div>`;
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'tpl-name';
+    nameDiv.textContent = name;
+    const actions = document.createElement('div');
+    actions.className = 'tpl-actions';
+    const loadBtn = document.createElement('button');
+    loadBtn.className = 'btn btn-primary btn-sm';
+    loadBtn.textContent = 'Load';
+    loadBtn.addEventListener('click', () => applyTemplate(name));
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn btn-outline btn-sm';
+    delBtn.style.cssText = 'color:var(--danger);border-color:var(--danger)';
+    delBtn.textContent = '×';
+    delBtn.addEventListener('click', () => deleteTemplate(name));
+    actions.append(loadBtn, delBtn);
+    card.append(nameDiv, actions);
     grid.appendChild(card);
   });
 }
