@@ -1465,9 +1465,10 @@ function buildGTGLM(p) {
 }
 
 function buildGTUPC(p) {
-  const mode = chk('upc_mode');
-  return `AT+GTUPC=${p},${v('upc_max_retries') || 0},${v('upc_timeout') || 10},0,` +
-    `${chk('upc_report')},${v('upc_interval') || 0},${v('upc_url')},${mode},,,,${SN}$`;
+  // Field order: mode, timeout, reserved(0), retries, interval, url, send_report
+  const mode = chk('upc_mode') ? 1 : 0;
+  return `AT+GTUPC=${p},${mode},${v('upc_timeout') || 10},0,` +
+    `${v('upc_max_retries') || 0},${v('upc_interval') || 0},${v('upc_url')},${chk('upc_report') ? 1 : 0},,,,${SN}$`;
 }
 
 function buildGTPDS(p) {
@@ -1507,7 +1508,7 @@ function buildGTUDFLines(p) {
 
 
 function buildGTRPC(p) {
-  const mask = chk('rpc_bat') === '1' ? '0001' : '0000';
+  const mask = chk('rpc_bat') === '1' ? '1' : '0';
   return `AT+GTRPC=${p},${mask},,,,,,${SN}$`;
 }
 
@@ -1775,9 +1776,10 @@ function populateFromConfig(text) {
   }
   if (cmds.GTUPC) {
     const p = cmds.GTUPC[0];
-    setV('upc_max_retries', p[1]); setV('upc_timeout', p[2]);
-    setV('upc_report', p[4]); setV('upc_interval', p[5]); setV('upc_url', p[6]);
-    setV('upc_mode', p[7]);
+    // Field order: mode, timeout, reserved, retries, interval, url, send_report
+    setV('upc_mode', p[1]); setV('upc_timeout', p[2]);
+    setV('upc_max_retries', p[4]); setV('upc_interval', p[5]);
+    setV('upc_url', p[6]); setV('upc_report', p[7]);
   }
   if (cmds.GTPDS) {
     const p = cmds.GTPDS[0]; setV('pds_mode', p[1]);
