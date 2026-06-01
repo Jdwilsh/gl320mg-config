@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark blue background -->
+  <rect width="32" height="32" rx="6" fill="#1e3a5f"/>
+
+  <!-- Location pin -->
+  <path d="M16 4 C10 4 6 9 6 14 C6 21 16 28 16 28 C16 28 26 21 26 14 C26 9 22 4 16 4 Z" fill="white"/>
+
+  <!-- Inner circle cutout -->
+  <circle cx="16" cy="14" r="4.5" fill="#1e3a5f"/>
+</svg>
