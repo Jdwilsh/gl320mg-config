@@ -12,7 +12,7 @@ const PORT = 3010;
 const DEVICES_FILE  = path.join(__dirname, "..", "devices.json");
 const CONFIGS_DIR   = process.env.TRACKER_CONFIGS_DIR || path.join(__dirname, "..", "configs");
 const DEPLOYED_DIR  = path.join(__dirname, "..", "deployed");
-const AUTH_FILE     = path.join(__dirname, "..", "auth.json");
+const AUTH_FILE     = process.env.TRACKER_AUTH_FILE || path.join(__dirname, "..", "auth.json");
 const TEMPLATES_DIR = path.join(__dirname, '..', 'templates');
 const LOG_FILE      = process.env.TRACKER_LOG_FILE || '/var/log/nginx/cfg.access.log';
 
