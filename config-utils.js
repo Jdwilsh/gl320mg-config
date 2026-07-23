@@ -52,6 +52,42 @@
     return `${base}${extra.length ? `\n${extra.join('\n')}` : ''}\n`;
   }
 
+  function generatedLinesMissingFromSource(sourceText, generatedText) {
+    const sourceCounts = {};
+    parseConfig(sourceText).commandLines.forEach(item => {
+      sourceCounts[item.name] = (sourceCounts[item.name] || 0) + 1;
+    });
+    return parseConfig(generatedText).commandLines.filter(item => {
+      if ((sourceCounts[item.name] || 0) > 0) {
+        sourceCounts[item.name]--;
+        return false;
+      }
+      return true;
+    });
+  }
+
+  // Keep the trusted baseline's command order. Supported commands are replaced
+  // in place; unsupported commands remain byte-for-byte intact. Any generated
+  // commands absent from the baseline are appended, and callers can use
+  // generatedLinesMissingFromSource() to block that output when completeness is
+  // required.
+  function mergeWithSource(sourceText, generatedText) {
+    const generated = parseConfig(generatedText);
+    const queues = {};
+    generated.commandLines.forEach(item => {
+      if (!queues[item.name]) queues[item.name] = [];
+      queues[item.name].push(item.line.trim());
+    });
+
+    const output = [];
+    parseConfig(sourceText).commandLines.forEach(item => {
+      const replacements = queues[item.name];
+      output.push(replacements?.length ? replacements.shift() : item.line.trim());
+    });
+    Object.values(queues).forEach(lines => output.push(...lines));
+    return `${output.join('\n')}\n`;
+  }
+
   function configToMap(text) {
     const counters = {};
     const map = {};
@@ -78,6 +114,8 @@
     commandNames,
     configToMap,
     diffConfig,
+    generatedLinesMissingFromSource,
+    mergeWithSource,
     parseConfig,
     preservedLines,
     unparsedLines,

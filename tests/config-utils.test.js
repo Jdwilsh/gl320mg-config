@@ -4,6 +4,8 @@ const {
   appendPreservedLines,
   configToMap,
   diffConfig,
+  generatedLinesMissingFromSource,
+  mergeWithSource,
   parseConfig,
   preservedLines,
   unparsedLines,
@@ -34,6 +36,42 @@ test('unsupported commands survive regeneration while non-command text is exclud
   assert.deepEqual(unparsedLines(source), ['; keep this note']);
   assert.match(appendPreservedLines(generated, preserved), /AT\+GTXYZ=/);
   assert.doesNotMatch(appendPreservedLines(generated, preserved), /keep this note/);
+});
+
+test('trusted source order is retained while supported commands change in place', () => {
+  const source = [
+    'AT+GTXYZ=gl320m,keep,this,exactly$',
+    'AT+GTSRI=gl320m,3,,1,old.example.com,5004,,,,,0001$',
+    'AT+GTAPN=gl320m,0,1,23430,old-apn,,,,,0001$',
+    'AT+GTAPN=gl320m,1,0,,,,,,,0001$',
+  ].join('\n');
+  const generated = [
+    'AT+GTSRI=gl320m,3,,1,new.example.com,5004,,,,,0001$',
+    'AT+GTAPN=gl320m,0,1,23430,new-apn,,,,,0001$',
+    'AT+GTAPN=gl320m,1,0,,,,,,,0001$',
+  ].join('\n');
+
+  assert.equal(mergeWithSource(source, generated), [
+    'AT+GTXYZ=gl320m,keep,this,exactly$',
+    'AT+GTSRI=gl320m,3,,1,new.example.com,5004,,,,,0001$',
+    'AT+GTAPN=gl320m,0,1,23430,new-apn,,,,,0001$',
+    'AT+GTAPN=gl320m,1,0,,,,,,,0001$',
+    '',
+  ].join('\n'));
+  assert.deepEqual(generatedLinesMissingFromSource(source, generated), []);
+});
+
+test('missing generated commands are detectable before deployment', () => {
+  const source = 'AT+GTSRI=gl320m,3,,1,old.example.com,5004,,,,,0001$\n';
+  const generated = [
+    'AT+GTSRI=gl320m,3,,1,new.example.com,5004,,,,,0001$',
+    'AT+GTCFG=gl320m,gl320m,tracker,,,,,,,,FFFF$',
+  ].join('\n');
+
+  assert.deepEqual(
+    generatedLinesMissingFromSource(source, generated).map(item => item.name),
+    ['GTCFG']
+  );
 });
 
 test('config maps provide stable keys for repeated commands', () => {
