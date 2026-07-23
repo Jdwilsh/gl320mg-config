@@ -220,6 +220,22 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 .change-card:hover{border-color:#93c5fd;background:var(--accent-bg)}
 .change-card strong{display:block;font-size:13px;margin-bottom:3px}
 .change-card span{display:block;font-size:11px;color:var(--muted);line-height:1.4}
+.device-tabs{display:flex;gap:7px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin}
+.device-tab{flex:0 0 auto;border:1px solid var(--border);background:var(--panel);border-radius:9px;padding:10px 14px;cursor:pointer;font:inherit;text-align:left;min-width:130px}
+.device-tab:hover{border-color:#93c5fd;background:var(--accent-bg)}
+.device-tab.active{border-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
+.device-tab strong{display:block;font-size:13px}
+.device-tab span{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+.device-tab .tab-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#94a3b8;margin:0 5px 0 0}
+.device-tab.dirty .tab-dot{background:#f59e0b}
+.device-tab.valid .tab-dot{background:#22c55e}
+.device-workspace-head{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.device-workspace-head .copy-control{min-width:220px;flex:1}
+.changes-device{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:10px}
+.changes-device-head{display:flex;gap:14px;align-items:flex-start;justify-content:space-between}
+.changes-device h3{font-size:15px;margin:0}
+.changes-device p{font-size:11px;color:var(--muted);margin-top:3px}
+.changes-device-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 @media(max-width:768px){
   .workspace-context{grid-template-columns:1fr}
   .workspace-actions{justify-content:flex-start}
@@ -271,6 +287,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <a href="#" data-section="monitor" class="active"><span class="nav-lbl">Tracker Activity</span></a>
   <a href="#" data-section="simactivity"><span class="nav-lbl">SIM Activity</span></a>
   <a href="#" data-section="output"><span class="nav-lbl">Configurations</span></a>
+  <a href="#" data-section="changes"><span class="nav-lbl">Changes &amp; OTA</span></a>
   <a href="#" data-section="devices"><span class="nav-lbl">Device Names</span></a>
   <div class="nav-section">Edit GL320MG config</div>
   <a href="#" data-section="connectivity"><span class="nav-cmd">APN &amp; reporting server</span><span class="nav-lbl">Connectivity</span></a>
@@ -542,6 +559,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
         <span class="hint">Mode 1/2 unregisters device from network if wrong SIM detected</span>
       </div>
       <div class="f"><label>ICCID (20 digits, Mode 2 only)</label><input id="sim_iccid" maxlength="20" placeholder="89441234..."></div>
+      <input type="hidden" id="sim_param3" value="0">
     </div>
   </div>
   </div><!-- end cards-grid -->
@@ -907,7 +925,13 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="card">
     <div class="card-title">OTA Config Download (AT+GTUPC)</div>
     <div class="fg three">
-      <div class="f cb"><input type="checkbox" id="upc_mode"><label for="upc_mode">Enable OTA config download</label></div>
+      <div class="f"><label>OTA Configuration Mode</label>
+        <select id="upc_mode">
+          <option value="0">0 – Disabled</option>
+          <option value="1">1 – Enabled (mode 1)</option>
+          <option value="2">2 – Enabled (mode 2)</option>
+        </select>
+      </div>
       <div class="f"><label>Config File URL</label><input id="upc_url" value="http://cfg.jdwilsh.com/" placeholder="http://cfg.jdwilsh.com/"></div>
       <div class="f"><label>Check interval (hours, 0=once only)</label><input id="upc_interval" type="number" value="0" min="0" max="8760"></div>
       <div class="f"><label>Max download retries (0–3)</label><input id="upc_max_retries" type="number" value="0" min="0" max="3"></div>
@@ -1133,38 +1157,41 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── OUTPUT ── -->
 <div class="section" id="sect-output">
-  <div class="section-title">Configurations</div>
-  <div class="section-desc">Start from a complete, trusted configuration, make the required changes, then validate and queue the full file.</div>
+  <div class="section-title">Device Configurations</div>
+  <div class="section-desc">Choose a tracker by name. Each GL320MG keeps its own baseline and unsaved changes while you move between devices.</div>
 
-  <div class="primary-flow">
-    <div class="flow-step active"><strong>1. Choose tracker &amp; baseline</strong>Load its known configuration, a trusted template, or a complete file</div>
-    <div class="flow-step"><strong>2. Make the change</strong>Open a plain-language settings area while the current target stays visible</div>
-    <div class="flow-step"><strong>3. Validate &amp; queue</strong>Review the complete file and every selected tracker before deployment</div>
+  <div class="card">
+    <div class="card-title">GL320MG trackers</div>
+    <div class="device-tabs" id="device_tabs">
+      <span style="color:var(--muted);font-size:13px">Loading trackers…</span>
+    </div>
+    <select id="cfg_device_select" style="display:none"><option value="">— choose tracker —</option></select>
+    <input id="cfg_filename" value="1.cfg" style="display:none">
+    <button id="btn_use_device" style="display:none">Open tracker configuration</button>
+    <button id="btn_load_device" style="display:none">Reload pending configuration</button>
+    <div id="device_workspace_empty" class="note">Choose a tracker tab to open its configuration.</div>
+    <div id="device_workspace_controls" style="display:none">
+      <div class="device-workspace-head">
+        <div style="flex:1;min-width:220px">
+          <strong id="active_device_name">Tracker</strong>
+          <span class="sim-secondary mono" id="active_device_imei"></span>
+        </div>
+        <div class="f copy-control">
+          <label>Copy editable configuration from</label>
+          <select id="copy_device_select"><option value="">— choose another tracker —</option></select>
+          <span class="hint">The current tracker remains the target; its device-specific unsupported commands are retained.</span>
+        </div>
+        <button class="btn btn-outline" id="btn_copy_device">Copy into this tracker</button>
+        <button class="btn btn-outline" id="btn_reload_device">Reload trusted baseline</button>
+      </div>
+      <div style="margin-top:8px"><span id="device_msg" class="status-msg"></span></div>
+    </div>
   </div>
 
   <div class="cards-grid">
-    <div class="card" style="margin-bottom:0">
-      <div class="card-title">1. Choose the tracker</div>
-      <div class="f" style="margin-bottom:10px">
-        <label>GL320MG configuration target</label>
-        <select id="cfg_device_select"><option value="">— choose tracker —</option></select>
-        <span class="hint">FMM920 and monitoring-only devices are never offered here.</span>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-primary" id="btn_use_device">Open tracker configuration</button>
-        <button class="btn btn-outline" id="btn_load_device">Load its pending .ini</button>
-      </div>
-      <div style="margin-top:8px"><span id="device_msg" class="status-msg"></span></div>
-      <hr class="div">
-      <div class="f">
-        <label>Complete output filename</label>
-        <input id="cfg_filename" value="1.cfg" placeholder="860201067895154.ini">
-        <span class="hint">Tracker deployments always use the selected tracker’s exact &lt;IMEI&gt;.ini filename.</span>
-      </div>
-    </div>
 
     <div class="card" style="margin-bottom:0">
-      <div class="card-title">Or load a complete file</div>
+      <div class="card-title">Load a complete file into the current tracker</div>
       <div class="note"><strong>Safety rule:</strong> tool defaults alone cannot be deployed. Load a known tracker state, trusted template, or complete config file first.</div>
       <div id="server_file_list" class="file-list">
         <span style="color:var(--muted);font-size:13px">Loading files…</span>
@@ -1175,6 +1202,19 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
         <input type="file" id="file_import" accept=".cfg,.ini,.GL320M,.txt" style="display:none">
       </div>
       <div style="margin-top:8px"><span id="load_msg" class="status-msg"></span></div>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">Current tracker safety</div>
+      <div id="validation_list" class="validation-list">
+        <div class="validation-item">Choose a tracker and load its trusted baseline.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn btn-outline" id="btn_generate">Regenerate &amp; validate</button>
+        <button class="btn btn-outline" id="btn_copy">Copy complete config</button>
+        <button class="btn btn-outline" id="btn_download">Download complete config</button>
+      </div>
+      <button id="btn_save_server" style="display:none">Save complete draft</button>
+      <div style="margin-top:8px"><span id="save_msg" class="status-msg"></span></div>
     </div>
   </div>
 
@@ -1206,36 +1246,6 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     </div>
   </div>
 
-  <div class="cards-grid" id="review_queue_area">
-    <div class="card" style="margin-bottom:0">
-      <div class="card-title">3. Validate the complete configuration</div>
-      <div id="validation_list" class="validation-list">
-        <div class="validation-item">Load a trusted baseline before reviewing or deploying.</div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-        <button class="btn btn-outline" id="btn_generate">Regenerate &amp; validate</button>
-        <button class="btn btn-outline" id="btn_save_server">Save complete draft</button>
-        <button class="btn btn-outline" id="btn_copy">Copy complete config</button>
-        <button class="btn btn-outline" id="btn_download">Download complete config</button>
-      </div>
-      <div style="margin-top:8px"><span id="save_msg" class="status-msg"></span></div>
-    </div>
-
-    <div class="card" style="margin-bottom:0">
-      <div class="card-title">Choose deployment targets</div>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Only GL320MG devices are listed. Every selected tracker receives the complete validated configuration as its own &lt;IMEI&gt;.ini.</p>
-      <div id="deploy_device_list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;max-height:280px;overflow-y:auto">
-        <span style="color:var(--muted);font-size:13px">No devices registered.</span>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" id="btn_deploy_all">All</button>
-        <button class="btn btn-outline btn-sm" id="btn_deploy_none">None</button>
-      </div>
-      <button class="btn btn-primary" id="btn_deploy_selected" style="width:100%">Review complete files before queueing</button>
-      <div style="margin-top:8px"><span id="deploy_msg" class="status-msg"></span></div>
-    </div>
-  </div>
-
   <div style="margin-top:4px">
     <button id="btn_toggle_preview" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:6px;padding:4px 0">
       <span id="preview_arrow" style="font-size:10px">▶</span> Show config preview
@@ -1249,6 +1259,23 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     </div>
   </div>
 
+</div>
+
+<!-- ── CHANGES & OTA ── -->
+<div class="section" id="sect-changes">
+  <div class="section-title">Changes &amp; OTA</div>
+  <div class="section-desc">Only trackers with unsaved configuration edits appear here. Review each device separately before creating its OTA file.</div>
+  <div id="changes_summary" style="margin-bottom:14px"></div>
+  <div id="changes_list">
+    <div class="card"><span style="color:var(--muted)">No device configurations have been changed.</span></div>
+  </div>
+  <div id="review_queue_area" style="display:none">
+    <div id="deploy_device_list"></div>
+    <button id="btn_deploy_all">All</button>
+    <button id="btn_deploy_none">None</button>
+    <button id="btn_deploy_selected">Review</button>
+  </div>
+  <div><span id="deploy_msg" class="status-msg"></span></div>
 </div>
 
 </main>
@@ -1297,7 +1324,7 @@ document.getElementById('nav_toggle').addEventListener('click', () => {
 navOverlay.addEventListener('click', closeNav);
 
 const CONFIG_SECTIONS = new Set([
-  'output', 'connectivity', 'apnlist', 'globalcfg', 'simpin', 'reporting',
+  'output', 'changes', 'connectivity', 'apnlist', 'globalcfg', 'simpin', 'reporting',
   'motion', 'geofences', 'alarms', 'harsh', 'behaviour', 'comms', 'advanced',
 ]);
 
@@ -1313,6 +1340,7 @@ function showSection(target, options = {}) {
   if (target === 'simactivity') loadSimActivity();
   if (target === 'devices') loadDevices();
   if (target === 'output') { loadDevices(); loadServerFiles(); renderValidation(); }
+  if (target === 'changes') { snapshotActiveWorkspace(); renderChangesPage(); }
   if (target === 'geofences') setTimeout(initGeoMap, 60);
   if (sectionBuilders?.[target]) setTimeout(() => renderCmdPreview(target), 0);
   if (options.review) {
@@ -1327,7 +1355,7 @@ navLinks.forEach(link => link.addEventListener('click', e => {
   showSection(link.dataset.section);
 }));
 document.getElementById('btn_context_home').addEventListener('click', () => showSection('output'));
-document.getElementById('btn_context_review').addEventListener('click', () => showSection('output', { review: true }));
+document.getElementById('btn_context_review').addEventListener('click', () => showSection('changes'));
 document.querySelectorAll('[data-open-config]').forEach(button => {
   button.addEventListener('click', () => showSection(button.dataset.openConfig));
 });
@@ -1527,6 +1555,102 @@ function requireSafeCompleteConfig(messageId) {
   showMsg(messageId, `Cannot continue: ${result.blocking[0]}`, true);
   return false;
 }
+
+const DEVICE_WORKSPACES_KEY = 'tracker_device_workspaces_v3';
+let workspaceDevices = [];
+let workspaceDrafts = {};
+try {
+  workspaceDrafts = JSON.parse(localStorage.getItem(DEVICE_WORKSPACES_KEY) || '{}') || {};
+} catch { workspaceDrafts = {}; }
+
+function persistWorkspaceDrafts() {
+  localStorage.setItem(DEVICE_WORKSPACES_KEY, JSON.stringify(workspaceDrafts));
+}
+
+function snapshotActiveWorkspace() {
+  const imei = documentState.targetImei;
+  if (!imei || documentState.loading) return;
+  const validation = renderValidation();
+  const content = documentState.baselineReady ? serializeConfig(true) : '';
+  const hasEffectiveChanges = documentState.baselineReady
+    ? ConfigUtils.diffConfig(documentState.sourceText || '', content).length > 0
+    : documentState.dirty;
+  const wasDirty = documentState.dirty;
+  documentState.dirty = documentState.dirty && hasEffectiveChanges;
+  workspaceDrafts[imei] = {
+    imei,
+    name: documentState.targetName || imei,
+    state: getConfigState(),
+    source: documentState.source,
+    summary: document.getElementById('document_summary')?.textContent || '',
+    sourceText: documentState.sourceText,
+    preservedLines: [...documentState.preservedLines],
+    ignoredLines: [...documentState.ignoredLines],
+    baselineReady: documentState.baselineReady,
+    dirty: documentState.dirty,
+    blocking: [...validation.blocking],
+    content,
+    updatedAt: new Date().toISOString(),
+  };
+  persistWorkspaceDrafts();
+  renderDeviceTabs();
+  if (wasDirty !== documentState.dirty) updateDocumentState();
+}
+
+function restoreWorkspaceSnapshot(snapshot) {
+  documentState.loading = true;
+  Object.entries(snapshot.state || {}).forEach(([id, value]) => setV(id, value));
+  documentState.source = snapshot.source || 'saved device workspace';
+  documentState.sourceText = snapshot.sourceText || '';
+  documentState.preservedLines = Array.isArray(snapshot.preservedLines) ? snapshot.preservedLines : [];
+  documentState.ignoredLines = Array.isArray(snapshot.ignoredLines) ? snapshot.ignoredLines : [];
+  documentState.baselineReady = snapshot.baselineReady === true;
+  documentState.dirty = snapshot.dirty === true;
+  document.getElementById('document_summary').textContent = snapshot.summary || 'Device workspace restored. Review its settings or open Changes & OTA.';
+  documentState.loading = false;
+  saveFormState();
+  applyConditionals();
+  Object.keys(sectionBuilders).forEach(renderCmdPreview);
+  if (typeof renderGeoMap === 'function') renderGeoMap();
+  generate({ showPreview: false });
+  updateDocumentState();
+}
+
+function renderDeviceTabs() {
+  const tabs = document.getElementById('device_tabs');
+  if (!tabs) return;
+  const devices = workspaceDevices.filter(device => device.configEnabled);
+  if (!devices.length) {
+    tabs.innerHTML = '<span style="color:var(--muted);font-size:13px">No GL320MG trackers registered.</span>';
+    return;
+  }
+  tabs.innerHTML = '';
+  devices.forEach(device => {
+    const draft = workspaceDrafts[device.imei];
+    const button = document.createElement('button');
+    button.className = `device-tab${documentState.targetImei === device.imei ? ' active' : ''}${draft?.dirty ? ' dirty' : draft?.baselineReady ? ' valid' : ''}`;
+    button.innerHTML = `<strong><span class="tab-dot"></span>${esc(device.name || device.imei)}</strong><span>${draft?.dirty ? 'Unsaved changes' : draft?.baselineReady ? 'Baseline loaded' : 'Open configuration'}</span>`;
+    button.addEventListener('click', () => openDeviceWorkspace(device.imei));
+    tabs.appendChild(button);
+  });
+}
+
+function updateDeviceWorkspaceControls() {
+  const active = workspaceDevices.find(device => device.imei === documentState.targetImei);
+  document.getElementById('device_workspace_empty').style.display = active ? 'none' : 'block';
+  document.getElementById('device_workspace_controls').style.display = active ? 'block' : 'none';
+  if (!active) return;
+  document.getElementById('active_device_name').textContent = active.name || active.imei;
+  document.getElementById('active_device_imei').textContent = `${active.imei}.ini`;
+  const copySelect = document.getElementById('copy_device_select');
+  copySelect.innerHTML = '<option value="">— choose another tracker —</option>';
+  workspaceDevices.filter(device => device.configEnabled && device.imei !== active.imei).forEach(device => {
+    const option = document.createElement('option');
+    option.value = device.imei;
+    option.textContent = device.name || device.imei;
+    copySelect.appendChild(option);
+  });
+}
 function pw() { return v('cfg_password') || 'gl320m'; }
 const SN = 'FFFF';
 
@@ -1664,7 +1788,10 @@ function buildGTOWH(p) {
 }
 
 function buildGTSIM(p) {
-  return `AT+GTSIM=${p},${v('sim_mode')},${v('sim_iccid')},0,,,,,,,,,,${SN}$`;
+  return `AT+GTSIM=${[
+    p, v('sim_mode'), v('sim_iccid'), v('sim_param3') || '0',
+    ...Array(9).fill(''), SN,
+  ].join(',')}$`;
 }
 
 function buildGTURT(p) {
@@ -1761,9 +1888,8 @@ function buildGTGLM(p) {
 
 function buildGTUPC(p) {
   // Field order: mode, timeout, reserved(0), retries, interval, url, send_report
-  const mode = chk('upc_mode') ? 1 : 0;
-  return `AT+GTUPC=${p},${mode},${v('upc_timeout') || 10},0,` +
-    `${v('upc_max_retries') || 0},${v('upc_interval') || 0},${v('upc_url')},${chk('upc_report') ? 1 : 0},,,,${SN}$`;
+  return `AT+GTUPC=${p},${v('upc_mode') || '0'},${v('upc_timeout') || 10},0,` +
+    `${v('upc_max_retries') || 0},${v('upc_interval') || 0},${v('upc_url')},${chk('upc_report')},,,,${SN}$`;
 }
 
 function buildGTPDS(p) {
@@ -1861,14 +1987,15 @@ function serializeConfig(includePreserved = true) {
   return ConfigUtils.appendPreservedLines(generated, documentState.preservedLines);
 }
 
-function generate() {
+function generate(options = {}) {
   const out = serializeConfig(true);
   document.getElementById('config_output').value = out;
-  // Auto-open preview so user can see generation succeeded
-  const wrap = document.getElementById('preview_wrap');
-  const btn = document.getElementById('btn_toggle_preview');
-  wrap.style.display = 'block';
-  btn.innerHTML = '<span id="preview_arrow" style="font-size:10px">▼</span> Hide config preview';
+  if (options.showPreview !== false) {
+    const wrap = document.getElementById('preview_wrap');
+    const btn = document.getElementById('btn_toggle_preview');
+    wrap.style.display = 'block';
+    btn.innerHTML = '<span id="preview_arrow" style="font-size:10px">▼</span> Hide config preview';
+  }
   renderValidation();
   return out;
 }
@@ -1895,13 +2022,14 @@ function applyConfigText(text, label) {
   saveFormState();
   applyConditionals();
   Object.keys(sectionBuilders).forEach(renderCmdPreview);
-  generate();
+  generate({ showPreview: false });
   setDocumentSource(label, `${parsed.commandLines.length} command lines loaded from a complete baseline. Edit only the required settings, then return here to review the entire file.`, { trusted: true });
   showMsg(
     'load_msg',
     `${label} loaded — ${parsed.commandLines.length} command lines${documentState.preservedLines.length ? `, ${documentState.preservedLines.length} preserved verbatim` : ''}${documentState.ignoredLines.length ? `, ${documentState.ignoredLines.length} excluded` : ''}`,
     false
   );
+  if (documentState.targetImei) snapshotActiveWorkspace();
 }
 
 async function loadFromServer() {
@@ -1972,7 +2100,7 @@ function populateFromConfig(text) {
   }
   if (cmds.GTSIM) {
     const p = cmds.GTSIM[0];
-    setV('sim_mode', p[1]); setV('sim_iccid', p[2]);
+    setV('sim_mode', p[1]); setV('sim_iccid', p[2]); setV('sim_param3', p[3]);
   }
   if (cmds.GTDOG) {
     const p = cmds.GTDOG[0];
@@ -2173,7 +2301,12 @@ async function loadServerFiles() {
 
 async function loadNamedServerFile(filename) {
   document.getElementById('cfg_filename').value = filename;
-  if (/^\d{15}\.ini$/.test(filename)) setDocumentTarget(filename.replace(/\.ini$/i, ''));
+  if (/^\d{15}\.ini$/.test(filename)) {
+    const imei = filename.replace(/\.ini$/i, '');
+    const device = workspaceDevices.find(item => item.imei === imei);
+    setDocumentTarget(imei, device?.name || imei);
+    updateDeviceWorkspaceControls();
+  }
   await loadFromServer();
 }
 
@@ -2199,6 +2332,10 @@ async function deleteServerFile(filename) {
 document.getElementById('btn_refresh_files').addEventListener('click', loadServerFiles);
 
 document.getElementById('btn_load_file').addEventListener('click', () => {
+  if (!documentState.targetImei) {
+    showMsg('load_msg', 'Choose a tracker tab before importing a configuration file', true);
+    return;
+  }
   document.getElementById('file_import').click();
 });
 document.getElementById('file_import').addEventListener('change', e => {
@@ -2222,34 +2359,58 @@ function configStateToText(state) {
     .join('\n');
 }
 
-document.getElementById('btn_use_device').addEventListener('click', async () => {
-  const sel = document.getElementById('cfg_device_select');
-  if (!sel.value) {
-    showMsg('device_msg', 'Choose a tracker first', true);
+async function getDeviceBaseline(imei) {
+  try {
+    const file = await apiFetch(`${API}/config/${encodeURIComponent(imei + '.ini')}`);
+    if (file.ok) return { text: await file.text(), label: 'Currently queued configuration' };
+  } catch {}
+  const res = await apiFetch(`${API}/deployment/${encodeURIComponent(imei)}`);
+  const data = res.ok ? await res.json() : null;
+  const knownState = data?.pending?.state || data?.confirmed || null;
+  const text = configStateToText(knownState);
+  if (!text) return null;
+  const label = data?.pending?.state
+    ? (data.pending.status === 'downloaded' ? 'Last downloaded configuration' : 'Currently queued configuration')
+    : 'Last known configuration';
+  return { text: text + '\n', label };
+}
+
+async function openDeviceWorkspace(imei, options = {}) {
+  const device = workspaceDevices.find(item => item.imei === imei && item.configEnabled);
+  if (!device) return;
+  if (documentState.targetImei && documentState.targetImei !== imei) snapshotActiveWorkspace();
+  const existing = workspaceDrafts[imei];
+  setDocumentTarget(imei, device.name);
+  document.getElementById('cfg_filename').value = `${imei}.ini`;
+  document.getElementById('cfg_device_select').value = `${imei}.ini`;
+  updateDeviceWorkspaceControls();
+  renderDeviceTabs();
+  if (existing && !options.reload) {
+    restoreWorkspaceSnapshot(existing);
+    showMsg('device_msg', existing.dirty ? 'Unsaved changes restored' : 'Tracker baseline restored', false);
     return;
   }
-  if (documentState.dirty && !confirm('Open another tracker and discard the current unsaved edits?')) return;
-  document.getElementById('cfg_filename').value = sel.value;
-  const imei = sel.value.replace(/\.ini$/i, '');
-  const trackerName = sel.options[sel.selectedIndex].textContent.split(' — ')[0];
-  setDocumentTarget(imei, trackerName);
   showMsg('device_msg', 'Looking for this tracker’s known configuration…', false);
   try {
-    const res = await apiFetch(`${API}/deployment/${encodeURIComponent(imei)}`);
-    const data = res.ok ? await res.json() : null;
-    const knownState = data?.pending?.state || data?.confirmed || null;
-    const knownText = configStateToText(knownState);
-    if (knownText) {
-      const source = data?.pending?.state
-        ? (data.pending.status === 'downloaded' ? 'Last downloaded configuration' : 'Currently queued configuration')
-        : 'Last known configuration';
-      applyConfigText(knownText + '\n', `${source}: ${trackerName}`);
-      showMsg('device_msg', `${trackerName} opened from its ${source.toLowerCase()}`, false);
+    const baseline = await getDeviceBaseline(imei);
+    if (baseline) {
+      applyConfigText(baseline.text, `${baseline.label}: ${device.name}`);
+      snapshotActiveWorkspace();
+      showMsg('device_msg', `${device.name} opened from its ${baseline.label.toLowerCase()}`, false);
       return;
     }
   } catch {}
-  setDocumentSource('defaults — baseline required', `No known complete configuration was found for ${trackerName}. Load a trusted template or complete file before making or deploying changes.`, { trusted: false });
-  showMsg('device_msg', `No trusted baseline found for ${trackerName}; load a complete file or template`, true);
+  documentState.sourceText = '';
+  documentState.preservedLines = [];
+  documentState.ignoredLines = [];
+  setDocumentSource('defaults — baseline required', `No known complete configuration was found for ${device.name}. Load a trusted template or complete file before making or deploying changes.`, { trusted: false });
+  snapshotActiveWorkspace();
+  showMsg('device_msg', `No trusted baseline found for ${device.name}; load a complete file or template`, true);
+}
+
+document.getElementById('btn_use_device').addEventListener('click', () => {
+  const imei = v('cfg_device_select').replace(/\.ini$/i, '');
+  if (imei) openDeviceWorkspace(imei);
 });
 
 document.getElementById('btn_load_device').addEventListener('click', async () => {
@@ -2262,6 +2423,46 @@ document.getElementById('btn_load_device').addEventListener('click', async () =>
   const trackerName = sel.options[sel.selectedIndex].textContent.split(' — ')[0];
   setDocumentTarget(sel.value.replace(/\.ini$/i, ''), trackerName);
   await loadFromServer();
+});
+
+document.getElementById('btn_reload_device').addEventListener('click', async () => {
+  if (!documentState.targetImei) return;
+  if (documentState.dirty && !confirm(`Discard the unsaved changes for ${documentState.targetName} and reload its trusted baseline?`)) return;
+  delete workspaceDrafts[documentState.targetImei];
+  persistWorkspaceDrafts();
+  await openDeviceWorkspace(documentState.targetImei, { reload: true });
+});
+
+document.getElementById('btn_copy_device').addEventListener('click', async () => {
+  const sourceImei = v('copy_device_select');
+  if (!documentState.targetImei || !sourceImei) {
+    showMsg('device_msg', 'Choose another tracker to copy from', true);
+    return;
+  }
+  const sourceDevice = workspaceDevices.find(device => device.imei === sourceImei);
+  let sourceText = workspaceDrafts[sourceImei]?.content || '';
+  if (!sourceText) {
+    try { sourceText = (await getDeviceBaseline(sourceImei))?.text || ''; } catch {}
+  }
+  if (!sourceText) {
+    showMsg('device_msg', `No trusted configuration is available for ${sourceDevice?.name || sourceImei}`, true);
+    return;
+  }
+  if (!documentState.baselineReady) {
+    showMsg('device_msg', 'Load this tracker’s own trusted baseline before copying settings into it', true);
+    return;
+  }
+  if (!confirm(`Copy editable settings from ${sourceDevice?.name || sourceImei} into ${documentState.targetName}?\n\n${documentState.targetName} remains the target and its unsupported device-specific commands will be retained.`)) return;
+  documentState.loading = true;
+  populateFromConfig(sourceText);
+  documentState.loading = false;
+  documentState.dirty = true;
+  saveFormState();
+  applyConditionals();
+  Object.keys(sectionBuilders).forEach(renderCmdPreview);
+  updateDocumentState();
+  snapshotActiveWorkspace();
+  showMsg('device_msg', `Settings copied from ${sourceDevice?.name || sourceImei}; review changes before OTA`, false);
 });
 
 document.getElementById('btn_save_server').addEventListener('click', async () => {
@@ -2428,6 +2629,7 @@ document.getElementById('btn_confirm_deploy').addEventListener('click', async ()
   document.getElementById('btn_confirm_deploy').textContent = 'Deploying…';
 
   let ok = 0, skipped = 0, fail = 0;
+  const queuedImeis = [];
   for (const t of tasks) {
     if (!t.isFirst && t.changed.length === 0) { skipped++; continue; }
     try {
@@ -2437,6 +2639,7 @@ document.getElementById('btn_confirm_deploy').addEventListener('click', async ()
       });
       if (!cfgRes.ok) throw new Error(`HTTP ${cfgRes.status}`);
       ok++;
+      queuedImeis.push(t.imei);
     } catch { fail++; }
   }
 
@@ -2449,7 +2652,100 @@ document.getElementById('btn_confirm_deploy').addEventListener('click', async ()
   if (skipped) parts.push(`${skipped} unchanged`);
   if (fail)    parts.push(`${fail} failed`);
   showMsg('deploy_msg', parts.join(', '), fail > 0);
+  queuedImeis.forEach(imei => {
+    const draft = workspaceDrafts[imei];
+    if (!draft) return;
+    draft.dirty = false;
+    draft.source = 'Currently queued configuration';
+    draft.sourceText = fullOut;
+    draft.content = fullOut;
+    draft.blocking = [];
+  });
+  if (queuedImeis.includes(documentState.targetImei)) {
+    documentState.dirty = false;
+    documentState.source = 'Currently queued configuration';
+    documentState.sourceText = fullOut;
+    updateDocumentState();
+  }
+  persistWorkspaceDrafts();
+  renderDeviceTabs();
+  renderChangesPage();
   loadDevices();
+});
+
+function renderChangesPage() {
+  const list = document.getElementById('changes_list');
+  const summary = document.getElementById('changes_summary');
+  if (!list || !summary) return;
+  const drafts = Object.values(workspaceDrafts)
+    .filter(draft => draft.dirty && workspaceDevices.some(device => device.imei === draft.imei && device.configEnabled))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  summary.innerHTML = `<div class="stat-row">
+    <div class="stat-card stat-total"><div class="stat-num">${workspaceDevices.filter(device => device.configEnabled).length}</div><div class="stat-lbl">GL320MG trackers</div></div>
+    <div class="stat-card stat-late"><div class="stat-num">${drafts.length}</div><div class="stat-lbl">With changes</div></div>
+    <div class="stat-card stat-overdue"><div class="stat-num">${drafts.filter(draft => draft.blocking?.length).length}</div><div class="stat-lbl">Blocked</div></div>
+    <div class="stat-card stat-active"><div class="stat-num">${drafts.filter(draft => !draft.blocking?.length).length}</div><div class="stat-lbl">Ready to review</div></div>
+  </div>`;
+  if (!drafts.length) {
+    list.innerHTML = '<div class="card"><strong>No configuration changes</strong><p style="font-size:12px;color:var(--muted);margin-top:4px">Edit a device from the Configurations page and it will appear here.</p></div>';
+    return;
+  }
+  list.innerHTML = '';
+  drafts.forEach(draft => {
+    const differences = ConfigUtils.diffConfig(draft.sourceText || '', draft.content || '');
+    const blocked = draft.blocking?.length > 0;
+    const card = document.createElement('div');
+    card.className = 'changes-device';
+    card.innerHTML = `
+      <div class="changes-device-head">
+        <div>
+          <h3>${esc(draft.name || draft.imei)}</h3>
+          <p><span class="mono">${esc(draft.imei)}.ini</span> · ${differences.length} command difference${differences.length === 1 ? '' : 's'} · baseline: ${esc(draft.source || 'unknown')}</p>
+          ${blocked ? `<div class="validation-item" style="margin-top:8px"><strong>Blocked:</strong> ${esc(draft.blocking[0])}</div>` : '<div class="validation-item ok" style="margin-top:8px">Complete configuration ready for review.</div>'}
+          <details style="margin-top:9px">
+            <summary style="font-size:12px;cursor:pointer">Show exact command changes</summary>
+            <div style="margin-top:8px">${differences.map(change => `<div class="diff-line">
+              <span class="cmd-key">${esc(change.key)}</span>
+              ${change.old ? `<span class="old">${esc(change.old)}</span>` : ''}
+              ${change.new ? `<span class="new">${esc(change.new)}</span>` : '<span class="new">Removed</span>'}
+            </div>`).join('')}</div>
+          </details>
+        </div>
+        <div class="changes-device-actions">
+          <button class="btn btn-outline btn-sm" data-change-action="open" data-imei="${esc(draft.imei)}">Open configuration</button>
+          <button class="btn btn-outline btn-sm" data-change-action="discard" data-imei="${esc(draft.imei)}" style="color:var(--danger);border-color:var(--danger)">Discard changes</button>
+          <button class="btn btn-primary btn-sm" data-change-action="queue" data-imei="${esc(draft.imei)}"${blocked ? ' disabled' : ''}>Review &amp; save for OTA</button>
+        </div>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+document.getElementById('changes_list').addEventListener('click', async event => {
+  const button = event.target.closest('[data-change-action]');
+  if (!button) return;
+  const imei = button.dataset.imei;
+  const action = button.dataset.changeAction;
+  if (action === 'open') {
+    await openDeviceWorkspace(imei);
+    showSection('output');
+    return;
+  }
+  if (action === 'discard') {
+    const draft = workspaceDrafts[imei];
+    if (!confirm(`Discard all unsaved configuration changes for ${draft?.name || imei}?`)) return;
+    delete workspaceDrafts[imei];
+    persistWorkspaceDrafts();
+    if (documentState.targetImei === imei) await openDeviceWorkspace(imei, { reload: true });
+    renderChangesPage();
+    renderDeviceTabs();
+    return;
+  }
+  if (action === 'queue') {
+    await openDeviceWorkspace(imei);
+    document.querySelectorAll('.deploy-cb').forEach(cb => { cb.checked = cb.dataset.imei === imei; });
+    document.getElementById('btn_deploy_selected').click();
+  }
 });
 
 // ── Templates ─────────────────────────────────────────────────────────────────
@@ -2494,6 +2790,12 @@ function renderTemplates(names) {
 
 async function applyTemplate(name) {
   try {
+    const targetBaseline = documentState.targetImei && documentState.baselineReady ? {
+      source: documentState.source,
+      sourceText: documentState.sourceText,
+      preservedLines: [...documentState.preservedLines],
+      ignoredLines: [...documentState.ignoredLines],
+    } : null;
     const res = await apiFetch(`${API}/template/${encodeURIComponent(name.replace(/\s+/g, '_'))}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const state = await res.json();
@@ -2511,13 +2813,24 @@ async function applyTemplate(name) {
     Object.keys(sectionBuilders).forEach(renderCmdPreview);
     if (typeof renderGeoMap === 'function') renderGeoMap();
     const hasCompleteSource = ConfigUtils.parseConfig(documentState.sourceText).commandLines.length > 0;
-    setDocumentSource(
-      `Template: ${name}`,
-      hasCompleteSource
-        ? 'Trusted template loaded. Edit only the required settings, then review the complete configuration before queueing.'
-        : 'This older template does not contain its complete source file. Load a known .ini baseline, then save a replacement template before deploying.',
-      { trusted: hasCompleteSource }
-    );
+    if (targetBaseline && hasCompleteSource) {
+      documentState.source = targetBaseline.source;
+      documentState.sourceText = targetBaseline.sourceText;
+      documentState.preservedLines = targetBaseline.preservedLines;
+      documentState.ignoredLines = targetBaseline.ignoredLines;
+      documentState.baselineReady = true;
+      documentState.dirty = true;
+      document.getElementById('document_summary').textContent = `Template "${name}" copied into ${documentState.targetName}. Review the changes before saving for OTA.`;
+      updateDocumentState();
+    } else {
+      setDocumentSource(
+        `Template: ${name}`,
+        hasCompleteSource
+          ? 'Trusted template loaded. Choose a tracker before editing or queueing it.'
+          : 'This older template does not contain its complete source file. Load a known .ini baseline, then save a replacement template before deploying.',
+        { trusted: hasCompleteSource }
+      );
+    }
     showMsg(
       'template_msg',
       hasCompleteSource
@@ -2525,6 +2838,7 @@ async function applyTemplate(name) {
         : `"${name}" is a legacy template and cannot be deployed without a complete baseline`,
       !hasCompleteSource
     );
+    if (documentState.targetImei) snapshotActiveWorkspace();
   } catch (e) {
     showMsg('template_msg', `Failed to load: ${e.message}`, true);
   }
@@ -2906,10 +3220,13 @@ async function loadDevices() {
 }
 
 function renderDevices(devices) {
+  workspaceDevices = devices.slice();
   const tbody = document.getElementById('devices_tbody');
   const sel = document.getElementById('cfg_device_select');
   const entries = devices.slice().sort((a, b) => a.name.localeCompare(b.name) || a.imei.localeCompare(b.imei));
   const configEntries = entries.filter(device => device.configEnabled);
+  renderDeviceTabs();
+  updateDeviceWorkspaceControls();
   if (!entries.length) {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">No devices registered.</td></tr>';
     sel.innerHTML = '<option value="">— select device —</option>';
@@ -3084,12 +3401,14 @@ document.querySelector('main').addEventListener('input',  e => {
   applyConditionals();
   if (isConfigControl(e.target)) setDocumentDirty(true);
   renderValidation();
+  if (isConfigControl(e.target)) snapshotActiveWorkspace();
 });
 document.querySelector('main').addEventListener('change', e => {
   saveFormState();
   applyConditionals();
   if (isConfigControl(e.target)) setDocumentDirty(true);
   renderValidation();
+  if (isConfigControl(e.target)) snapshotActiveWorkspace();
 });
 
 // Restore on load (APN/GEO tables are already built by their IIFEs at this point)
