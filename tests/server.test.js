@@ -151,6 +151,23 @@ test('config listing exposes queued files to the workspace', async t => {
   assert.deepEqual(await response.json(), ['860201067896228.ini']);
 });
 
+test('deleting a queued config also cancels its pending deployment', async t => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const address = server.address();
+  const base = `http://127.0.0.1:${address.port}`;
+  const imei = '860201067896228';
+
+  const removed = await fetch(`${base}/config/${imei}.ini`, { method: 'DELETE' });
+  assert.equal(removed.status, 200);
+  assert.deepEqual(await removed.json(), { ok: true, filename: `${imei}.ini` });
+  assert.equal(fs.existsSync(path.join(testRoot, 'configs', `${imei}.ini`)), false);
+
+  const lifecycle = await fetch(`${base}/deployment/${imei}`);
+  assert.equal(lifecycle.status, 200);
+  assert.equal((await lifecycle.json()).pending, null);
+});
+
 test('monitoring-only devices keep names but cannot receive GL320MG configs', async t => {
   const server = await startServer();
   t.after(() => server.close());

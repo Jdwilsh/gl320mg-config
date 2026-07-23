@@ -103,6 +103,9 @@ const stmts = {
     SET status = 'downloaded', downloaded_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')
     WHERE imei = ? AND filename = ? AND status = 'queued'
   `),
+  deletePendingDeployment: db.prepare(`
+    DELETE FROM pending_deployments WHERE imei = ? AND filename = ?
+  `),
 
   // Templates
   allTemplates:    db.prepare('SELECT name FROM templates ORDER BY name'),
@@ -565,6 +568,21 @@ app.post("/config/:name", (req, res) => {
   if (!fs.existsSync(CONFIGS_DIR)) fs.mkdirSync(CONFIGS_DIR, { recursive: true });
   fs.writeFileSync(fp, content, "utf8");
   res.json({ ok: true });
+});
+
+app.delete("/config/:name", (req, res) => {
+  const filename = req.params.name;
+  const fp = safeConfigPath(filename);
+  if (!fp) return res.status(400).json({ error: "invalid filename" });
+  if (!fs.existsSync(fp)) return res.status(404).json({ error: "not found" });
+  try {
+    fs.unlinkSync(fp);
+    const imeiFilename = filename.match(/^(\d{15})\.ini$/);
+    if (imeiFilename) stmts.deletePendingDeployment.run(imeiFilename[1], filename);
+    res.json({ ok: true, filename });
+  } catch (error) {
+    res.status(500).json({ error: `delete failed: ${error.message}` });
+  }
 });
 
 if (require.main === module) {

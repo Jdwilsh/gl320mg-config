@@ -2158,7 +2158,12 @@ async function loadServerFiles() {
       load.className = 'btn btn-outline btn-sm';
       load.textContent = 'Load';
       load.addEventListener('click', () => loadNamedServerFile(filename));
-      row.append(main, load);
+      const remove = document.createElement('button');
+      remove.className = 'btn btn-outline btn-sm';
+      remove.style.cssText = 'color:var(--danger);border-color:var(--danger)';
+      remove.textContent = 'Delete';
+      remove.addEventListener('click', () => deleteServerFile(filename));
+      row.append(main, load, remove);
       list.appendChild(row);
     });
   } catch (e) {
@@ -2170,6 +2175,25 @@ async function loadNamedServerFile(filename) {
   document.getElementById('cfg_filename').value = filename;
   if (/^\d{15}\.ini$/.test(filename)) setDocumentTarget(filename.replace(/\.ini$/i, ''));
   await loadFromServer();
+}
+
+async function deleteServerFile(filename) {
+  const isPending = /^\d{15}\.ini$/.test(filename);
+  const detail = isPending
+    ? 'This cancels the pending tracker update and removes the .ini file from the server.'
+    : 'This removes the saved draft from the server.';
+  if (!confirm(`Delete "${filename}"?\n\n${detail}\n\nThis cannot be undone.`)) return;
+  showMsg('load_msg', `Deleting ${filename}…`, false);
+  try {
+    const res = await apiFetch(`${API}/config/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    serverFiles.delete(filename);
+    showMsg('load_msg', `${filename} deleted${isPending ? ' and its pending update cancelled' : ''}`, false);
+    await Promise.all([loadServerFiles(), loadDevices()]);
+  } catch (error) {
+    showMsg('load_msg', `Delete failed: ${error.message}`, true);
+  }
 }
 
 document.getElementById('btn_refresh_files').addEventListener('click', loadServerFiles);
