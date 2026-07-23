@@ -6,6 +6,7 @@ const {
   diffConfig,
   generatedLinesMissingFromSource,
   mergeWithSource,
+  officialMetadataLines,
   parseConfig,
   preservedLines,
   unparsedLines,
@@ -21,6 +22,24 @@ test('parseConfig retains repeated commands and non-command lines', () => {
   assert.equal(parsed.commands.GTAPN.length, 2);
   assert.equal(parsed.commandLines.length, 2);
   assert.deepEqual(parsed.otherLines.map(item => item.line), ['; operator note']);
+});
+
+test('official Manage Tool headers are recognized without hiding unknown lines', () => {
+  const source = [
+    'Device Name: GL320M',
+    'Manage Tool Name: Queclink_GL320M_Manage_Tool_V1.1.16  Subversion: Queclink_GL320M_Manage_Tool_V1.1.16',
+    'Firmware Version: GL320M_R10A01V05',
+    'Hardware Version: GL320M_HWR109',
+    'Protocol Version: C30303',
+    'AT+GTBSI=gl320m,sensor.net,,,,,,0,0,0,0,0,0,0,,FFFF$',
+    '; unexpected text',
+  ].join('\r\n');
+
+  const parsed = parseConfig(source);
+  assert.equal(parsed.commandLines.length, 1);
+  assert.equal(parsed.metadataLines.length, 5);
+  assert.equal(officialMetadataLines(source).length, 5);
+  assert.deepEqual(unparsedLines(source), ['; unexpected text']);
 });
 
 test('unsupported commands survive regeneration while non-command text is excluded', () => {

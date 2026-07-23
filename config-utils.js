@@ -5,9 +5,22 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
+  const OFFICIAL_METADATA_PATTERNS = [
+    /^Device Name:\s+GL320M(?:G)?$/i,
+    /^Manage Tool Name:\s+Queclink_GL320M(?:G)?_Manage_Tool_[^\r\n]+?\s+Subversion:\s+Queclink_GL320M(?:G)?_Manage_Tool_[^\r\n]+$/i,
+    /^Firmware Version:\s+GL320M(?:G)?_[\w.-]+$/i,
+    /^Hardware Version:\s+GL320M(?:G)?_[\w.-]+$/i,
+    /^Protocol Version:\s+[A-Z0-9._-]+$/i,
+  ];
+
+  function isOfficialMetadataLine(line) {
+    return OFFICIAL_METADATA_PATTERNS.some(pattern => pattern.test(String(line || '').trim()));
+  }
+
   function parseConfig(text) {
     const commands = {};
     const commandLines = [];
+    const metadataLines = [];
     const otherLines = [];
 
     String(text || '').split(/\r?\n/).forEach((raw, index) => {
@@ -15,7 +28,8 @@
       if (!line) return;
       const match = line.match(/^AT\+(GT[\w]+)=(.*?)\$\s*$/i);
       if (!match) {
-        otherLines.push({ line: raw, lineNumber: index + 1 });
+        const target = isOfficialMetadataLine(line) ? metadataLines : otherLines;
+        target.push({ line: raw, lineNumber: index + 1 });
         return;
       }
       const name = match[1].toUpperCase();
@@ -25,7 +39,7 @@
       commandLines.push({ name, line: raw, lineNumber: index + 1, params });
     });
 
-    return { commands, commandLines, otherLines };
+    return { commands, commandLines, metadataLines, otherLines };
   }
 
   function commandNames(text) {
@@ -42,6 +56,12 @@
 
   function unparsedLines(sourceText) {
     return parseConfig(sourceText).otherLines
+      .map(item => item.line)
+      .filter(line => line.trim());
+  }
+
+  function officialMetadataLines(sourceText) {
+    return parseConfig(sourceText).metadataLines
       .map(item => item.line)
       .filter(line => line.trim());
   }
@@ -115,6 +135,7 @@
     configToMap,
     diffConfig,
     generatedLinesMissingFromSource,
+    officialMetadataLines,
     mergeWithSource,
     parseConfig,
     preservedLines,

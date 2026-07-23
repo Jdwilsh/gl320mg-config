@@ -1516,6 +1516,8 @@ function renderValidation() {
   const list = document.getElementById('validation_list');
   const blocking = [];
   const warnings = [];
+  const notices = [];
+  const officialMetadata = ConfigUtils.officialMetadataLines(documentState.sourceText);
   if (!documentState.baselineReady) blocking.push('Load a trusted, complete baseline. Tool defaults alone are not safe to deploy.');
   if (!v('bsi_lte_apn')) blocking.push('LTE APN is empty.');
   if (!v('sri_main_host')) blocking.push('Main reporting server host is empty.');
@@ -1528,6 +1530,9 @@ function renderValidation() {
   if (documentState.ignoredLines.length) {
     blocking.push(`${documentState.ignoredLines.length} line${documentState.ignoredLines.length === 1 ? '' : 's'} could not be parsed. Nothing may be excluded from a deployable tracker file.`);
   }
+  if (officialMetadata.length) {
+    notices.push(`${officialMetadata.length} official Queclink file header line${officialMetadata.length === 1 ? '' : 's'} recognized. They describe the Manage Tool export and are intentionally omitted from the tracker’s OTA command file.`);
+  }
   if (documentState.baselineReady && documentState.sourceText) {
     const missing = ConfigUtils.generatedLinesMissingFromSource(documentState.sourceText, serializeConfig(false));
     if (missing.length) {
@@ -1536,12 +1541,13 @@ function renderValidation() {
     }
   }
   if (list) {
-    list.innerHTML = blocking.length || warnings.length
+    list.innerHTML = blocking.length || warnings.length || notices.length
       ? blocking.map(issue => `<div class="validation-item"><strong>Blocked:</strong> ${esc(issue)}</div>`).join('') +
-        warnings.map(issue => `<div class="validation-item"><strong>Review:</strong> ${esc(issue)}</div>`).join('')
+        warnings.map(issue => `<div class="validation-item"><strong>Review:</strong> ${esc(issue)}</div>`).join('') +
+        notices.map(issue => `<div class="validation-item ok"><strong>Recognized:</strong> ${esc(issue)}</div>`).join('')
       : '<div class="validation-item ok">Safety checks passed: trusted baseline loaded, required fields valid, and no lines excluded. Review the complete file before queueing.</div>';
   }
-  return { blocking, warnings };
+  return { blocking, warnings, notices };
 }
 
 function setDocumentTarget(imei, name = '') {
@@ -1944,8 +1950,8 @@ function buildGTRPC(p) {
 }
 
 function buildGTTMA(p) {
-  const h = String(parseInt(v('tma_hour')) || 0).padStart(2, '0');
-  const m = String(parseInt(v('tma_min'))  || 0).padStart(2, '0');
+  const h = String(parseInt(v('tma_hour')) || 0);
+  const m = String(parseInt(v('tma_min'))  || 0);
   const dst = document.getElementById('tma_dst').checked ? '1' : '0';
   return `AT+GTTMA=${p},${v('tma_sign') || '+'},${h},${m},${dst},,,,,,${SN}$`;
 }
@@ -2036,7 +2042,7 @@ function applyConfigText(text, label) {
   setDocumentSource(label, `${parsed.commandLines.length} command lines loaded from a complete baseline. Edit only the required settings, then return here to review the entire file.`, { trusted: true });
   showMsg(
     'load_msg',
-    `${label} loaded — ${parsed.commandLines.length} command lines${documentState.preservedLines.length ? `, ${documentState.preservedLines.length} preserved verbatim` : ''}${documentState.ignoredLines.length ? `, ${documentState.ignoredLines.length} excluded` : ''}`,
+    `${label} loaded — ${parsed.commandLines.length} command lines${parsed.metadataLines.length ? `, ${parsed.metadataLines.length} official header lines recognized` : ''}${documentState.preservedLines.length ? `, ${documentState.preservedLines.length} preserved verbatim` : ''}${documentState.ignoredLines.length ? `, ${documentState.ignoredLines.length} excluded` : ''}`,
     false
   );
   if (documentState.targetImei) snapshotActiveWorkspace();
@@ -2605,7 +2611,7 @@ function openDeployModal(tasks) {
         (nSkipped ? ` · ${nSkipped} unchanged (will be skipped)` : '');
   document.getElementById('deploy_safety_summary').innerHTML =
     `<strong>Complete-file safety check passed.</strong> Source: ${esc(documentState.source)}. ` +
-    `${documentState.preservedLines.length} unsupported command${documentState.preservedLines.length === 1 ? '' : 's'} preserved verbatim; no lines excluded. ` +
+    `${documentState.preservedLines.length} unsupported command${documentState.preservedLines.length === 1 ? '' : 's'} preserved verbatim; all device command lines retained. ` +
     `Each changed device will receive its exact 15-digit IMEI filename.`;
 
   const body = document.getElementById('deploy-modal-body');
