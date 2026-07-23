@@ -37,6 +37,17 @@ main{padding:24px 32px;min-width:0}
 .sect-col-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
 .gen-grid{display:grid;grid-template-columns:260px 1fr 280px;gap:16px;align-items:start}
 .monitor-grid{display:grid;grid-template-columns:minmax(280px,380px) 1fr;gap:16px;align-items:start}
+.sim-filter-bar{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.sim-filter-bar .f{min-width:160px}
+.sim-filter-bar .sim-search{flex:1;min-width:220px}
+.sim-activity-row{cursor:pointer}
+.sim-activity-row td{vertical-align:top}
+.sim-primary{font-weight:600;display:block}
+.sim-secondary{font-size:11px;color:var(--muted);display:block;margin-top:2px}
+.sim-volume{white-space:nowrap}
+.sim-setup{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.sim-setup code{word-break:break-all}
+.json-view{background:#111827;color:#d1d5db;border-radius:8px;padding:14px;white-space:pre-wrap;word-break:break-word;font:12px/1.55 'SF Mono','Fira Code',monospace;max-height:52vh;overflow:auto}
 /* Stat cards */
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
 .stat-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;display:flex;flex-direction:column;gap:4px}
@@ -63,6 +74,7 @@ main{padding:24px 32px;min-width:0}
   nav.nav-open{transform:translateX(0)}
   main{padding:16px}
   .cards-grid,.sect-col-grid,.gen-grid,.monitor-grid{grid-template-columns:1fr}
+  .sim-setup{flex-direction:column}
   .fg.two,.fg.three,.fg.four{grid-template-columns:1fr}
   .stat-row{grid-template-columns:repeat(2,1fr)}
   .modal-box{padding:20px}
@@ -249,6 +261,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <nav id="sidebar">
   <div class="nav-section">Dashboard</div>
   <a href="#" data-section="monitor" class="active"><span class="nav-lbl">Tracker Activity</span></a>
+  <a href="#" data-section="simactivity"><span class="nav-lbl">SIM Activity</span></a>
   <a href="#" data-section="devices"><span class="nav-lbl">Device Names</span></a>
   <div class="nav-section">Network</div>
   <a href="#" data-section="connectivity"><span class="nav-cmd">AT+GTBSI / GTSRI</span><span class="nav-lbl">Connectivity</span></a>
@@ -1047,6 +1060,57 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 </div>
 
+<!-- ── SIM ACTIVITY ── -->
+<div class="section" id="sect-simactivity">
+  <div class="section-title">SIM Activity</div>
+  <div class="section-desc">Near-real-time 1NCE usage, connectivity, lifecycle, and SMS records matched to Device Names by IMEI.</div>
+
+  <div id="sim_summary" style="margin-bottom:16px"></div>
+
+  <div class="card sim-setup" id="sim_setup">
+    <div>
+      <div class="card-title">1NCE Data Streamer receiver</div>
+      <p style="font-size:13px;margin-bottom:5px">Create separate <strong>Usage Data</strong> and <strong>Events</strong> REST streams in the 1NCE portal using the same callback.</p>
+      <code id="sim_callback_url">https://tracker.jdwilsh.com/api/1nce/data-streamer</code>
+      <span class="sim-secondary">The receiver accepts 1NCE bulk deliveries, stores the original JSON, and safely ignores retransmitted record IDs.</span>
+    </div>
+    <span class="badge badge-muted" id="sim_receiver_status">Checking receiver…</span>
+  </div>
+
+  <div class="sim-filter-bar">
+    <div class="f">
+      <label>Record type</label>
+      <select id="sim_kind_filter">
+        <option value="">All records</option>
+        <option value="event">Events</option>
+        <option value="usage">Data usage</option>
+        <option value="sms">SMS usage</option>
+        <option value="sms_mo">SMS received (MO)</option>
+        <option value="sms_mt">SMS delivery reports (MT)</option>
+        <option value="record">Other</option>
+      </select>
+    </div>
+    <div class="f sim-search">
+      <label>Search visible records</label>
+      <input id="sim_search" placeholder="Device name, IMEI, ICCID, operator, APN…">
+    </div>
+    <button class="btn btn-primary btn-sm" id="btn_refresh_sim">Refresh</button>
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding-bottom:5px">
+      <input type="checkbox" id="sim_auto_refresh" checked> Auto-refresh
+    </label>
+    <span style="font-size:12px;color:var(--muted);margin-left:auto;padding-bottom:5px"><span class="ref-dot" id="sim_ref_dot"></span><span id="sim_ref_label">Loading…</span></span>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr><th>Device / SIM</th><th>Time</th><th>Type</th><th>Activity</th><th>Network</th><th>Usage / Cost</th><th></th></tr></thead>
+        <tbody id="sim_tbody"><tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- ── DEVICES ── -->
 <div class="section" id="sect-devices">
   <div class="section-title">Device Names</div>
@@ -1190,6 +1254,17 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="sim-detail-modal">
+  <div class="modal-box">
+    <h3 id="sim_detail_title">SIM activity record</h3>
+    <p class="modal-sub" id="sim_detail_sub"></p>
+    <pre class="json-view" id="sim_detail_json"></pre>
+    <div class="modal-footer">
+      <button class="btn btn-outline" id="btn_close_sim_detail">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Navigation ──────────────────────────────────────────────────────────────
 const navLinks = document.querySelectorAll('nav a');
@@ -1213,6 +1288,7 @@ navLinks.forEach(link => {
     document.getElementById('sect-' + t).classList.add('active');
     closeNav();
     if (t === 'monitor') loadMonitor();
+    if (t === 'simactivity') loadSimActivity();
     if (t === 'devices') loadDevices();
     if (t === 'output') { loadDevices(); loadServerFiles(); generate(); }
     if (t === 'geofences') setTimeout(initGeoMap, 60);
@@ -1260,6 +1336,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     localStorage.setItem('tracker_token', authToken);
     hideLoginScreen();
     loadMonitor();
+    loadSimActivity();
     loadDevices();
     loadTemplates();
     loadServerFiles();
@@ -1280,7 +1357,7 @@ document.getElementById('btn_logout').addEventListener('click', () => {
   if (!authToken) { showLoginScreen(); return; }
   try {
     const res = await apiFetch(`${API}/devices`);
-    if (res.ok) { hideLoginScreen(); loadMonitor(); loadDevices(); loadTemplates(); loadServerFiles(); }
+    if (res.ok) { hideLoginScreen(); loadMonitor(); loadSimActivity(); loadDevices(); loadTemplates(); loadServerFiles(); }
   } catch { /* apiFetch already showed login screen */ }
 })();
 
@@ -2460,6 +2537,189 @@ function scheduleAutoRefresh() {
   }
 }
 scheduleAutoRefresh();
+
+// ── 1NCE SIM Activity ────────────────────────────────────────────────────────
+let simActivityRecords = [];
+let simActivityTimer = null;
+
+function simTimestamp(record) {
+  return record.eventTimestamp || record.endTimestamp || record.startTimestamp || record.receivedAt;
+}
+
+function simKindLabel(record) {
+  if (record.recordKind === 'event') return record.eventType || 'Event';
+  if (record.recordKind === 'sms_mo') return 'MO SMS received';
+  if (record.recordKind === 'sms_mt') return record.smsStatus ? `MT SMS ${record.smsStatus}` : 'MT SMS delivery report';
+  if (record.recordKind === 'sms') return record.trafficType || 'SMS';
+  if (record.recordKind === 'usage') return record.trafficType || 'Data usage';
+  return record.trafficType || record.eventType || 'Record';
+}
+
+function simKindBadge(record) {
+  const classes = {
+    event: 'badge-info',
+    usage: 'badge-ok',
+    sms: 'badge-warn',
+    sms_mo: 'badge-info',
+    sms_mt: 'badge-warn',
+    record: 'badge-muted',
+  };
+  return `<span class="badge ${classes[record.recordKind] || 'badge-muted'}">${esc(record.recordKind)}</span>`;
+}
+
+function formatSimNumber(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  return Number(value).toLocaleString(undefined, { maximumFractionDigits: 3 });
+}
+
+function renderSimSummary(summary) {
+  document.getElementById('sim_summary').innerHTML =
+    `<div class="stat-row">
+      <div class="stat-card stat-total"><div class="stat-num">${Number(summary.simsSeen || 0).toLocaleString()}</div><div class="stat-lbl">SIMs seen</div></div>
+      <div class="stat-card stat-active"><div class="stat-num">${Number(summary.records24h || 0).toLocaleString()}</div><div class="stat-lbl">Records · 24h</div></div>
+      <div class="stat-card stat-late"><div class="stat-num">${formatSimNumber(summary.volume24h || 0)}</div><div class="stat-lbl">Volume · 24h</div></div>
+      <div class="stat-card stat-overdue"><div class="stat-num">${Number(summary.alerts24h || 0).toLocaleString()}</div><div class="stat-lbl">Alerts · 24h</div></div>
+    </div>`;
+}
+
+function simSearchText(record) {
+  return [
+    record.deviceName, record.imei, record.imsi, record.iccid, record.msisdn,
+    record.description, record.trafficType, record.eventType, record.eventSeverity,
+    record.operatorName, record.countryName, record.apn, record.ratType, record.endpointIp,
+    record.smsStatus, record.smsPayload, record.smsSource, record.smsDestination,
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function renderSimActivity() {
+  const query = document.getElementById('sim_search').value.trim().toLowerCase();
+  const records = query
+    ? simActivityRecords.filter(record => simSearchText(record).includes(query))
+    : simActivityRecords;
+  const tbody = document.getElementById('sim_tbody');
+  if (!records.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">${
+      simActivityRecords.length ? 'No records match this search.' : 'No 1NCE records received yet.'
+    }</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = '';
+  records.forEach(record => {
+    const time = simTimestamp(record);
+    const device = record.deviceName
+      ? `<span class="sim-primary">${esc(record.deviceName)}</span>`
+      : '<span class="sim-primary" style="color:var(--muted)">Unnamed device</span>';
+    const simId = record.imei
+      ? `IMEI ${esc(record.imei)}`
+      : record.iccid ? `ICCID ${esc(record.iccid)}` : record.imsi ? `IMSI ${esc(record.imsi)}` : 'No SIM identifier';
+    const activity = record.description || simKindLabel(record);
+    const smsDetail = record.recordKind === 'sms_mo' && record.smsPayload
+      ? `<span class="sim-secondary">${esc(record.smsPayload.length > 90 ? `${record.smsPayload.slice(0, 90)}…` : record.smsPayload)}</span>`
+      : record.recordKind === 'sms_mt' && record.smsStatus
+        ? `<span class="sim-secondary">Delivery status: ${esc(record.smsStatus)}</span>` : '';
+    const severity = [
+      record.isAlert ? '<span class="badge badge-err" style="margin-top:4px">Alert</span>' : '',
+      record.eventSeverity ? `<span class="sim-secondary">Severity: ${esc(record.eventSeverity)}</span>` : '',
+    ].join('');
+    const networkPrimary = [record.operatorName, record.countryName].filter(Boolean).join(' · ') || '—';
+    const networkSecondary = [
+      record.apn && `APN ${record.apn}`,
+      record.ratType,
+      record.endpointIp,
+    ].filter(Boolean).join(' · ');
+    const volumes = [
+      record.volumeTotal !== null && `Total ${formatSimNumber(record.volumeTotal)}`,
+      record.volumeTx !== null && `TX ${formatSimNumber(record.volumeTx)}`,
+      record.volumeRx !== null && `RX ${formatSimNumber(record.volumeRx)}`,
+    ].filter(Boolean);
+    const cost = record.cost !== null
+      ? `${formatSimNumber(record.cost)}${record.currencyCode ? ` ${esc(record.currencyCode)}` : ''}` : '';
+
+    const tr = document.createElement('tr');
+    tr.className = 'sim-activity-row';
+    tr.dataset.recordId = record.id;
+    tr.title = 'Open the complete 1NCE record';
+    tr.innerHTML = `
+      <td>${device}<span class="sim-secondary mono">${simId}</span>${record.iccid && record.imei ? `<span class="sim-secondary mono">ICCID ${esc(record.iccid)}</span>` : ''}</td>
+      <td title="${esc(time)}">${time ? `<span class="sim-primary">${relTime(time)}</span><span class="sim-secondary">${new Date(time).toLocaleString()}</span>` : '—'}</td>
+      <td>${simKindBadge(record)}<span class="sim-secondary">${esc(simKindLabel(record))}</span></td>
+      <td><span class="sim-primary">${esc(activity)}</span>${severity}${smsDetail}</td>
+      <td><span class="sim-primary">${esc(networkPrimary)}</span>${networkSecondary ? `<span class="sim-secondary">${esc(networkSecondary)}</span>` : ''}</td>
+      <td class="sim-volume"><span class="sim-primary">${volumes.length ? esc(volumes.join(' · ')) : (cost || '—')}</span>${volumes.length && cost ? `<span class="sim-secondary">${cost}</span>` : ''}</td>
+      <td><button class="hist-toggle" type="button">Details</button></td>`;
+    tr.addEventListener('click', () => openSimDetail(record.id));
+    tbody.appendChild(tr);
+  });
+}
+
+async function loadSimActivity() {
+  const dot = document.getElementById('sim_ref_dot');
+  const label = document.getElementById('sim_ref_label');
+  dot.className = 'ref-dot';
+  label.textContent = 'Refreshing…';
+  const kind = document.getElementById('sim_kind_filter').value;
+  try {
+    const params = new URLSearchParams({ limit: '300' });
+    if (kind) params.set('kind', kind);
+    const response = await apiFetch(`${API}/sim-activity?${params}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    simActivityRecords = data.records || [];
+    renderSimSummary(data.summary || {});
+    renderSimActivity();
+    const status = document.getElementById('sim_receiver_status');
+    status.className = `badge ${data.receiver?.configured ? 'badge-ok' : 'badge-warn'}`;
+    status.textContent = data.receiver?.configured ? 'Receiver ready' : 'Receiver needs credentials';
+    document.getElementById('sim_callback_url').textContent =
+      `${location.origin}${data.receiver?.callbackPath || '/api/1nce/data-streamer'}`;
+    label.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+  } catch (error) {
+    label.textContent = `Error: ${error.message}`;
+    dot.className = 'ref-dot off';
+    document.getElementById('sim_tbody').innerHTML =
+      `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--danger)">Could not load SIM activity: ${esc(error.message)}</td></tr>`;
+  }
+}
+
+async function openSimDetail(id) {
+  const modal = document.getElementById('sim-detail-modal');
+  const output = document.getElementById('sim_detail_json');
+  const subtitle = document.getElementById('sim_detail_sub');
+  modal.classList.remove('hidden');
+  output.textContent = 'Loading complete record…';
+  subtitle.textContent = `1NCE record #${id}`;
+  try {
+    const response = await apiFetch(`${API}/sim-activity/${id}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    subtitle.textContent = `${data.deviceName || 'Unnamed device'} · received ${new Date(data.receivedAt).toLocaleString()}`;
+    output.textContent = JSON.stringify(data.raw, null, 2);
+  } catch (error) {
+    output.textContent = `Could not load record: ${error.message}`;
+  }
+}
+
+function closeSimDetail() {
+  document.getElementById('sim-detail-modal').classList.add('hidden');
+}
+
+document.getElementById('btn_refresh_sim').addEventListener('click', loadSimActivity);
+document.getElementById('sim_kind_filter').addEventListener('change', loadSimActivity);
+document.getElementById('sim_search').addEventListener('input', renderSimActivity);
+document.getElementById('btn_close_sim_detail').addEventListener('click', closeSimDetail);
+document.getElementById('sim-detail-modal').addEventListener('click', event => {
+  if (event.target.id === 'sim-detail-modal') closeSimDetail();
+});
+document.getElementById('sim_auto_refresh').addEventListener('change', () => {
+  clearInterval(simActivityTimer);
+  if (document.getElementById('sim_auto_refresh').checked) {
+    simActivityTimer = setInterval(() => {
+      if (document.getElementById('sect-simactivity').classList.contains('active')) loadSimActivity();
+    }, 30000);
+  }
+});
+document.getElementById('sim_auto_refresh').dispatchEvent(new Event('change'));
 
 
 // ── Devices ───────────────────────────────────────────────────────────────────
