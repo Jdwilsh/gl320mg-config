@@ -16,13 +16,27 @@ process.env.DISABLE_LOG_WATCHER = '1';
 process.env.ONE_NCE_BASIC_AUTH = Buffer.from('streamer:very-secret').toString('base64');
 
 const { app } = require('../api/server');
-const { normalizeRecord } = require('../api/oneNce');
+const { normalizeRecord, canonicalImei } = require('../api/oneNce');
 
 function startServer() {
   return new Promise(resolve => {
     const server = app.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
+
+test('IMEI-SV values are converted back to the canonical 15-digit IMEI', () => {
+  // FMM920 examples: the portal replaces the check digit with software version 03.
+  assert.equal(canonicalImei('8682060840143703'), '868206084014376');
+  assert.equal(canonicalImei('8608130709248503'), '860813070924852');
+  assert.equal(canonicalImei('8682060840021703'), '868206084002173');
+
+  // GL320MG examples: the same base IMEI is followed by software version 33.
+  assert.equal(canonicalImei('8602010679010633'), '860201067901069');
+  assert.equal(canonicalImei('8602010678962233'), '860201067896228');
+  assert.equal(canonicalImei('8602010678951533'), '860201067895154');
+
+  assert.equal(canonicalImei('860201067899156'), '860201067899156');
+});
 
 test('1NCE normalizer understands Platform 2.0 flat usage and event fields', () => {
   const usage = normalizeRecord({
@@ -223,7 +237,7 @@ test('1NCE receiver authenticates bulk records, deduplicates retries, and joins 
     },
     endpoint: {
       id: 99,
-      imei: '860201067896228',
+      imei: '8602010678962233',
       ip_address: '10.1.2.3',
       name: 'Tracker endpoint',
       tags: ['gl320mg'],
@@ -239,7 +253,7 @@ test('1NCE receiver authenticates bulk records, deduplicates retries, and joins 
     event_type: { id: 77, description: 'Create PDP Context' },
     imsi: { id: 5, imsi: '901405101234567' },
     sim: { id: 10, iccid: '8988280666000000001', msisdn: '882350123456789' },
-    endpoint: { id: 99, imei: '860201067896228', ip_address: '10.1.2.3' },
+    endpoint: { id: 99, imei: '8602010678962233', ip_address: '10.1.2.3' },
     detail: {
       pdp_context: {
         apn: 'iot.1nce.net',

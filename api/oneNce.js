@@ -63,6 +63,30 @@ function timestamp(value) {
   return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
 }
 
+function imeiCheckDigit(base14) {
+  let sum = 0;
+  for (let index = 0; index < base14.length; index++) {
+    let digit = Number(base14[index]);
+    if (index % 2 === 1) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+  }
+  return String((10 - (sum % 10)) % 10);
+}
+
+function canonicalImei(value) {
+  const digits = text(value)?.replace(/\D/g, '') || '';
+  if (digits.length === 16) {
+    const base14 = digits.slice(0, 14);
+    return `${base14}${imeiCheckDigit(base14)}`;
+  }
+  if (digits.length === 14) return `${digits}${imeiCheckDigit(digits)}`;
+  if (digits.length === 15) return digits;
+  return text(value);
+}
+
 function findNested(source, keys) {
   if (!source || typeof source !== 'object') return null;
   for (const key of keys) {
@@ -128,7 +152,7 @@ function normalizeRecord(record, kindHint = null) {
     eventTimestamp,
     startTimestamp: timestamp(record.start_timestamp),
     endTimestamp: timestamp(record.end_timestamp),
-    imei: imei?.match(/\d{15}/)?.[0] || imei,
+    imei: canonicalImei(imei),
     imsi,
     iccid: text(valueAt(record, ['sim.iccid', 'iccid', 'endpoint.iccid']))
       ?? (kind === 'sms_mo' || kind === 'sms_mt' ? text(record.endpoint?.name) : null),
@@ -208,4 +232,4 @@ function secureEqual(actual, expected) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-module.exports = { normalizeRecord, authHeaderFromConfig, secureEqual };
+module.exports = { normalizeRecord, canonicalImei, authHeaderFromConfig, secureEqual };
