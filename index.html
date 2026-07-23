@@ -176,6 +176,36 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 .diff-line .new{color:var(--success);display:block}
 .badge-change{background:#dbeafe;color:#1d4ed8}
 .badge-first{background:#f3e8ff;color:#7c3aed}
+.badge-warn{background:#fef3c7;color:#92400e}
+.badge-info{background:#dbeafe;color:#1d4ed8}
+.workspace-context{background:linear-gradient(135deg,#172554,#1e3a8a);color:#fff;border-radius:12px;padding:18px 20px;margin-bottom:18px;display:grid;grid-template-columns:minmax(240px,1fr) auto;gap:16px;align-items:center}
+.workspace-context .eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#bfdbfe;margin-bottom:4px}
+.workspace-context h2{font-size:18px;margin:0}
+.workspace-context p{font-size:12px;color:#dbeafe;margin-top:4px}
+.workspace-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.workspace-actions .btn-outline{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.3)}
+.document-state{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.source-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.13);padding:3px 8px;border-radius:999px;font-size:11px}
+.dirty-dot{width:7px;height:7px;border-radius:50%;background:#86efac}
+.dirty-dot.dirty{background:#fbbf24}
+.file-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}
+.file-row{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:7px;padding:9px 10px;background:var(--panel)}
+.file-row:hover{border-color:#93c5fd;background:var(--accent-bg)}
+.file-row-main{min-width:0;flex:1}
+.file-row-main strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-row-main span{display:block;font-size:11px;color:var(--muted)}
+.validation-list{display:flex;flex-direction:column;gap:6px}
+.validation-item{font-size:12px;padding:8px 10px;border-radius:6px;background:#fef3c7;color:#92400e}
+.validation-item.ok{background:#dcfce7;color:#166534}
+.primary-flow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.flow-step{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:11px 13px;font-size:12px;color:var(--muted)}
+.flow-step strong{display:block;color:var(--text);font-size:13px;margin-bottom:2px}
+.flow-step.active{border-color:#93c5fd;background:var(--accent-bg)}
+@media(max-width:768px){
+  .workspace-context{grid-template-columns:1fr}
+  .workspace-actions{justify-content:flex-start}
+  .primary-flow{grid-template-columns:1fr}
+}
 /* Geofence map */
 .geo-pin-active{background:var(--accent-bg)!important;border-color:var(--accent)!important;color:var(--accent)!important}
 .map-hint{font-size:12px;color:var(--muted);padding:6px 2px}
@@ -187,6 +217,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="config-utils.js"></script>
 </head>
 <body>
 <!-- ── LOGIN SCREEN ── -->
@@ -239,7 +270,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="nav-section">Advanced</div>
   <a href="#" data-section="advanced"><span class="nav-cmd">AT+GTJDC / GTPDS / GTDIS</span><span class="nav-lbl">Other Settings</span></a>
   <div class="nav-section">Output</div>
-  <a href="#" data-section="output"><span class="nav-lbl">Generate &amp; Save</span></a>
+  <a href="#" data-section="output"><span class="nav-lbl">Config Workspace</span></a>
 </nav>
 <main>
 
@@ -1039,67 +1070,95 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── OUTPUT ── -->
 <div class="section" id="sect-output">
-  <div class="section-title">Generate &amp; Save</div>
-  <div class="section-desc">Build the config file from your current settings, then save or deploy it.</div>
+  <div class="section-title">Config Workspace</div>
+  <div class="section-desc">Choose a source, edit the settings, then review and queue the update.</div>
 
-  <!-- Top row: file controls + deploy side by side -->
+  <div class="workspace-context">
+    <div>
+      <div class="eyebrow">Current draft</div>
+      <h2 id="document_title">New GL320MG configuration</h2>
+      <p id="document_summary">Using the tool defaults. Choose a tracker or load an existing file to begin.</p>
+      <div class="document-state">
+        <span class="source-chip"><span class="dirty-dot" id="dirty_dot"></span><span id="dirty_label">Ready</span></span>
+        <span class="source-chip" id="source_label">Source: defaults</span>
+        <span class="source-chip" id="preserved_label" style="display:none"></span>
+      </div>
+    </div>
+    <div class="workspace-actions">
+      <button class="btn btn-outline btn-sm" id="btn_copy">Copy config</button>
+      <button class="btn btn-outline btn-sm" id="btn_download">Download</button>
+    </div>
+  </div>
+
+  <div class="primary-flow">
+    <div class="flow-step active"><strong>1. Choose source</strong>Tracker, server file, template, or local file</div>
+    <div class="flow-step"><strong>2. Edit settings</strong>Use the configuration sections in the sidebar</div>
+    <div class="flow-step"><strong>3. Review &amp; queue</strong>Validate and deploy a complete safe configuration</div>
+  </div>
+
   <div class="cards-grid">
-
-    <!-- File & Load card -->
     <div class="card" style="margin-bottom:0">
-      <div class="card-title">File</div>
-      <div class="fg" style="margin-bottom:12px">
-        <div class="f">
-          <label>Filename on server</label>
-          <input id="cfg_filename" value="1.cfg" placeholder="1.cfg">
-          <span class="hint">Served at cfg.jdwilsh.com/&lt;filename&gt;</span>
-        </div>
-        <div class="f">
-          <label>Or use device IMEI</label>
-          <div style="display:flex;gap:8px">
-            <select id="cfg_device_select" style="flex:1"><option value="">— select device —</option></select>
-            <button class="btn btn-outline btn-sm" id="btn_use_device" style="white-space:nowrap;align-self:flex-end">Use</button>
-          </div>
-        </div>
+      <div class="card-title">Tracker</div>
+      <div class="f" style="margin-bottom:10px">
+        <label>Work on a registered tracker</label>
+        <select id="cfg_device_select"><option value="">— choose tracker —</option></select>
+        <span class="hint">Selecting a tracker sets the required &lt;IMEI&gt;.ini filename.</span>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-primary" id="btn_generate" style="flex:1">Generate</button>
-        <button class="btn btn-outline" id="btn_save_server" style="flex:1">Save to Server</button>
-        <button class="btn btn-outline" id="btn_download" style="flex:1">Download</button>
-        <button class="btn btn-outline" id="btn_copy" style="flex:1">Copy</button>
+        <button class="btn btn-primary" id="btn_use_device">Use tracker</button>
+        <button class="btn btn-outline" id="btn_load_device">Load pending file</button>
       </div>
-      <div style="margin-top:8px"><span id="save_msg" class="status-msg"></span></div>
+      <div style="margin-top:8px"><span id="device_msg" class="status-msg"></span></div>
       <hr class="div">
-      <div class="card-title" style="margin-bottom:8px">Load Config</div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-outline btn-sm" style="flex:1" id="btn_load_server">From Server</button>
-        <button class="btn btn-outline btn-sm" style="flex:1" id="btn_load_file">From File</button>
-        <input type="file" id="file_import" accept=".cfg,.ini,.GL320M,.txt" style="display:none">
+      <div class="f">
+        <label>Target filename</label>
+        <input id="cfg_filename" value="1.cfg" placeholder="860201067895154.ini">
+        <span class="hint">Used for Save Draft and local downloads. Tracker deployments always use &lt;IMEI&gt;.ini.</span>
       </div>
-      <div style="margin-top:6px"><span id="load_msg" class="status-msg"></span></div>
     </div>
 
-    <!-- Deploy card -->
     <div class="card" style="margin-bottom:0">
-      <div class="card-title">Deploy to Devices</div>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Only changed commands are sent. Devices must be registered first.</p>
+      <div class="card-title">Existing server files</div>
+      <div id="server_file_list" class="file-list">
+        <span style="color:var(--muted);font-size:13px">Loading files…</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn btn-outline btn-sm" id="btn_refresh_files">Refresh</button>
+        <button class="btn btn-outline btn-sm" id="btn_load_file">Import local file</button>
+        <input type="file" id="file_import" accept=".cfg,.ini,.GL320M,.txt" style="display:none">
+      </div>
+      <div style="margin-top:8px"><span id="load_msg" class="status-msg"></span></div>
+    </div>
+  </div>
+
+  <div class="cards-grid">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">Review</div>
+      <div id="validation_list" class="validation-list">
+        <div class="validation-item ok">Configuration is ready to review.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn btn-outline" id="btn_save_server">Save Draft</button>
+        <button class="btn btn-outline" id="btn_generate">Refresh Preview</button>
+      </div>
+      <div style="margin-top:8px"><span id="save_msg" class="status-msg"></span></div>
+    </div>
+
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">Queue update</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">A complete configuration is queued for safety. The tracker will request its &lt;IMEI&gt;.ini file on its next scheduled check.</p>
       <div id="deploy_device_list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;max-height:280px;overflow-y:auto">
         <span style="color:var(--muted);font-size:13px">No devices registered.</span>
       </div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" id="btn_deploy_all">All</button>
         <button class="btn btn-outline btn-sm" id="btn_deploy_none">None</button>
-        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
-          <input type="checkbox" id="deploy_force_full"> Force full
-        </label>
       </div>
-      <button class="btn btn-primary" id="btn_deploy_selected" style="width:100%">Deploy to Selected</button>
+      <button class="btn btn-primary" id="btn_deploy_selected" style="width:100%">Review update</button>
       <div style="margin-top:8px"><span id="deploy_msg" class="status-msg"></span></div>
     </div>
+  </div>
 
-  </div><!-- end cards-grid -->
-
-  <!-- Collapsible preview -->
   <div style="margin-top:4px">
     <button id="btn_toggle_preview" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:6px;padding:4px 0">
       <span id="preview_arrow" style="font-size:10px">▶</span> Show config preview
@@ -1155,6 +1214,7 @@ navLinks.forEach(link => {
     closeNav();
     if (t === 'monitor') loadMonitor();
     if (t === 'devices') loadDevices();
+    if (t === 'output') { loadDevices(); loadServerFiles(); generate(); }
     if (t === 'geofences') setTimeout(initGeoMap, 60);
   });
 });
@@ -1202,6 +1262,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     loadMonitor();
     loadDevices();
     loadTemplates();
+    loadServerFiles();
   } catch {
     errEl.textContent = 'Could not reach server';
     errEl.style.display = 'inline-block';
@@ -1219,7 +1280,7 @@ document.getElementById('btn_logout').addEventListener('click', () => {
   if (!authToken) { showLoginScreen(); return; }
   try {
     const res = await apiFetch(`${API}/devices`);
-    if (res.ok) { hideLoginScreen(); loadMonitor(); loadDevices(); loadTemplates(); }
+    if (res.ok) { hideLoginScreen(); loadMonitor(); loadDevices(); loadTemplates(); loadServerFiles(); }
   } catch { /* apiFetch already showed login screen */ }
 })();
 
@@ -1233,6 +1294,88 @@ function setV(id, val) {
   else e.value = val;
 }
 function pad(n, len) { return String(n).padStart(len, '0'); }
+
+const documentState = {
+  source: 'defaults',
+  sourceText: '',
+  preservedLines: [],
+  ignoredLines: [],
+  dirty: false,
+  loading: false,
+};
+
+const NON_CONFIG_IDS = new Set([
+  'new_template_name', 'auto_refresh', 'new_imei', 'new_name',
+  'cfg_filename', 'cfg_device_select', 'file_import',
+]);
+
+function isConfigControl(el) {
+  return !!(el && el.id && !NON_CONFIG_IDS.has(el.id) && !el.classList.contains('deploy-cb'));
+}
+
+function getConfigState() {
+  const state = {};
+  document.querySelectorAll('main input[id], main select[id]').forEach(el => {
+    if (!isConfigControl(el)) return;
+    state[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+  });
+  return state;
+}
+
+function setDocumentDirty(dirty = true) {
+  if (documentState.loading) return;
+  documentState.dirty = dirty;
+  updateDocumentState();
+}
+
+function updateDocumentState() {
+  const dot = document.getElementById('dirty_dot');
+  const dirtyLabel = document.getElementById('dirty_label');
+  const sourceLabel = document.getElementById('source_label');
+  const preservedLabel = document.getElementById('preserved_label');
+  if (!dot) return;
+  dot.classList.toggle('dirty', documentState.dirty);
+  dirtyLabel.textContent = documentState.dirty ? 'Unsaved changes' : 'Up to date';
+  sourceLabel.textContent = `Source: ${documentState.source}`;
+  if (documentState.preservedLines.length) {
+    preservedLabel.style.display = 'inline-flex';
+    preservedLabel.textContent = `${documentState.preservedLines.length} unsupported line${documentState.preservedLines.length === 1 ? '' : 's'} preserved`;
+  } else {
+    preservedLabel.style.display = 'none';
+  }
+  renderValidation();
+}
+
+function renderValidation() {
+  const list = document.getElementById('validation_list');
+  if (!list) return [];
+  const issues = [];
+  if (!v('bsi_lte_apn')) issues.push('LTE APN is empty.');
+  if (!v('sri_main_host')) issues.push('Main reporting server host is empty.');
+  const port = Number(v('sri_main_port'));
+  if (!port || port < 1 || port > 65535) issues.push('Main reporting server port must be between 1 and 65535.');
+  if (!/^[\w.-]+$/.test(v('cfg_filename') || '')) issues.push('Target filename contains unsupported characters.');
+  if (documentState.preservedLines.length) {
+    issues.push(`${documentState.preservedLines.length} line${documentState.preservedLines.length === 1 ? '' : 's'} cannot be edited here and will be preserved verbatim.`);
+  }
+  if (documentState.ignoredLines.length) {
+    issues.push(`${documentState.ignoredLines.length} non-command line${documentState.ignoredLines.length === 1 ? '' : 's'} could not be parsed and will be excluded from tracker output.`);
+  }
+  list.innerHTML = issues.length
+    ? issues.map(issue => `<div class="validation-item">${esc(issue)}</div>`).join('')
+    : '<div class="validation-item ok">No blocking issues found. The generated configuration is ready to review.</div>';
+  return issues;
+}
+
+function setDocumentSource(source, summary) {
+  documentState.source = source;
+  documentState.dirty = false;
+  const title = document.getElementById('document_title');
+  const desc = document.getElementById('document_summary');
+  if (title) title.textContent = source;
+  if (desc && summary) desc.textContent = summary;
+  updateDocumentState();
+}
 function pw() { return v('cfg_password') || 'gl320m'; }
 const SN = 'FFFF';
 
@@ -1525,7 +1668,7 @@ function buildGTDIS(p) {
 }
 
 // ── Generate full config ──────────────────────────────────────────────────────
-function generate() {
+function serializeConfig(includePreserved = true) {
   const p = pw();
   const body = [
     buildGTBSI(p),
@@ -1561,13 +1704,21 @@ function generate() {
     buildGTRPC(p),
   ].join('\n');
 
-  const out = body + '\n';
+  const generated = body + '\n';
+  return includePreserved
+    ? ConfigUtils.appendPreservedLines(generated, documentState.preservedLines)
+    : generated;
+}
+
+function generate() {
+  const out = serializeConfig(true);
   document.getElementById('config_output').value = out;
   // Auto-open preview so user can see generation succeeded
   const wrap = document.getElementById('preview_wrap');
   const btn = document.getElementById('btn_toggle_preview');
   wrap.style.display = 'block';
   btn.innerHTML = '<span id="preview_arrow" style="font-size:10px">▼</span> Hide config preview';
+  renderValidation();
   return out;
 }
 
@@ -1580,13 +1731,26 @@ function showMsg(id, text, isErr) {
 }
 
 function applyConfigText(text, label) {
-  document.getElementById('config_output').value = text;
-  const cmds = parseConfig(text);
+  const parsed = ConfigUtils.parseConfig(text);
+  documentState.loading = true;
+  documentState.sourceText = text;
+  documentState.preservedLines = [];
+  documentState.ignoredLines = [];
   populateFromConfig(text);
+  const generated = serializeConfig(false);
+  documentState.preservedLines = ConfigUtils.preservedLines(text, generated);
+  documentState.ignoredLines = ConfigUtils.unparsedLines(text);
+  documentState.loading = false;
   saveFormState();
+  applyConditionals();
   Object.keys(sectionBuilders).forEach(renderCmdPreview);
-  const n = Object.keys(cmds).length;
-  showMsg('load_msg', `${label} — ${n} commands applied as defaults`, false);
+  generate();
+  setDocumentSource(label, `${parsed.commandLines.length} command lines loaded. Edit any section, then return here to review and queue the update.`);
+  showMsg(
+    'load_msg',
+    `${label} loaded — ${parsed.commandLines.length} command lines${documentState.preservedLines.length ? `, ${documentState.preservedLines.length} preserved verbatim` : ''}${documentState.ignoredLines.length ? `, ${documentState.ignoredLines.length} excluded` : ''}`,
+    false
+  );
 }
 
 async function loadFromServer() {
@@ -1602,16 +1766,7 @@ async function loadFromServer() {
 }
 
 function parseConfig(text) {
-  const cmds = {};
-  for (const line of text.split(/\r?\n/)) {
-    const m = line.match(/^AT\+(GT\w+)=(.+?)\$?\s*$/);
-    if (!m) continue;
-    const name = m[1]; // e.g. 'GTBSI', 'GTSRI'
-    const params = m[2].split(',');
-    if (!cmds[name]) cmds[name] = [];
-    cmds[name].push(params);
-  }
-  return cmds;
+  return ConfigUtils.parseConfig(text).commands;
 }
 
 function populateFromConfig(text) {
@@ -1823,7 +1978,49 @@ document.getElementById('btn_toggle_preview').addEventListener('click', () => {
 });
 
 document.getElementById('btn_generate').addEventListener('click', generate);
-document.getElementById('btn_load_server').addEventListener('click', loadFromServer);
+
+let serverFiles = new Set();
+
+async function loadServerFiles() {
+  const list = document.getElementById('server_file_list');
+  try {
+    const res = await apiFetch(`${API}/configs`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const files = await res.json();
+    serverFiles = new Set(files);
+    if (!files.length) {
+      list.innerHTML = '<span style="color:var(--muted);font-size:13px">No config files are currently waiting on the server.</span>';
+      return;
+    }
+    list.innerHTML = '';
+    files.forEach(filename => {
+      const row = document.createElement('div');
+      row.className = 'file-row';
+      const main = document.createElement('div');
+      main.className = 'file-row-main';
+      const title = document.createElement('strong');
+      title.textContent = filename;
+      const hint = document.createElement('span');
+      hint.textContent = /^\d{15}\.ini$/.test(filename) ? 'Pending tracker configuration' : 'Saved draft';
+      main.append(title, hint);
+      const load = document.createElement('button');
+      load.className = 'btn btn-outline btn-sm';
+      load.textContent = 'Load';
+      load.addEventListener('click', () => loadNamedServerFile(filename));
+      row.append(main, load);
+      list.appendChild(row);
+    });
+  } catch (e) {
+    list.innerHTML = `<span style="color:var(--danger);font-size:13px">Could not load files: ${esc(e.message)}</span>`;
+  }
+}
+
+async function loadNamedServerFile(filename) {
+  document.getElementById('cfg_filename').value = filename;
+  await loadFromServer();
+}
+
+document.getElementById('btn_refresh_files').addEventListener('click', loadServerFiles);
 
 document.getElementById('btn_load_file').addEventListener('click', () => {
   document.getElementById('file_import').click();
@@ -1833,6 +2030,7 @@ document.getElementById('file_import').addEventListener('change', e => {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = evt => {
+    document.getElementById('cfg_filename').value = file.name;
     applyConfigText(evt.target.result, file.name);
   };
   reader.readAsText(file);
@@ -1841,30 +2039,52 @@ document.getElementById('file_import').addEventListener('change', e => {
 
 document.getElementById('btn_use_device').addEventListener('click', () => {
   const sel = document.getElementById('cfg_device_select');
-  if (sel.value) document.getElementById('cfg_filename').value = sel.value;
+  if (!sel.value) {
+    showMsg('device_msg', 'Choose a tracker first', true);
+    return;
+  }
+  document.getElementById('cfg_filename').value = sel.value;
+  const trackerName = sel.options[sel.selectedIndex].textContent.split(' — ')[0];
+  setDocumentSource(`${trackerName} draft`, `Targeting ${sel.value}. Load its pending file or start from the current draft settings.`);
+  showMsg('device_msg', `${sel.value} selected`, false);
+});
+
+document.getElementById('btn_load_device').addEventListener('click', async () => {
+  const sel = document.getElementById('cfg_device_select');
+  if (!sel.value) {
+    showMsg('device_msg', 'Choose a tracker first', true);
+    return;
+  }
+  document.getElementById('cfg_filename').value = sel.value;
+  await loadFromServer();
 });
 
 document.getElementById('btn_save_server').addEventListener('click', async () => {
   const out = generate();
   const filename = v('cfg_filename');
   if (!filename) { showMsg('save_msg', 'Enter a filename', true); return; }
+  if (serverFiles.has(filename) && !confirm(`Replace the existing server file "${filename}"?`)) return;
   try {
     const res = await apiFetch(`${API}/config/${encodeURIComponent(filename)}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: out }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    showMsg('save_msg', `Saved to ${filename}`, false);
+    documentState.dirty = false;
+    documentState.source = filename;
+    updateDocumentState();
+    showMsg('save_msg', `Draft saved to ${filename}`, false);
+    loadServerFiles();
   } catch (e) { showMsg('save_msg', `Save failed: ${e.message}`, true); }
 });
 
 document.getElementById('btn_copy').addEventListener('click', () => {
-  const out = document.getElementById('config_output').value || generate();
+  const out = generate();
   navigator.clipboard.writeText(out).then(() => showMsg('save_msg', 'Copied!', false));
 });
 
 document.getElementById('btn_download').addEventListener('click', () => {
-  const out = document.getElementById('config_output').value || generate();
+  const out = generate();
   const filename = v('cfg_filename') || 'config.GL320M';
   const blob = new Blob([out], { type: 'text/plain' });
   const a = document.createElement('a');
@@ -1882,16 +2102,7 @@ document.getElementById('btn_deploy_none').addEventListener('click', () => {
 });
 // Parse config text into { "GTXXX[n]": "AT+GTXXX=..." } map for delta comparison
 function parseConfigToMap(text) {
-  const counters = {};
-  const map = {};
-  for (const line of text.trim().split('\n')) {
-    const m = line.match(/^(AT\+GT\w+)=/);
-    if (!m) continue;
-    const cmd = m[1];
-    counters[cmd] = (counters[cmd] || 0);
-    map[`${cmd}[${counters[cmd]++}]`] = line;
-  }
-  return map;
+  return ConfigUtils.configToMap(text);
 }
 
 let pendingDeploy = null;
@@ -1899,7 +2110,6 @@ let pendingDeploy = null;
 document.getElementById('btn_deploy_selected').addEventListener('click', async () => {
   const cbs = [...document.querySelectorAll('.deploy-cb:checked')];
   if (!cbs.length) { showMsg('deploy_msg', 'No devices selected', true); return; }
-  const forceFull = document.getElementById('deploy_force_full').checked;
   const fullOut = generate();
   const newMap = parseConfigToMap(fullOut);
 
@@ -1910,18 +2120,20 @@ document.getElementById('btn_deploy_selected').addEventListener('click', async (
     const file = cb.dataset.file;
     const name = cb.closest('label').querySelector('strong')?.textContent || imei;
     let oldMap = {};
-    if (!forceFull) {
-      try {
-        const r = await apiFetch(`${API}/deployed/${imei}`);
-        const data = r.ok ? await r.json() : null;
-        if (data) oldMap = data;
-      } catch {}
-    }
-    const isFirst = !forceFull && Object.keys(oldMap).length === 0;
-    const changed = forceFull
-      ? Object.entries(newMap).map(([k, v]) => ({ key: k, old: null, new: v }))
-      : Object.entries(newMap).filter(([k, v]) => oldMap[k] !== v).map(([k, v]) => ({ key: k, old: oldMap[k] || null, new: v }));
-    return { imei, file, name, changed, isFirst };
+    let baselineLabel = 'No previous configuration';
+    try {
+      const r = await apiFetch(`${API}/deployment/${imei}`);
+      const data = r.ok ? await r.json() : null;
+      if (data?.pending?.state) {
+        oldMap = data.pending.state;
+        baselineLabel = data.pending.status === 'downloaded' ? 'Last downloaded (application unverified)' : 'Currently queued';
+      } else if (data?.confirmed) {
+        oldMap = data.confirmed;
+        baselineLabel = 'Legacy deployed baseline';
+      }
+    } catch {}
+    const changed = ConfigUtils.diffConfig(oldMap, newMap);
+    return { imei, file, name, changed, isFirst: Object.keys(oldMap).length === 0, baselineLabel };
   }));
 
   showMsg('deploy_msg', '');
@@ -1934,15 +2146,15 @@ function openDeployModal(tasks) {
   const nSkipped = tasks.filter(t => !t.isFirst && t.changed.length === 0).length;
   document.getElementById('deploy-modal-sub').textContent =
     totalChanges === 0 && nSkipped === tasks.length
-      ? 'All selected devices are already up to date — nothing to deploy.'
-      : `${tasks.length} device${tasks.length !== 1 ? 's' : ''} · ${totalChanges} command${totalChanges !== 1 ? 's' : ''} will change` +
+      ? 'All selected devices already have this configuration queued or downloaded — nothing to update.'
+      : `${tasks.length} device${tasks.length !== 1 ? 's' : ''} · ${totalChanges} command${totalChanges !== 1 ? 's' : ''} differ. A complete configuration will be queued for each changed device` +
         (nSkipped ? ` · ${nSkipped} unchanged (will be skipped)` : '');
 
   const body = document.getElementById('deploy-modal-body');
   body.innerHTML = '';
   tasks.forEach(t => {
     const hasChanges = t.changed.length > 0;
-    const labelText = t.isFirst ? 'First deploy' : hasChanges ? `${t.changed.length} change${t.changed.length !== 1 ? 's' : ''}` : 'No changes';
+    const labelText = t.isFirst ? 'First update' : hasChanges ? `${t.changed.length} difference${t.changed.length !== 1 ? 's' : ''}` : 'No changes';
     const labelClass = t.isFirst ? 'badge badge-first' : hasChanges ? 'badge badge-change' : 'badge badge-muted';
     const div = document.createElement('div');
     div.className = 'diff-device';
@@ -1954,13 +2166,13 @@ function openDeployModal(tasks) {
       </div>
       <div class="diff-device-body${bodyOpen}">
         ${t.isFirst
-          ? '<p style="font-size:12px;color:var(--muted)">No previous deploy recorded — full config will be sent.</p>'
+          ? '<p style="font-size:12px;color:var(--muted)">No previous configuration recorded — a complete config will be queued.</p>'
           : !hasChanges
-          ? '<p style="font-size:12px;color:var(--muted)">Config matches last deployed state. This device will be skipped.</p>'
-          : t.changed.map(c => `<div class="diff-line">
+          ? `<p style="font-size:12px;color:var(--muted)">Config matches: ${esc(t.baselineLabel)}. This device will be skipped.</p>`
+          : `<p style="font-size:11px;color:var(--muted);margin-bottom:8px">Compared with: ${esc(t.baselineLabel)}</p>` + t.changed.map(c => `<div class="diff-line">
               <span class="cmd-key">${esc(c.key)}</span>
               ${c.old ? `<span class="old">${esc(c.old)}</span>` : ''}
-              <span class="new">${esc(c.new)}</span>
+              ${c.new ? `<span class="new">${esc(c.new)}</span>` : '<span class="new">Removed from new config</span>'}
             </div>`).join('')}
       </div>`;
     body.appendChild(div);
@@ -1993,16 +2205,11 @@ document.getElementById('btn_confirm_deploy').addEventListener('click', async ()
   for (const t of tasks) {
     if (!t.isFirst && t.changed.length === 0) { skipped++; continue; }
     try {
-      const deployContent = t.isFirst ? fullOut : t.changed.map(c => c.new).join('\n') + '\n';
-      const cfgRes = await apiFetch(`${API}/config/${encodeURIComponent(t.file)}`, {
+      const cfgRes = await apiFetch(`${API}/deployment/${encodeURIComponent(t.imei)}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: deployContent }),
+        body: JSON.stringify({ content: fullOut, state: newMap }),
       });
       if (!cfgRes.ok) throw new Error(`HTTP ${cfgRes.status}`);
-      await apiFetch(`${API}/deployed/${t.imei}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state: newMap }),
-      });
       ok++;
     } catch { fail++; }
   }
@@ -2012,7 +2219,7 @@ document.getElementById('btn_confirm_deploy').addEventListener('click', async ()
   document.getElementById('btn_confirm_deploy').textContent = 'Confirm & Deploy';
 
   const parts = [];
-  if (ok)      parts.push(`${ok} deployed`);
+  if (ok)      parts.push(`${ok} queued`);
   if (skipped) parts.push(`${skipped} unchanged`);
   if (fail)    parts.push(`${fail} failed`);
   showMsg('deploy_msg', parts.join(', '), fail > 0);
@@ -2064,12 +2271,18 @@ async function applyTemplate(name) {
     const res = await apiFetch(`${API}/template/${encodeURIComponent(name.replace(/\s+/g, '_'))}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const state = await res.json();
+    documentState.loading = true;
     Object.entries(state).forEach(([id, val]) => setV(id, val));
+    documentState.loading = false;
+    documentState.sourceText = '';
+    documentState.preservedLines = [];
+    documentState.ignoredLines = [];
     saveFormState();
     applyConditionals();
     Object.keys(sectionBuilders).forEach(renderCmdPreview);
     if (typeof renderGeoMap === 'function') renderGeoMap();
-    showMsg('template_msg', `"${name}" loaded — edit settings and deploy below`, false);
+    setDocumentSource(`Template: ${name}`, 'Template loaded. Edit any configuration section, then open Config Workspace to review and queue it.');
+    showMsg('template_msg', `"${name}" loaded — edit settings, then open Config Workspace`, false);
   } catch (e) {
     showMsg('template_msg', `Failed to load: ${e.message}`, true);
   }
@@ -2086,10 +2299,7 @@ async function deleteTemplate(name) {
 document.getElementById('btn_save_template').addEventListener('click', async () => {
   const name = document.getElementById('new_template_name').value.trim();
   if (!name) { showMsg('template_msg', 'Enter a template name', true); return; }
-  const state = {};
-  document.querySelectorAll('main input[id], main select[id]').forEach(el => {
-    state[el.id] = el.type === 'checkbox' ? el.checked : el.value;
-  });
+  const state = getConfigState();
   try {
     const res = await apiFetch(`${API}/template/${encodeURIComponent(name.replace(/\s+/g, '_'))}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2140,14 +2350,10 @@ function healthBadge(lastSeen) {
   return `<span class="badge badge-overdue">Overdue ${Math.floor(h/24)}d</span>`;
 }
 function deployBadge(t) {
-  if (t.configPending) return '<span class="badge badge-deploy-pending">Pending</span>';
-  const iniName = `${t.imei}.ini`;
-  if (t.lastConfig === iniName && (t.lastStatus === 200 || t.lastStatus === 206))
-    return '<span class="badge badge-deploy-done">Downloaded</span>';
-  if (t.history) {
-    const dl = t.history.find(h => h.config === iniName && (h.status === 200 || h.status === 206));
-    if (dl) return '<span class="badge badge-deploy-done">Downloaded</span>';
-  }
+  if (t.configPending || t.deploymentStatus === 'queued')
+    return '<span class="badge badge-deploy-pending">Queued</span>';
+  if (t.deploymentStatus === 'downloaded')
+    return '<span class="badge badge-warn" title="The file was downloaded; application by the tracker has not been verified">Downloaded · unverified</span>';
   return '';
 }
 
@@ -2311,14 +2517,18 @@ function renderDevices(devices) {
         </span>
         <span class="diff-badge" id="diff_${esc(imei)}" style="flex-shrink:0">…</span>`;
       deployList.appendChild(lbl);
-      // Async: fetch deployed state and show diff count
-      apiFetch(`${API}/deployed/${imei}`).then(r => r.json()).then(oldMap => {
+      // Async: show the real queue/download lifecycle, not an optimistic "deployed" state.
+      apiFetch(`${API}/deployment/${imei}`).then(r => r.json()).then(data => {
         const badge = document.getElementById(`diff_${imei}`);
         if (!badge) return;
-        if (!oldMap) { badge.textContent = 'No prior deploy'; badge.style.background='#dbeafe'; badge.style.color='#1d4ed8'; return; }
-        // We can't compute the diff without generating the config, so just note "prior deploy exists"
-        badge.textContent = 'Prior deploy recorded';
-        badge.style.background = '#dcfce7'; badge.style.color = '#15803d';
+        if (!data?.pending) {
+          badge.textContent = data?.confirmed ? 'Legacy baseline' : 'No prior update';
+          badge.style.background='#dbeafe'; badge.style.color='#1d4ed8';
+          return;
+        }
+        badge.textContent = data.pending.status === 'downloaded' ? 'Downloaded · unverified' : 'Update queued';
+        badge.style.background = data.pending.status === 'downloaded' ? '#fef3c7' : '#fed7aa';
+        badge.style.color = data.pending.status === 'downloaded' ? '#92400e' : '#c2410c';
       }).catch(() => {
         const badge = document.getElementById(`diff_${imei}`);
         if (badge) badge.remove();
@@ -2401,11 +2611,7 @@ function applyConditionals() {
 const FORM_KEY = 'tracker_form_state';
 
 function saveFormState() {
-  const state = {};
-  document.querySelectorAll('main input[id], main select[id]').forEach(el => {
-    state[el.id] = el.type === 'checkbox' ? el.checked : el.value;
-  });
-  localStorage.setItem(FORM_KEY, JSON.stringify(state));
+  localStorage.setItem(FORM_KEY, JSON.stringify(getConfigState()));
 }
 
 function loadFormState() {
@@ -2413,17 +2619,30 @@ function loadFormState() {
     const raw = localStorage.getItem(FORM_KEY);
     if (!raw) return;
     const state = JSON.parse(raw);
-    Object.entries(state).forEach(([id, val]) => setV(id, val));
+    Object.entries(state).forEach(([id, val]) => {
+      if (isConfigControl(document.getElementById(id))) setV(id, val);
+    });
   } catch {}
 }
 
 // Save on any form change and re-evaluate conditionals
-document.querySelector('main').addEventListener('input',  () => { saveFormState(); applyConditionals(); });
-document.querySelector('main').addEventListener('change', () => { saveFormState(); applyConditionals(); });
+document.querySelector('main').addEventListener('input',  e => {
+  saveFormState();
+  applyConditionals();
+  if (isConfigControl(e.target)) setDocumentDirty(true);
+  renderValidation();
+});
+document.querySelector('main').addEventListener('change', e => {
+  saveFormState();
+  applyConditionals();
+  if (isConfigControl(e.target)) setDocumentDirty(true);
+  renderValidation();
+});
 
 // Restore on load (APN/GEO tables are already built by their IIFEs at this point)
 loadFormState();
 applyConditionals();
+updateDocumentState();
 
 // ── Live command preview ───────────────────────────────────────────────────
 const sectionBuilders = {

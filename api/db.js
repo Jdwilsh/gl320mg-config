@@ -1,7 +1,7 @@
 const Database = require('better-sqlite3');
 const path     = require('path');
 
-const DB_PATH = path.join(__dirname, 'tracker.db');
+const DB_PATH = process.env.TRACKER_DB_PATH || path.join(__dirname, 'tracker.db');
 const db = new Database(DB_PATH);
 
 db.pragma('journal_mode = WAL');
@@ -29,6 +29,15 @@ function initSchema() {
       imei       TEXT PRIMARY KEY,
       state_json TEXT NOT NULL,
       updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS pending_deployments (
+      imei          TEXT PRIMARY KEY,
+      filename      TEXT NOT NULL,
+      state_json    TEXT NOT NULL,
+      status        TEXT NOT NULL DEFAULT 'queued',
+      queued_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+      downloaded_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS templates (

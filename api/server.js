@@ -10,11 +10,11 @@ const app  = express();
 const PORT = 3010;
 
 const DEVICES_FILE  = path.join(__dirname, "..", "devices.json");
-const CONFIGS_DIR   = path.join(__dirname, "..", "configs");
+const CONFIGS_DIR   = process.env.TRACKER_CONFIGS_DIR || path.join(__dirname, "..", "configs");
 const DEPLOYED_DIR  = path.join(__dirname, "..", "deployed");
 const AUTH_FILE     = path.join(__dirname, "..", "auth.json");
 const TEMPLATES_DIR = path.join(__dirname, '..', 'templates');
-const LOG_FILE      = '/var/log/nginx/cfg.access.log';
+const LOG_FILE      = process.env.TRACKER_LOG_FILE || '/var/log/nginx/cfg.access.log';
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 initSchema();
@@ -22,7 +22,7 @@ runMigration(db, { DEVICES_FILE, DEPLOYED_DIR, TEMPLATES_DIR, LOG_FILE });
 
 // logWatcher must be required AFTER initSchema (prepared statements need tables)
 const { startLogWatcher } = require('./logWatcher');
-startLogWatcher();
+if (require.main === module && process.env.DISABLE_LOG_WATCHER !== '1') startLogWatcher();
 
 // ── Prepared statements ───────────────────────────────────────────────────────
 const stmts = {
@@ -70,6 +70,25 @@ const stmts = {
   upsertDeployed: db.prepare(`
     INSERT OR REPLACE INTO deployed_states (imei, state_json, updated_at)
     VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+  `),
+  getPendingDeployment: db.prepare(`
+    SELECT imei, filename, state_json, status, queued_at, downloaded_at
+    FROM pending_deployments WHERE imei = ?
+  `),
+  upsertPendingDeployment: db.prepare(`
+    INSERT INTO pending_deployments (imei, filename, state_json, status, queued_at, downloaded_at)
+    VALUES (?, ?, ?, 'queued', strftime('%Y-%m-%dT%H:%M:%SZ','now'), NULL)
+    ON CONFLICT(imei) DO UPDATE SET
+      filename = excluded.filename,
+      state_json = excluded.state_json,
+      status = 'queued',
+      queued_at = excluded.queued_at,
+      downloaded_at = NULL
+  `),
+  markDeploymentDownloaded: db.prepare(`
+    UPDATE pending_deployments
+    SET status = 'downloaded', downloaded_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')
+    WHERE imei = ? AND filename = ? AND status = 'queued'
   `),
 
   // Templates
@@ -154,11 +173,12 @@ function cleanupDeliveredConfigs() {
     let fileMtime;
     try { fileMtime = fs.statSync(configPath).mtimeMs; } catch { continue; }
     if (tracker.lastConfig === filename &&
-        (tracker.lastStatus === 200 || tracker.lastStatus === 206) &&
+        tracker.lastStatus === 200 &&
         new Date(tracker.lastSeen).getTime() >= fileMtime) {
       try {
+        stmts.markDeploymentDownloaded.run(tracker.imei, filename);
         fs.unlinkSync(configPath);
-        console.log(`[cleanup] Deleted delivered config: ${filename}`);
+        console.log(`[cleanup] Marked downloaded and deleted config: ${filename}`);
       } catch (e) {
         console.error(`[cleanup] Failed to delete ${filename}:`, e.message);
       }
@@ -173,6 +193,7 @@ app.get("/trackers", (req, res) => {
   const rows = stmts.trackerSummary.all();
   const result = rows.map(t => {
     const history = stmts.trackerHistory.all(t.imei);
+    const deployment = stmts.getPendingDeployment.get(t.imei);
     return {
       imei:          t.imei,
       lastSeen:      t.lastSeen,
@@ -181,6 +202,9 @@ app.get("/trackers", (req, res) => {
       lastStatus:    t.lastStatus,
       name:          t.name || null,
       configPending: fs.existsSync(path.join(CONFIGS_DIR, `${t.imei}.ini`)),
+      deploymentStatus: deployment ? deployment.status : null,
+      deploymentQueuedAt: deployment ? deployment.queued_at : null,
+      deploymentDownloadedAt: deployment ? deployment.downloaded_at : null,
       history,
     };
   });
@@ -238,6 +262,42 @@ app.post("/deployed/:imei", (req, res) => {
   if (!state || typeof state !== "object") return res.status(400).json({ error: "state required" });
   stmts.upsertDeployed.run(imei, JSON.stringify(state));
   res.json({ ok: true });
+});
+
+// Deployment lifecycle: queued state is deliberately separate from confirmed
+// state. Writing a file does not mean the tracker has downloaded or applied it.
+app.get("/deployment/:imei", (req, res) => {
+  const imei = safeImei(req.params.imei);
+  if (!imei) return res.status(400).json({ error: "Invalid IMEI" });
+  const pending = stmts.getPendingDeployment.get(imei);
+  const confirmed = stmts.getDeployed.get(imei);
+  res.json({
+    pending: pending ? {
+      filename: pending.filename,
+      state: JSON.parse(pending.state_json),
+      status: pending.status,
+      queuedAt: pending.queued_at,
+      downloadedAt: pending.downloaded_at,
+    } : null,
+    confirmed: confirmed ? JSON.parse(confirmed.state_json) : null,
+  });
+});
+
+app.post("/deployment/:imei", (req, res) => {
+  const imei = safeImei(req.params.imei);
+  if (!imei) return res.status(400).json({ error: "Invalid IMEI" });
+  const { content, state } = req.body;
+  if (!content || typeof content !== "string") return res.status(400).json({ error: "content required" });
+  if (!state || typeof state !== "object") return res.status(400).json({ error: "state required" });
+  const filename = `${imei}.ini`;
+  const fp = safeConfigPath(filename);
+  if (!fs.existsSync(CONFIGS_DIR)) fs.mkdirSync(CONFIGS_DIR, { recursive: true });
+  const queue = db.transaction(() => {
+    fs.writeFileSync(fp, content, "utf8");
+    stmts.upsertPendingDeployment.run(imei, filename, JSON.stringify(state));
+  });
+  queue();
+  res.json({ ok: true, filename, status: "queued" });
 });
 
 // Templates
@@ -317,6 +377,10 @@ app.post("/config/:name", (req, res) => {
   res.json({ ok: true });
 });
 
-app.listen(PORT, "127.0.0.1", () => {
-  console.log(`Tracker API running on http://127.0.0.1:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, "127.0.0.1", () => {
+    console.log(`Tracker API running on http://127.0.0.1:${PORT}`);
+  });
+}
+
+module.exports = { app };

@@ -4,7 +4,8 @@
   "description": "GL320MG tracker log monitor API",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test ../tests/*.test.js"
   },
   "dependencies": {
     "better-sqlite3": "^12.9.0",
