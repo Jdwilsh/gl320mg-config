@@ -68,6 +68,22 @@ test('1NCE normalizer understands Platform 2.0 flat usage and event fields', () 
   assert.equal(event.volumeTotal, 1.25);
 });
 
+test('SIM activity returns numeric zero totals before the first delivery', async t => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const address = server.address();
+  const response = await fetch(`http://127.0.0.1:${address.port}/sim-activity`);
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).summary, {
+    totalRecords: 0,
+    simsSeen: 0,
+    records24h: 0,
+    volume24h: 0,
+    alerts24h: 0,
+    lastReceivedAt: null,
+  });
+});
+
 test('queueing keeps pending state separate and writes a full IMEI config', async t => {
   const server = await startServer();
   t.after(() => server.close());

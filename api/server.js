@@ -152,12 +152,12 @@ const stmts = {
     SELECT
       COUNT(*) AS totalRecords,
       COUNT(DISTINCT COALESCE(imei, imsi, iccid)) AS simsSeen,
-      SUM(CASE WHEN datetime(received_at) >= datetime('now', '-24 hours') THEN 1 ELSE 0 END) AS records24h,
-      SUM(CASE WHEN datetime(received_at) >= datetime('now', '-24 hours') THEN COALESCE(volume_total, 0) ELSE 0 END) AS volume24h,
-      SUM(CASE WHEN datetime(received_at) >= datetime('now', '-24 hours')
+      COALESCE(SUM(CASE WHEN datetime(received_at) >= datetime('now', '-24 hours') THEN 1 ELSE 0 END), 0) AS records24h,
+      COALESCE(SUM(CASE WHEN datetime(received_at) >= datetime('now', '-24 hours') THEN COALESCE(volume_total, 0) ELSE 0 END), 0) AS volume24h,
+      COALESCE(SUM(CASE WHEN datetime(received_at) >= datetime('now', '-24 hours')
                 AND (is_alert = 1 OR lower(COALESCE(event_severity, ''))
                      IN ('warn','warning','error','critical','high'))
-               THEN 1 ELSE 0 END) AS alerts24h,
+               THEN 1 ELSE 0 END), 0) AS alerts24h,
       MAX(received_at) AS lastReceivedAt
     FROM sim_activity
   `),
