@@ -118,3 +118,23 @@ test('diffConfig reports additions, changes, and removals', () => {
     { key: 'AT+GTCCC[0]', old: null, new: 'AT+GTCCC=add$' },
   ]);
 });
+
+test('an OTA interval edit is retained in place and reported as a GTUPC change', () => {
+  const source = [
+    'Device Name: GL320M',
+    'AT+GTUPC=gl320m,1,10,0,1,24,http://cfg.jdwilsh.com/,1,,,,FFFF$',
+  ].join('\r\n');
+  const generated =
+    'AT+GTUPC=gl320m,1,10,0,1,4,http://cfg.jdwilsh.com/,1,,,,FFFF$\n';
+  const merged = mergeWithSource(source, generated);
+
+  assert.equal(
+    merged,
+    'AT+GTUPC=gl320m,1,10,0,1,4,http://cfg.jdwilsh.com/,1,,,,FFFF$\n'
+  );
+  assert.deepEqual(diffConfig(source, merged), [{
+    key: 'AT+GTUPC[0]',
+    old: 'AT+GTUPC=gl320m,1,10,0,1,24,http://cfg.jdwilsh.com/,1,,,,FFFF$',
+    new: 'AT+GTUPC=gl320m,1,10,0,1,4,http://cfg.jdwilsh.com/,1,,,,FFFF$',
+  }]);
+});

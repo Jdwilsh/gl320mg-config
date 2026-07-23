@@ -260,7 +260,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="config-utils.js?v=da51bde"></script>
+<script src="config-utils.js?v=20260723-ota-workspace"></script>
 </head>
 <body>
 <!-- ── LOGIN SCREEN ── -->
@@ -1557,6 +1557,9 @@ function renderValidation() {
 function setDocumentTarget(imei, name = '') {
   documentState.targetImei = String(imei || '').replace(/\.ini$/i, '');
   documentState.targetName = name;
+  if (documentState.targetImei) {
+    localStorage.setItem(ACTIVE_DEVICE_WORKSPACE_KEY, documentState.targetImei);
+  }
   updateDocumentState();
 }
 
@@ -1577,11 +1580,34 @@ function requireSafeCompleteConfig(messageId) {
 }
 
 const DEVICE_WORKSPACES_KEY = 'tracker_device_workspaces_v3';
+const ACTIVE_DEVICE_WORKSPACE_KEY = 'tracker_active_device_workspace_v1';
 let workspaceDevices = [];
 let workspaceDrafts = {};
 try {
   workspaceDrafts = JSON.parse(localStorage.getItem(DEVICE_WORKSPACES_KEY) || '{}') || {};
 } catch { workspaceDrafts = {}; }
+
+function refreshStoredWorkspaceValidation() {
+  let changed = false;
+  Object.values(workspaceDrafts).forEach(draft => {
+    if (!draft?.sourceText) return;
+    const ignoredLines = ConfigUtils.unparsedLines(draft.sourceText);
+    const parserIssue = `${ignoredLines.length} line${ignoredLines.length === 1 ? '' : 's'} could not be parsed. Nothing may be excluded from a deployable tracker file.`;
+    const blocking = (Array.isArray(draft.blocking) ? draft.blocking : [])
+      .filter(issue => !/^\d+ lines? could not be parsed\./.test(issue));
+    if (ignoredLines.length) blocking.push(parserIssue);
+    if (
+      JSON.stringify(draft.ignoredLines || []) !== JSON.stringify(ignoredLines) ||
+      JSON.stringify(draft.blocking || []) !== JSON.stringify(blocking)
+    ) {
+      draft.ignoredLines = ignoredLines;
+      draft.blocking = blocking;
+      changed = true;
+    }
+  });
+  if (changed) localStorage.setItem(DEVICE_WORKSPACES_KEY, JSON.stringify(workspaceDrafts));
+}
+refreshStoredWorkspaceValidation();
 
 function persistWorkspaceDrafts() {
   localStorage.setItem(DEVICE_WORKSPACES_KEY, JSON.stringify(workspaceDrafts));
@@ -1622,8 +1648,13 @@ function restoreWorkspaceSnapshot(snapshot) {
   Object.entries(snapshot.state || {}).forEach(([id, value]) => setV(id, value));
   documentState.source = snapshot.source || 'saved device workspace';
   documentState.sourceText = snapshot.sourceText || '';
-  documentState.preservedLines = Array.isArray(snapshot.preservedLines) ? snapshot.preservedLines : [];
-  documentState.ignoredLines = Array.isArray(snapshot.ignoredLines) ? snapshot.ignoredLines : [];
+  const generated = serializeConfig(false);
+  documentState.preservedLines = documentState.sourceText
+    ? ConfigUtils.preservedLines(documentState.sourceText, generated)
+    : (Array.isArray(snapshot.preservedLines) ? snapshot.preservedLines : []);
+  documentState.ignoredLines = documentState.sourceText
+    ? ConfigUtils.unparsedLines(documentState.sourceText)
+    : (Array.isArray(snapshot.ignoredLines) ? snapshot.ignoredLines : []);
   documentState.baselineReady = snapshot.baselineReady === true;
   documentState.dirty = snapshot.dirty === true;
   document.getElementById('document_summary').textContent = snapshot.summary || 'Device workspace restored. Review its settings or open Changes & OTA.';
@@ -1634,6 +1665,7 @@ function restoreWorkspaceSnapshot(snapshot) {
   if (typeof renderGeoMap === 'function') renderGeoMap();
   generate({ showPreview: false });
   updateDocumentState();
+  snapshotActiveWorkspace();
 }
 
 function renderDeviceTabs() {
@@ -3322,6 +3354,19 @@ function renderDevices(devices) {
     opt.textContent = `${device.name} — ${device.imei}.ini`;
     sel.appendChild(opt);
   });
+
+  if (!documentState.targetImei) {
+    const rememberedImei = localStorage.getItem(ACTIVE_DEVICE_WORKSPACE_KEY) || '';
+    const recentDirtyDraft = Object.values(workspaceDrafts)
+      .filter(draft => draft?.dirty)
+      .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0];
+    const preferredImei = configEntries.some(device => device.imei === rememberedImei)
+      ? rememberedImei
+      : configEntries.some(device => device.imei === recentDirtyDraft?.imei)
+        ? recentDirtyDraft.imei
+        : '';
+    if (preferredImei) setTimeout(() => openDeviceWorkspace(preferredImei), 0);
+  }
 
   // Populate deploy checklist (with async diff badge per device)
   const deployList = document.getElementById('deploy_device_list');
