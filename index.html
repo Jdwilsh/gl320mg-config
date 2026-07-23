@@ -1218,6 +1218,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div id="validation_list" class="validation-list">
         <div class="validation-item">Choose a tracker and load its trusted baseline.</div>
       </div>
+      <p class="hint" style="margin-top:9px">
+        A checked but greyed-out sub-option is a stored value from the source file, not an active feature.
+        It remains inactive while its parent mode is Off and is preserved so importing alone does not alter the configuration.
+      </p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <button class="btn btn-outline" id="btn_generate">Regenerate &amp; validate</button>
         <button class="btn btn-outline" id="btn_copy">Copy complete config</button>
@@ -3406,7 +3410,7 @@ const conditionals = [
   // checkbox: enabled when checked
   { ctrl: 'msa_mode',   type: 'checkbox', deps: ['msa_send_last','msa_sensitivity','msa_timeout'] },
   { ctrl: 'hbm_mode',   type: 'checkbox', deps: ['hbm_dur','hbm_high_speed','hbm_high_brake','hbm_high_accel','hbm_med_speed','hbm_med_brake','hbm_med_accel','hbm_low_brake','hbm_low_accel'] },
-  { ctrl: 'upc_mode',   type: 'checkbox', deps: ['upc_url','upc_interval','upc_max_retries','upc_timeout','upc_report'] },
+  { ctrl: 'upc_mode',   type: 'select',   deps: ['upc_url','upc_interval','upc_max_retries','upc_timeout','upc_report'] },
   { ctrl: 'nts_enable', type: 'checkbox', deps: ['nts_allow1','nts_allow2','nts_allow3','nts_block1','nts_block2','nts_block3'] },
   { ctrl: 'gam_mode',   type: 'checkbox', deps: ['gam_speed_mode','gam_motion_speed','gam_motion_time','gam_motionless_time','gam_gps_timeout'] },
 ];
