@@ -236,6 +236,13 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 .changes-device h3{font-size:15px;margin:0}
 .changes-device p{font-size:11px;color:var(--muted);margin-top:3px}
 .changes-device-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.import-drop{border:2px dashed #bfdbfe;background:#f8fbff;border-radius:9px;padding:14px;margin-top:12px;transition:.15s}
+.import-drop.dragging{border-color:var(--accent);background:var(--accent-bg)}
+.import-drop strong{display:block;font-size:13px}
+.import-drop p{font-size:11px;color:var(--muted);margin:2px 0 9px}
+.import-drop input[type=file]{display:block;width:100%;font-size:12px;color:var(--muted)}
+.import-drop input[type=file]::file-selector-button{font:inherit;font-weight:600;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-right:9px;cursor:pointer}
+.import-drop input[type=file]::file-selector-button:hover{border-color:#93c5fd;background:var(--accent-bg)}
 @media(max-width:768px){
   .workspace-context{grid-template-columns:1fr}
   .workspace-actions{justify-content:flex-start}
@@ -1196,10 +1203,13 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div id="server_file_list" class="file-list">
         <span style="color:var(--muted);font-size:13px">Loading files…</span>
       </div>
+      <div class="import-drop" id="import_drop">
+        <strong>Import from this Mac</strong>
+        <p>Drag a configuration file here, or use the native macOS file chooser. Plain-text files with any extension are accepted.</p>
+        <input type="file" id="file_import" aria-label="Choose configuration file from this Mac">
+      </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-        <button class="btn btn-outline btn-sm" id="btn_refresh_files">Refresh</button>
-        <button class="btn btn-outline btn-sm" id="btn_load_file">Import local file</button>
-        <input type="file" id="file_import" accept=".cfg,.ini,.GL320M,.txt" style="display:none">
+        <button class="btn btn-outline btn-sm" id="btn_refresh_files">Refresh server files</button>
       </div>
       <div style="margin-top:8px"><span id="load_msg" class="status-msg"></span></div>
     </div>
@@ -2331,24 +2341,54 @@ async function deleteServerFile(filename) {
 
 document.getElementById('btn_refresh_files').addEventListener('click', loadServerFiles);
 
-document.getElementById('btn_load_file').addEventListener('click', () => {
-  if (!documentState.targetImei) {
-    showMsg('load_msg', 'Choose a tracker tab before importing a configuration file', true);
+async function importLocalConfig(file) {
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    showMsg('load_msg', 'That file is larger than 5 MB and does not look like a tracker configuration', true);
     return;
   }
-  document.getElementById('file_import').click();
+  if (!documentState.targetImei) {
+    const match = file.name.match(/^(\d{15})\.ini$/i);
+    const device = match && workspaceDevices.find(item => item.imei === match[1] && item.configEnabled);
+    if (device) {
+      await openDeviceWorkspace(device.imei);
+    } else {
+      showMsg('load_msg', 'Choose a tracker tab first, or select a registered <IMEI>.ini file so the target can be identified safely', true);
+      return;
+    }
+  }
+  try {
+    const contents = await file.text();
+    const parsed = ConfigUtils.parseConfig(contents);
+    if (!parsed.commandLines.length) {
+      showMsg('load_msg', `${file.name} does not contain any Queclink AT+GT configuration commands`, true);
+      return;
+    }
+    document.getElementById('cfg_filename').value = `${documentState.targetImei}.ini`;
+    applyConfigText(contents, `Imported from Mac: ${file.name}`);
+    showMsg('load_msg', `${file.name} imported into ${documentState.targetName}; review all validation messages before editing`, false);
+  } catch (error) {
+    showMsg('load_msg', `Could not read ${file.name}: ${error.message}`, true);
+  }
+}
+
+const fileImport = document.getElementById('file_import');
+const importDrop = document.getElementById('import_drop');
+fileImport.addEventListener('change', async event => {
+  await importLocalConfig(event.target.files?.[0]);
+  event.target.value = '';
 });
-document.getElementById('file_import').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = evt => {
-    document.getElementById('cfg_filename').value = file.name;
-    if (/^\d{15}\.ini$/.test(file.name)) setDocumentTarget(file.name.replace(/\.ini$/i, ''));
-    applyConfigText(evt.target.result, file.name);
-  };
-  reader.readAsText(file);
-  e.target.value = ''; // reset so same file can be reloaded if needed
+['dragenter', 'dragover'].forEach(type => importDrop.addEventListener(type, event => {
+  event.preventDefault();
+  importDrop.classList.add('dragging');
+}));
+['dragleave', 'drop'].forEach(type => importDrop.addEventListener(type, event => {
+  event.preventDefault();
+  importDrop.classList.remove('dragging');
+}));
+importDrop.addEventListener('drop', event => {
+  const file = [...(event.dataTransfer?.files || [])][0];
+  importLocalConfig(file);
 });
 
 function configStateToText(state) {
