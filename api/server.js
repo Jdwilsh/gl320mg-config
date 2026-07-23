@@ -289,11 +289,18 @@ app.post(['/1nce/data-streamer', '/api/1nce/data-streamer'], receiveOneNce);
 app.patch(['/1nce/data-streamer', '/api/1nce/data-streamer'], receiveOneNce);
 
 app.post("/login", (req, res) => {
+  if (String(req.body.username || '').trim()) {
+    const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    const clientIp = forwarded || req.socket.remoteAddress || 'unknown';
+    const userAgent = String(req.headers['user-agent'] || 'unknown').slice(0, 160);
+    console.warn(`[auth] Login honeypot triggered from ${clientIp}; user-agent="${userAgent}"`);
+    return res.status(401).json({ error: "Sign in failed" });
+  }
   const hash = loadAuthHash();
   if (!hash) return res.json({ token: "dev", warning: "No password set" });
   const submitted = crypto.createHash("sha256")
     .update(req.body.password || "").digest("hex");
-  if (submitted !== hash) return res.status(401).json({ error: "Incorrect password" });
+  if (submitted !== hash) return res.status(401).json({ error: "Sign in failed" });
   res.json({ token: deriveToken(hash) });
 });
 

@@ -24,6 +24,28 @@ function startServer() {
   });
 }
 
+test('login honeypot rejects a populated username without exposing the reason', async t => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const address = server.address();
+  const base = `http://127.0.0.1:${address.port}`;
+
+  const trapped = await fetch(`${base}/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'user-agent': 'test-bot' },
+    body: JSON.stringify({ username: 'admin', password: 'guess' }),
+  });
+  assert.equal(trapped.status, 401);
+  assert.deepEqual(await trapped.json(), { error: 'Sign in failed' });
+
+  const emptyHoneypot = await fetch(`${base}/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ username: '', password: '' }),
+  });
+  assert.equal(emptyHoneypot.status, 200);
+});
+
 test('IMEI-SV values are converted back to the canonical 15-digit IMEI', () => {
   // FMM920 examples: the portal replaces the check digit with software version 03.
   assert.equal(canonicalImei('8682060840143703'), '868206084014376');

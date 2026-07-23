@@ -261,6 +261,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 .tpl-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;min-width:130px;display:flex;flex-direction:column;justify-content:space-between;gap:10px}
 .tpl-name{font-weight:600;font-size:13px;line-height:1.4}
 .tpl-actions{display:flex;gap:6px}
+.login-honeypot{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -273,8 +274,11 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     <h2>GL320MG Config Tool</h2>
     <p class="subtitle">Sign in to continue</p>
     <form id="login-form" autocomplete="on">
-      <!-- hidden username helps password managers save credentials -->
-      <input type="text" name="username" autocomplete="username" value="admin" style="display:none">
+      <div class="login-honeypot" aria-hidden="true">
+        <label for="login_username">Username</label>
+        <input type="text" id="login_username" name="username" value="" tabindex="-1"
+               autocomplete="off" data-lpignore="true" data-1p-ignore>
+      </div>
       <div class="f">
         <label>Password</label>
         <input type="password" id="login_pw" name="password" autocomplete="current-password" placeholder="Password">
@@ -1403,11 +1407,12 @@ function hideLoginScreen() {
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const pw = document.getElementById('login_pw').value;
+  const username = document.getElementById('login_username').value;
   const errEl = document.getElementById('login_err');
   try {
     const res = await fetch(`${API}/login`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw }),
+      body: JSON.stringify({ username, password: pw }),
     });
     const data = await res.json();
     if (!res.ok) {
