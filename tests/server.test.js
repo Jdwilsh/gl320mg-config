@@ -9,6 +9,9 @@ process.env.TRACKER_DB_PATH = path.join(testRoot, 'tracker.db');
 process.env.TRACKER_CONFIGS_DIR = path.join(testRoot, 'configs');
 process.env.TRACKER_LOG_FILE = path.join(testRoot, 'missing-access.log');
 process.env.TRACKER_AUTH_FILE = path.join(testRoot, 'missing-auth.json');
+process.env.TRACKER_DEVICES_FILE = path.join(testRoot, 'missing-devices.json');
+process.env.TRACKER_DEPLOYED_DIR = path.join(testRoot, 'missing-deployed');
+process.env.TRACKER_TEMPLATES_DIR = path.join(testRoot, 'missing-templates');
 process.env.DISABLE_LOG_WATCHER = '1';
 
 const { app } = require('../api/server');

@@ -9,11 +9,11 @@ const { runMigration }   = require('./migrate');
 const app  = express();
 const PORT = 3010;
 
-const DEVICES_FILE  = path.join(__dirname, "..", "devices.json");
+const DEVICES_FILE  = process.env.TRACKER_DEVICES_FILE || path.join(__dirname, "..", "devices.json");
 const CONFIGS_DIR   = process.env.TRACKER_CONFIGS_DIR || path.join(__dirname, "..", "configs");
-const DEPLOYED_DIR  = path.join(__dirname, "..", "deployed");
+const DEPLOYED_DIR  = process.env.TRACKER_DEPLOYED_DIR || path.join(__dirname, "..", "deployed");
 const AUTH_FILE     = process.env.TRACKER_AUTH_FILE || path.join(__dirname, "..", "auth.json");
-const TEMPLATES_DIR = path.join(__dirname, '..', 'templates');
+const TEMPLATES_DIR = process.env.TRACKER_TEMPLATES_DIR || path.join(__dirname, '..', 'templates');
 const LOG_FILE      = process.env.TRACKER_LOG_FILE || '/var/log/nginx/cfg.access.log';
 
 // ── Startup ───────────────────────────────────────────────────────────────────
