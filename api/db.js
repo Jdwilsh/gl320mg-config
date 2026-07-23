@@ -21,8 +21,10 @@ function initSchema() {
       ON tracker_events(imei, timestamp DESC);
 
     CREATE TABLE IF NOT EXISTS devices (
-      imei TEXT PRIMARY KEY,
-      name TEXT NOT NULL
+      imei           TEXT PRIMARY KEY,
+      name           TEXT NOT NULL,
+      device_type    TEXT NOT NULL DEFAULT 'GL320MG',
+      config_enabled INTEGER NOT NULL DEFAULT 1
     );
 
     CREATE TABLE IF NOT EXISTS sim_activity (
@@ -105,6 +107,18 @@ function initSchema() {
       value TEXT NOT NULL
     );
   `);
+
+  // Additive upgrade for databases created before multiple tracker types were
+  // supported. Existing entries remain GL320MG configuration targets.
+  const deviceColumns = new Set(
+    db.prepare('PRAGMA table_info(devices)').all().map(column => column.name)
+  );
+  if (!deviceColumns.has('device_type')) {
+    db.exec("ALTER TABLE devices ADD COLUMN device_type TEXT NOT NULL DEFAULT 'GL320MG'");
+  }
+  if (!deviceColumns.has('config_enabled')) {
+    db.exec('ALTER TABLE devices ADD COLUMN config_enabled INTEGER NOT NULL DEFAULT 1');
+  }
 
   const seed = db.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)`);
   seed.run('webhook_url',        '');

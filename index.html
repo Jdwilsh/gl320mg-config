@@ -1114,20 +1114,28 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 <!-- ── DEVICES ── -->
 <div class="section" id="sect-devices">
   <div class="section-title">Device Names</div>
-  <div class="section-desc">Map IMEI numbers to friendly names shown in Tracker Activity.</div>
+  <div class="section-desc">Name every tracker seen in Tracker Activity and SIM Activity, while limiting GL320MG configuration files to compatible devices.</div>
   <div class="card">
     <div class="card-title">Add / Update Device</div>
     <div class="dev-form">
       <div class="f"><label>IMEI (15 digits)</label><input id="new_imei" maxlength="15" placeholder="860201067895154"></div>
       <div class="f"><label>Friendly Name</label><input id="new_name" placeholder="Ambulance 1"></div>
+      <div class="f"><label>Device Type</label>
+        <select id="new_device_type">
+          <option value="GL320MG">Queclink GL320MG</option>
+          <option value="FMM920">Teltonika FMM920</option>
+          <option value="Other">Other / monitoring only</option>
+        </select>
+        <span class="hint">Only GL320MG devices can receive generated .ini files.</span>
+      </div>
       <button class="btn btn-primary" id="btn_save_device">Save</button>
     </div>
     <div id="dev_save_msg" class="status-msg"></div>
   </div>
   <div class="card" style="padding:0;overflow:hidden">
     <table class="tbl">
-      <thead><tr><th>Name</th><th>IMEI</th><th>Config file</th><th></th></tr></thead>
-      <tbody id="devices_tbody"><tr><td colspan="3" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr></tbody>
+      <thead><tr><th>Name</th><th>IMEI</th><th>Device type</th><th>Configuration</th><th></th></tr></thead>
+      <tbody id="devices_tbody"><tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -1383,6 +1391,7 @@ const documentState = {
 
 const NON_CONFIG_IDS = new Set([
   'new_template_name', 'auto_refresh', 'new_imei', 'new_name',
+  'new_device_type',
   'cfg_filename', 'cfg_device_select', 'file_import',
 ]);
 
@@ -2725,7 +2734,7 @@ document.getElementById('sim_auto_refresh').dispatchEvent(new Event('change'));
 // ── Devices ───────────────────────────────────────────────────────────────────
 async function loadDevices() {
   try {
-    const res = await apiFetch(`${API}/devices`);
+    const res = await apiFetch(`${API}/device-details`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     renderDevices(await res.json());
   } catch (e) {
@@ -2737,29 +2746,44 @@ async function loadDevices() {
 function renderDevices(devices) {
   const tbody = document.getElementById('devices_tbody');
   const sel = document.getElementById('cfg_device_select');
-  const entries = Object.entries(devices).sort(([, a], [, b]) => a.localeCompare(b));
+  const entries = devices.slice().sort((a, b) => a.name.localeCompare(b.name) || a.imei.localeCompare(b.imei));
+  const configEntries = entries.filter(device => device.configEnabled);
   if (!entries.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted)">No devices registered.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">No devices registered.</td></tr>';
     sel.innerHTML = '<option value="">— select device —</option>';
+    document.getElementById('deploy_device_list').innerHTML =
+      '<span style="color:var(--muted);font-size:13px">No GL320MG configuration targets registered.</span>';
     return;
   }
   tbody.innerHTML = '';
-  sel.innerHTML = '<option value="">— select device —</option>';
-  entries.forEach(([imei, name]) => {
-    const cfgFile = `${imei}.ini`;
+  sel.innerHTML = configEntries.length
+    ? '<option value="">— select GL320MG tracker —</option>'
+    : '<option value="">— no GL320MG trackers registered —</option>';
+  entries.forEach(device => {
+    const cfgFile = `${device.imei}.ini`;
+    const typeLabels = {
+      GL320MG: 'Queclink GL320MG',
+      FMM920: 'Teltonika FMM920',
+      Other: 'Other / monitoring only',
+    };
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><strong>${esc(name)}</strong></td>
-      <td><span class="mono">${esc(imei)}</span></td>
-      <td><span class="mono">${cfgFile}</span></td>
+      <td><strong>${esc(device.name)}</strong></td>
+      <td><span class="mono">${esc(device.imei)}</span></td>
+      <td>${esc(typeLabels[device.deviceType] || device.deviceType)}</td>
+      <td>${device.configEnabled
+        ? `<span class="badge badge-ok">GL320MG .ini enabled</span><span class="sim-secondary mono">${cfgFile}</span>`
+        : '<span class="badge badge-muted">Monitoring only</span>'}</td>
       <td style="text-align:right">
-        <button class="btn btn-outline btn-sm" style="margin-right:4px" onclick="editDevice('${esc(imei)}','${esc(name).replace(/'/g,"\\'")}')">Edit</button>
-        <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteDevice('${esc(imei)}')">Delete</button>
+        <button class="btn btn-outline btn-sm" style="margin-right:4px" onclick="editDevice('${esc(device.imei)}','${esc(device.name).replace(/'/g,"\\'")}','${esc(device.deviceType)}')">Edit</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteDevice('${esc(device.imei)}')">Delete</button>
       </td>`;
     tbody.appendChild(tr);
+  });
+  configEntries.forEach(device => {
     const opt = document.createElement('option');
-    opt.value = cfgFile;
-    opt.textContent = `${name} — ${cfgFile}`;
+    opt.value = `${device.imei}.ini`;
+    opt.textContent = `${device.name} — ${device.imei}.ini`;
     sel.appendChild(opt);
   });
 
@@ -2767,19 +2791,23 @@ function renderDevices(devices) {
   const deployList = document.getElementById('deploy_device_list');
   if (deployList) {
     deployList.innerHTML = '';
-    entries.forEach(([imei, name]) => {
+    if (!configEntries.length) {
+      deployList.innerHTML =
+        '<span style="color:var(--muted);font-size:13px">No GL320MG configuration targets registered.</span>';
+    }
+    configEntries.forEach(device => {
       const lbl = document.createElement('label');
       lbl.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;min-width:0';
-      lbl.innerHTML = `<input type="checkbox" class="deploy-cb" data-imei="${esc(imei)}" data-file="${esc(imei)}.ini" checked style="flex-shrink:0">
+      lbl.innerHTML = `<input type="checkbox" class="deploy-cb" data-imei="${esc(device.imei)}" data-file="${esc(device.imei)}.ini" checked style="flex-shrink:0">
         <span style="flex:1;min-width:0;overflow:hidden">
-          <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</strong>
-          <span class="mono" style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">${esc(imei)}.ini</span>
+          <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(device.name)}</strong>
+          <span class="mono" style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">${esc(device.imei)}.ini</span>
         </span>
-        <span class="diff-badge" id="diff_${esc(imei)}" style="flex-shrink:0">…</span>`;
+        <span class="diff-badge" id="diff_${esc(device.imei)}" style="flex-shrink:0">…</span>`;
       deployList.appendChild(lbl);
       // Async: show the real queue/download lifecycle, not an optimistic "deployed" state.
-      apiFetch(`${API}/deployment/${imei}`).then(r => r.json()).then(data => {
-        const badge = document.getElementById(`diff_${imei}`);
+      apiFetch(`${API}/deployment/${device.imei}`).then(r => r.json()).then(data => {
+        const badge = document.getElementById(`diff_${device.imei}`);
         if (!badge) return;
         if (!data?.pending) {
           badge.textContent = data?.confirmed ? 'Legacy baseline' : 'No prior update';
@@ -2790,16 +2818,17 @@ function renderDevices(devices) {
         badge.style.background = data.pending.status === 'downloaded' ? '#fef3c7' : '#fed7aa';
         badge.style.color = data.pending.status === 'downloaded' ? '#92400e' : '#c2410c';
       }).catch(() => {
-        const badge = document.getElementById(`diff_${imei}`);
+        const badge = document.getElementById(`diff_${device.imei}`);
         if (badge) badge.remove();
       });
     });
   }
 }
 
-function editDevice(imei, name) {
+function editDevice(imei, name, deviceType) {
   document.getElementById('new_imei').value = imei;
   document.getElementById('new_name').value = name;
+  document.getElementById('new_device_type').value = deviceType || 'GL320MG';
   document.getElementById('new_name').focus();
 }
 
@@ -2811,15 +2840,17 @@ async function deleteDevice(imei) {
 
 document.getElementById('btn_save_device').addEventListener('click', async () => {
   const imei = v('new_imei'); const name = v('new_name');
+  const deviceType = v('new_device_type');
   if (!imei) { showMsg('dev_save_msg', 'IMEI required', true); return; }
   try {
     const res = await apiFetch(`${API}/devices`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imei, name }),
+      body: JSON.stringify({ imei, name, deviceType, configEnabled: deviceType === 'GL320MG' }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     document.getElementById('new_imei').value = '';
     document.getElementById('new_name').value = '';
+    document.getElementById('new_device_type').value = 'GL320MG';
     showMsg('dev_save_msg', 'Saved', false);
     loadDevices();
   } catch (e) { showMsg('dev_save_msg', `Error: ${e.message}`, true); }

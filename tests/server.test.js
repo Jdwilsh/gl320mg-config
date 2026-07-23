@@ -93,6 +93,13 @@ test('queueing keeps pending state separate and writes a full IMEI config', asyn
   const content = 'AT+GTSRI=gl320m,3,,1,example.test,5004,,,,,0001$\n';
   const state = { 'AT+GTSRI[0]': content.trim() };
 
+  const registered = await fetch(`${base}/devices`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ imei, name: 'GL320MG test', deviceType: 'GL320MG' }),
+  });
+  assert.equal(registered.status, 200);
+
   const queued = await fetch(`${base}/deployment/${imei}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -128,6 +135,49 @@ test('config listing exposes queued files to the workspace', async t => {
   const response = await fetch(`http://127.0.0.1:${address.port}/configs`);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), ['860201067896228.ini']);
+});
+
+test('monitoring-only devices keep names but cannot receive GL320MG configs', async t => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const address = server.address();
+  const base = `http://127.0.0.1:${address.port}`;
+  const imei = '350612345678901';
+
+  const registered = await fetch(`${base}/devices`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ imei, name: 'FMM920 Van 4', deviceType: 'FMM920' }),
+  });
+  assert.equal(registered.status, 200);
+
+  const names = await (await fetch(`${base}/devices`)).json();
+  assert.equal(names[imei], 'FMM920 Van 4');
+
+  const details = await (await fetch(`${base}/device-details`)).json();
+  const fmm = details.find(device => device.imei === imei);
+  assert.deepEqual(fmm, {
+    imei,
+    name: 'FMM920 Van 4',
+    deviceType: 'FMM920',
+    configEnabled: false,
+  });
+
+  const deployment = await fetch(`${base}/deployment/${imei}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ content: 'AT+GTCFG=gl320m,1$', state: { GTCFG: 'test' } }),
+  });
+  assert.equal(deployment.status, 409);
+  assert.match((await deployment.json()).error, /not enabled/);
+  assert.equal(fs.existsSync(path.join(testRoot, 'configs', `${imei}.ini`)), false);
+
+  const draft = await fetch(`${base}/config/${imei}.ini`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ content: 'AT+GTCFG=gl320m,1$' }),
+  });
+  assert.equal(draft.status, 409);
 });
 
 test('1NCE receiver authenticates bulk records, deduplicates retries, and joins device names', async t => {

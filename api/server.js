@@ -64,8 +64,19 @@ const stmts = {
 
   // Devices
   allDevices:   db.prepare('SELECT imei, name FROM devices'),
-  upsertDevice: db.prepare('INSERT OR REPLACE INTO devices (imei, name) VALUES (?, ?)'),
+  allDeviceDetails: db.prepare(`
+    SELECT imei, name, device_type AS deviceType, config_enabled AS configEnabled
+    FROM devices ORDER BY name, imei
+  `),
+  upsertDevice: db.prepare(`
+    INSERT INTO devices (imei, name, device_type, config_enabled) VALUES (?, ?, ?, ?)
+    ON CONFLICT(imei) DO UPDATE SET
+      name = excluded.name,
+      device_type = excluded.device_type,
+      config_enabled = excluded.config_enabled
+  `),
   deleteDevice: db.prepare('DELETE FROM devices WHERE imei = ?'),
+  configDevice: db.prepare('SELECT config_enabled AS configEnabled FROM devices WHERE imei = ?'),
 
   // Deployed states
   getDeployed:    db.prepare('SELECT state_json FROM deployed_states WHERE imei = ?'),
@@ -367,6 +378,13 @@ app.get("/devices", (req, res) => {
   res.json(obj);
 });
 
+app.get('/device-details', (req, res) => {
+  res.json(stmts.allDeviceDetails.all().map(device => ({
+    ...device,
+    configEnabled: Boolean(device.configEnabled),
+  })));
+});
+
 app.get('/sim-activity', (req, res) => {
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 200, 1), 500);
   const imei = req.query.imei ? safeImei(String(req.query.imei)) : null;
@@ -395,9 +413,12 @@ app.get('/sim-activity/:id', (req, res) => {
 
 app.post("/devices", (req, res) => {
   const { imei, name } = req.body;
-  if (!imei) return res.status(400).json({ error: "imei required" });
+  if (!safeImei(String(imei || ''))) return res.status(400).json({ error: 'Valid 15-digit IMEI required' });
   if (name && name.trim()) {
-    stmts.upsertDevice.run(imei, name.trim());
+    const allowedTypes = new Set(['GL320MG', 'FMM920', 'Other']);
+    const deviceType = allowedTypes.has(req.body.deviceType) ? req.body.deviceType : 'GL320MG';
+    const configEnabled = deviceType === 'GL320MG' && req.body.configEnabled !== false ? 1 : 0;
+    stmts.upsertDevice.run(imei, name.trim(), deviceType, configEnabled);
   } else {
     stmts.deleteDevice.run(imei);
   }
@@ -448,6 +469,9 @@ app.get("/deployment/:imei", (req, res) => {
 app.post("/deployment/:imei", (req, res) => {
   const imei = safeImei(req.params.imei);
   if (!imei) return res.status(400).json({ error: "Invalid IMEI" });
+  if (!stmts.configDevice.get(imei)?.configEnabled) {
+    return res.status(409).json({ error: 'Device is not enabled for GL320MG configuration' });
+  }
   const { content, state } = req.body;
   if (!content || typeof content !== "string") return res.status(400).json({ error: "content required" });
   if (!state || typeof state !== "object") return res.status(400).json({ error: "state required" });
@@ -532,6 +556,10 @@ app.get("/config/:name", (req, res) => {
 app.post("/config/:name", (req, res) => {
   const fp = safeConfigPath(req.params.name);
   if (!fp) return res.status(400).json({ error: "invalid filename" });
+  const imeiFilename = req.params.name.match(/^(\d{15})\.ini$/);
+  if (imeiFilename && stmts.configDevice.get(imeiFilename[1])?.configEnabled === 0) {
+    return res.status(409).json({ error: 'Device is not enabled for GL320MG configuration' });
+  }
   const { content } = req.body;
   if (!content) return res.status(400).json({ error: "content required" });
   if (!fs.existsSync(CONFIGS_DIR)) fs.mkdirSync(CONFIGS_DIR, { recursive: true });
