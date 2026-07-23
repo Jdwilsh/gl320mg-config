@@ -56,6 +56,9 @@ main{padding:24px 32px;min-width:0}
 .stat-total .stat-num{color:var(--text)}
 .stat-active .stat-num{color:var(--success)}
 .stat-active{border-left:3px solid var(--success)}
+.stat-never .stat-num{color:var(--muted)}
+.stat-never{border-left:3px solid #94a3b8}
+#monitor_summary .stat-row{grid-template-columns:repeat(5,1fr)}
 .stat-late .stat-num{color:var(--warn)}
 .stat-late{border-left:3px solid var(--warn)}
 .stat-overdue .stat-num{color:var(--danger)}
@@ -244,6 +247,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 .import-drop input[type=file]::file-selector-button{font:inherit;font-weight:600;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-right:9px;cursor:pointer}
 .import-drop input[type=file]::file-selector-button:hover{border-color:#93c5fd;background:var(--accent-bg)}
 @media(max-width:768px){
+  #monitor_summary .stat-row{grid-template-columns:repeat(2,1fr)}
   .workspace-context{grid-template-columns:1fr}
   .workspace-actions{justify-content:flex-start}
   .primary-flow{grid-template-columns:1fr}
@@ -3002,6 +3006,7 @@ function relTime(iso) {
 }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function statusBadge(c) {
+  if (c===null || c===undefined) return '<span class="badge badge-muted">No request</span>';
   if (c===200) return `<span class="badge badge-ok">200 OK</span>`;
   if (c===304) return `<span class="badge badge-notmod">304 Not Modified</span>`;
   if (c>=400)  return `<span class="badge badge-err">${c}</span>`;
@@ -3012,7 +3017,7 @@ function otaInterval() {
   return (v && v > 0) ? v : 24;
 }
 function healthBadge(lastSeen) {
-  if (!lastSeen) return '';
+  if (!lastSeen) return '<span class="badge badge-muted">Never seen</span>';
   const interval = otaInterval();
   const h = (Date.now() - new Date(lastSeen).getTime()) / 3600000;
   if (h < interval + 2)       return '<span class="badge badge-active">Active</span>';
@@ -3065,10 +3070,10 @@ function renderMonitor(trackers) {
     return;
   }
   // Health summary counts
-  let nActive = 0, nLate = 0, nOverdue = 0;
+  let nActive = 0, nLate = 0, nOverdue = 0, nNever = 0;
   const interval = otaInterval();
   trackers.forEach(t => {
-    if (!t.lastSeen) return;
+    if (!t.lastSeen) { nNever++; return; }
     const h = (Date.now() - new Date(t.lastSeen).getTime()) / 3600000;
     if (h < interval + 2) nActive++;
     else if (h < interval * 2 + 2) nLate++;
@@ -3080,6 +3085,7 @@ function renderMonitor(trackers) {
       <div class="stat-card stat-active"><div class="stat-num">${nActive}</div><div class="stat-lbl">Active</div></div>
       <div class="stat-card stat-late"><div class="stat-num">${nLate}</div><div class="stat-lbl">Late</div></div>
       <div class="stat-card stat-overdue"><div class="stat-num">${nOverdue}</div><div class="stat-lbl">Overdue</div></div>
+      <div class="stat-card stat-never"><div class="stat-num">${nNever}</div><div class="stat-lbl">Never seen</div></div>
     </div>`;
   tbody.innerHTML = '';
   const tbl = document.getElementById('monitor_table');
@@ -3088,14 +3094,15 @@ function renderMonitor(trackers) {
       ? `<strong>${esc(t.name)}</strong> ${healthBadge(t.lastSeen)}<br><span class="mono">${t.imei}</span>`
       : `<span style="color:var(--muted);font-style:italic">Unnamed</span> ${healthBadge(t.lastSeen)}<br><span class="mono">${t.imei}</span>`;
     const histId = `hist_${t.imei}`;
+    const configFile = t.lastConfig || `${t.imei}.ini`;
     const row = document.createElement('tr');
     row.innerHTML = `
       <td>${nameHtml}</td>
-      <td title="${t.lastSeen}">${relTime(t.lastSeen)}</td>
-      <td><code style="font-size:12px">${esc(t.lastConfig)}</code></td>
+      <td${t.lastSeen ? ` title="${esc(t.lastSeen)}"` : ''}>${t.lastSeen ? relTime(t.lastSeen) : '<span style="color:var(--muted)">Never</span>'}</td>
+      <td><code style="font-size:12px">${esc(configFile)}</code>${t.lastSeen ? '' : '<span class="sim-secondary">Not requested yet</span>'}</td>
       <td>${statusBadge(t.lastStatus)}</td>
       <td>${deployBadge(t)}</td>
-      <td><span class="mono">${esc(t.lastIp)}</span></td>
+      <td><span class="mono">${t.lastIp ? esc(t.lastIp) : '—'}</span></td>
       <td>${t.history && t.history.length > 1 ? `<button class="hist-toggle" onclick="toggleHist('${histId}',this)">History ▾</button>` : ''}</td>`;
     tbody.appendChild(row);
     if (t.history && t.history.length > 1) {

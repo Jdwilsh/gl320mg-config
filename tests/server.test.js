@@ -276,6 +276,30 @@ test('monitoring-only devices keep names but cannot receive GL320MG configs', as
   assert.equal(draft.status, 409);
 });
 
+test('tracker activity includes registered GL320MG devices before their first request', async t => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const address = server.address();
+  const base = `http://127.0.0.1:${address.port}`;
+  const imei = '860201067895410';
+
+  const registered = await fetch(`${base}/devices`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ imei, name: 'TRK06', deviceType: 'GL320MG' }),
+  });
+  assert.equal(registered.status, 200);
+
+  const trackers = await (await fetch(`${base}/trackers`)).json();
+  const tracker = trackers.find(item => item.imei === imei);
+  assert.ok(tracker);
+  assert.equal(tracker.name, 'TRK06');
+  assert.equal(tracker.lastSeen, null);
+  assert.equal(tracker.lastConfig, null);
+  assert.equal(tracker.lastStatus, null);
+  assert.deepEqual(tracker.history, []);
+});
+
 test('1NCE receiver authenticates bulk records, deduplicates retries, and joins device names', async t => {
   const server = await startServer();
   t.after(() => server.close());

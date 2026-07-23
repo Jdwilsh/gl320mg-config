@@ -30,20 +30,27 @@ if (require.main === module && process.env.DISABLE_LOG_WATCHER !== '1') startLog
 
 // ── Prepared statements ───────────────────────────────────────────────────────
 const stmts = {
-  // Trackers summary: latest event per IMEI
+  // Tracker summary: every registered GL320MG plus any unregistered IMEI seen
+  // in the access log. Registered trackers with no request have null activity.
   trackerSummary: db.prepare(`
     WITH ranked AS (
       SELECT imei, timestamp, ip, config, status,
              ROW_NUMBER() OVER (PARTITION BY imei ORDER BY timestamp DESC) AS rn
       FROM tracker_events
+    ),
+    tracker_imeis AS (
+      SELECT imei FROM devices WHERE config_enabled = 1
+      UNION
+      SELECT imei FROM tracker_events
     )
-    SELECT r.imei, r.timestamp AS lastSeen, r.ip AS lastIp,
+    SELECT i.imei, r.timestamp AS lastSeen, r.ip AS lastIp,
            r.config AS lastConfig, r.status AS lastStatus,
            d.name
-    FROM ranked r
-    LEFT JOIN devices d ON d.imei = r.imei
-    WHERE r.rn = 1
-    ORDER BY r.timestamp DESC
+    FROM tracker_imeis i
+    LEFT JOIN ranked r ON r.imei = i.imei AND r.rn = 1
+    LEFT JOIN devices d ON d.imei = i.imei
+    WHERE d.imei IS NULL OR d.config_enabled = 1
+    ORDER BY r.timestamp IS NULL, r.timestamp DESC, d.name, i.imei
   `),
 
   // History per tracker (100 most recent)
