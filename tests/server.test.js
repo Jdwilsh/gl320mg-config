@@ -82,6 +82,69 @@ test('1NCE normalizer understands Platform 2.0 flat usage and event fields', () 
   assert.equal(event.volumeTotal, 1.25);
 });
 
+test('1NCE normalizer understands nested Data Streamer event records', () => {
+  const event = normalizeRecord({
+    alert: false,
+    description: 'New PDP Context successfully activated with SGSN CP=149.254.208.113, DP=149.254.208.116.',
+    detail: {
+      country: {
+        country_code: '44',
+        id: 205,
+        iso_code: 'gb',
+        mcc: '234',
+        name: 'United Kingdom',
+      },
+      id: 10,
+      name: 'EE',
+      pdp_context: {
+        apn: 'sensor.net',
+        ci: 7342,
+        imeisv: '8602010679010633',
+        imsi: '901405180005433',
+        ipcan_session_id: '8ec7b8d0-bf49-4d56-ad59-3b4e0fa59795',
+        lac: 2639,
+        mcc: '234',
+        mnc: '30',
+        rac: 255,
+        rat_type: 2,
+        ue_ip_address: '10.0.0.1',
+      },
+    },
+    endpoint: {
+      id: 100033927,
+      imei: '8602010679010633',
+      ip_address: '10.0.0.1',
+      name: '8988228066680005433',
+    },
+    event_severity: { description: 'INFO', id: 0 },
+    event_source: { description: 'Network', id: 0 },
+    event_type: { description: 'Create PDP Context', id: 3 },
+    id: 357945502,
+    imsi: { id: 100034892, imsi: '901405180005433' },
+    sim: {
+      iccid: '8988228066680005433',
+      id: 10034892,
+      msisdn: '882285110127502',
+    },
+    timestamp: '2026-07-23T21:25:40.301Z',
+  });
+
+  assert.equal(event.recordKind, 'event');
+  assert.equal(event.sourceRecordId, '357945502');
+  assert.equal(event.imei, '860201067901069');
+  assert.equal(event.imsi, '901405180005433');
+  assert.equal(event.iccid, '8988228066680005433');
+  assert.equal(event.eventType, 'Create PDP Context');
+  assert.equal(event.eventSeverity, 'INFO');
+  assert.equal(event.operatorName, 'EE');
+  assert.equal(event.operatorMnc, '30');
+  assert.equal(event.countryName, 'United Kingdom');
+  assert.equal(event.countryMcc, '234');
+  assert.equal(event.endpointIp, '10.0.0.1');
+  assert.equal(event.apn, 'sensor.net');
+  assert.equal(event.ratType, '2G');
+});
+
 test('SIM activity returns numeric zero totals before the first delivery', async t => {
   const server = await startServer();
   t.after(() => server.close());

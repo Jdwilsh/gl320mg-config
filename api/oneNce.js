@@ -167,20 +167,22 @@ function normalizeRecord(record, kindHint = null) {
     description: text(valueAt(record, ['description', 'event_type.description', 'traffic_type.description'])),
     operatorName: text(valueAt(record, [
       'operator.name', 'detail.operator.name', 'detail.pdp_context.operator.name',
-      'operator_name',
+      'detail.name', 'operator_name',
     ])) ?? text(findNested(detail, ['operator_name', 'network_name']))
-      ?? (record.operator_id !== undefined ? `Operator #${record.operator_id}` : null),
+      ?? (record.operator_id !== undefined ? `Operator #${record.operator_id}` : null)
+      ?? (detail.id !== undefined ? `Operator #${detail.id}` : null),
     operatorMnc: text(valueAt(record, [
       'operator.mnc', 'operator_mnc', 'detail.operator.mnc',
       'detail.pdp_context.mnc', 'detail_pdp_context_mnc',
     ])) ?? text(findNested(detail, ['mnc'])),
     countryName: text(valueAt(record, [
       'operator.country.name', 'operator_country_name', 'detail.operator.country.name',
+      'detail.country.name',
     ])) ?? text(findNested(detail, ['country_name']))
       ?? (record.operator_country_id !== undefined ? `Country #${record.operator_country_id}` : null),
     countryMcc: text(valueAt(record, [
       'operator.country.mcc', 'country_mcc', 'detail.operator.country.mcc',
-      'detail.pdp_context.mcc', 'detail_pdp_context_mcc',
+      'detail.country.mcc', 'detail.pdp_context.mcc', 'detail_pdp_context_mcc',
     ])) ?? text(findNested(detail, ['mcc'])),
     endpointIp: text(valueAt(record, [
       'endpoint.ip_address', 'endpoint_ip_address', 'detail.pdp_context.ue_ip_address',

@@ -3154,8 +3154,14 @@ async function loadSimActivity() {
     renderSimSummary(data.summary || {});
     renderSimActivity();
     const status = document.getElementById('sim_receiver_status');
-    status.className = `badge ${data.receiver?.configured ? 'badge-ok' : 'badge-warn'}`;
-    status.textContent = data.receiver?.configured ? 'Receiver ready' : 'Receiver needs credentials';
+    const hasDelivery = Boolean(data.summary?.lastReceivedAt);
+    status.className = `badge ${data.receiver?.configured && hasDelivery ? 'badge-ok' : 'badge-warn'}`;
+    status.textContent = !data.receiver?.configured
+      ? 'Receiver needs credentials'
+      : hasDelivery ? 'Receiving 1NCE data' : 'Waiting for first 1NCE delivery';
+    status.title = data.receiver?.configured && !hasDelivery
+      ? 'The callback is configured and reachable, but 1NCE has not sent an HTTP request yet.'
+      : '';
     document.getElementById('sim_callback_url').textContent =
       `${location.origin}${data.receiver?.callbackPath || '/api/1nce/data-streamer'}`;
     label.textContent = `Updated ${new Date().toLocaleTimeString()}`;
