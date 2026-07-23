@@ -1461,6 +1461,7 @@ const documentState = {
   baselineReady: false,
   dirty: false,
   loading: false,
+  needsRebase: false,
 };
 
 const NON_CONFIG_IDS = new Set([
@@ -1523,6 +1524,9 @@ function renderValidation() {
   const notices = [];
   const officialMetadata = ConfigUtils.officialMetadataLines(documentState.sourceText);
   if (!documentState.baselineReady) blocking.push('Load a trusted, complete baseline. Tool defaults alone are not safe to deploy.');
+  if (documentState.needsRebase) {
+    blocking.push('This saved workspace was created by an older parser. Rebuild it from its original imported baseline before making an OTA file.');
+  }
   if (!v('bsi_lte_apn')) blocking.push('LTE APN is empty.');
   if (!v('sri_main_host')) blocking.push('Main reporting server host is empty.');
   const port = Number(v('sri_main_port'));
@@ -1591,11 +1595,23 @@ function refreshStoredWorkspaceValidation() {
   let changed = false;
   Object.values(workspaceDrafts).forEach(draft => {
     if (!draft?.sourceText) return;
+    const previousIgnoredLines = Array.isArray(draft.ignoredLines) ? draft.ignoredLines : [];
     const ignoredLines = ConfigUtils.unparsedLines(draft.sourceText);
+    const officialMetadata = ConfigUtils.officialMetadataLines(draft.sourceText);
+    const legacyOfficialDraft = previousIgnoredLines.length > 0 &&
+      ignoredLines.length === 0 &&
+      previousIgnoredLines.every(line => officialMetadata.includes(line));
     const parserIssue = `${ignoredLines.length} line${ignoredLines.length === 1 ? '' : 's'} could not be parsed. Nothing may be excluded from a deployable tracker file.`;
     const blocking = (Array.isArray(draft.blocking) ? draft.blocking : [])
-      .filter(issue => !/^\d+ lines? could not be parsed\./.test(issue));
+      .filter(issue =>
+        !/^\d+ lines? could not be parsed\./.test(issue) &&
+        !/^This saved workspace was created by an older parser\./.test(issue)
+      );
     if (ignoredLines.length) blocking.push(parserIssue);
+    if (legacyOfficialDraft || draft.needsRebase) {
+      draft.needsRebase = true;
+      blocking.push('This saved workspace was created by an older parser. Rebuild it from its original imported baseline before making an OTA file.');
+    }
     if (
       JSON.stringify(draft.ignoredLines || []) !== JSON.stringify(ignoredLines) ||
       JSON.stringify(draft.blocking || []) !== JSON.stringify(blocking)
@@ -1634,6 +1650,7 @@ function snapshotActiveWorkspace() {
     ignoredLines: [...documentState.ignoredLines],
     baselineReady: documentState.baselineReady,
     dirty: documentState.dirty,
+    needsRebase: documentState.needsRebase,
     blocking: [...validation.blocking],
     content,
     updatedAt: new Date().toISOString(),
@@ -1645,9 +1662,14 @@ function snapshotActiveWorkspace() {
 
 function restoreWorkspaceSnapshot(snapshot) {
   documentState.loading = true;
-  Object.entries(snapshot.state || {}).forEach(([id, value]) => setV(id, value));
   documentState.source = snapshot.source || 'saved device workspace';
   documentState.sourceText = snapshot.sourceText || '';
+  const rebuildLegacy = snapshot.needsRebase === true && confirm(
+    `${snapshot.name || 'This tracker'} has a saved workspace from the older parser.\n\n` +
+    'Rebuild it now from the original imported baseline? The blocked old workspace changes will be discarded so they cannot be sent accidentally. You can then reapply the intended OTA change.'
+  );
+  if (rebuildLegacy) populateFromConfig(documentState.sourceText);
+  else Object.entries(snapshot.state || {}).forEach(([id, value]) => setV(id, value));
   const generated = serializeConfig(false);
   documentState.preservedLines = documentState.sourceText
     ? ConfigUtils.preservedLines(documentState.sourceText, generated)
@@ -1656,8 +1678,11 @@ function restoreWorkspaceSnapshot(snapshot) {
     ? ConfigUtils.unparsedLines(documentState.sourceText)
     : (Array.isArray(snapshot.ignoredLines) ? snapshot.ignoredLines : []);
   documentState.baselineReady = snapshot.baselineReady === true;
-  documentState.dirty = snapshot.dirty === true;
-  document.getElementById('document_summary').textContent = snapshot.summary || 'Device workspace restored. Review its settings or open Changes & OTA.';
+  documentState.dirty = rebuildLegacy ? false : snapshot.dirty === true;
+  documentState.needsRebase = rebuildLegacy ? false : snapshot.needsRebase === true;
+  document.getElementById('document_summary').textContent = rebuildLegacy
+    ? 'Rebuilt safely from the original imported baseline. Reapply only the intended settings, then review the exact command changes.'
+    : snapshot.summary || 'Device workspace restored. Review its settings or open Changes & OTA.';
   documentState.loading = false;
   saveFormState();
   applyConditionals();
@@ -2066,6 +2091,7 @@ function applyConfigText(text, label) {
   documentState.sourceText = text;
   documentState.preservedLines = [];
   documentState.ignoredLines = [];
+  documentState.needsRebase = false;
   populateFromConfig(text);
   const generated = serializeConfig(false);
   documentState.preservedLines = ConfigUtils.preservedLines(text, generated);
