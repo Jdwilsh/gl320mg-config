@@ -15,6 +15,8 @@ const CONFIGS_DIR   = process.env.TRACKER_CONFIGS_DIR || path.join(__dirname, ".
 const DEPLOYED_DIR  = process.env.TRACKER_DEPLOYED_DIR || path.join(__dirname, "..", "deployed");
 const AUTH_FILE     = process.env.TRACKER_AUTH_FILE || path.join(__dirname, "..", "auth.json");
 const ONE_NCE_AUTH_FILE = process.env.ONE_NCE_AUTH_FILE || path.join(__dirname, "..", "one-nce-auth.json");
+const ONE_NCE_CALLBACK_URL = process.env.ONE_NCE_CALLBACK_URL ||
+  'https://1nce.jdwilsh.com/api/1nce/data-streamer';
 const TEMPLATES_DIR = process.env.TRACKER_TEMPLATES_DIR || path.join(__dirname, '..', 'templates');
 const LOG_FILE      = process.env.TRACKER_LOG_FILE || '/var/log/nginx/cfg.access.log';
 
@@ -402,6 +404,7 @@ app.get('/sim-activity', (req, res) => {
     receiver: {
       configured: Boolean(loadOneNceAuthHeader()),
       callbackPath: '/api/1nce/data-streamer',
+      callbackUrl: ONE_NCE_CALLBACK_URL,
     },
   });
 });

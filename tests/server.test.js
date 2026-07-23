@@ -151,7 +151,9 @@ test('SIM activity returns numeric zero totals before the first delivery', async
   const address = server.address();
   const response = await fetch(`http://127.0.0.1:${address.port}/sim-activity`);
   assert.equal(response.status, 200);
-  assert.deepEqual((await response.json()).summary, {
+  const body = await response.json();
+  assert.equal(body.receiver.callbackUrl, 'https://1nce.jdwilsh.com/api/1nce/data-streamer');
+  assert.deepEqual(body.summary, {
     totalRecords: 0,
     simsSeen: 0,
     records24h: 0,

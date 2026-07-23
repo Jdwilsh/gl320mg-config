@@ -1093,7 +1093,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     <div>
       <div class="card-title">1NCE Data Streamer receiver</div>
       <p style="font-size:13px;margin-bottom:5px">Create separate <strong>Usage Data</strong> and <strong>Events</strong> REST streams in the 1NCE portal using the same callback.</p>
-      <code id="sim_callback_url">https://tracker.jdwilsh.com/api/1nce/data-streamer</code>
+      <code id="sim_callback_url">https://1nce.jdwilsh.com/api/1nce/data-streamer</code>
       <span class="sim-secondary">The receiver accepts 1NCE bulk deliveries, stores the original JSON, and safely ignores retransmitted record IDs.</span>
     </div>
     <span class="badge badge-muted" id="sim_receiver_status">Checking receiver…</span>
@@ -3203,6 +3203,7 @@ async function loadSimActivity() {
       ? 'The callback is configured and reachable, but 1NCE has not sent an HTTP request yet.'
       : '';
     document.getElementById('sim_callback_url').textContent =
+      data.receiver?.callbackUrl ||
       `${location.origin}${data.receiver?.callbackPath || '/api/1nce/data-streamer'}`;
     label.textContent = `Updated ${new Date().toLocaleTimeString()}`;
   } catch (error) {
