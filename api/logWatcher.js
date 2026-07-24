@@ -1,26 +1,12 @@
 const fs   = require('fs');
+const path = require('path');
 const { db } = require('./db');
 const { checkAndAlert } = require('./alerting');
+const { parseLogLine, isCompleteConfigDelivery } = require('./otaLog');
 
-const LOG_FILE = '/var/log/nginx/cfg.access.log';
+const LOG_FILE = process.env.TRACKER_LOG_FILE || '/var/log/nginx/cfg.access.log';
+const CONFIGS_DIR = process.env.TRACKER_CONFIGS_DIR || path.join(__dirname, '..', 'configs');
 const POLL_MS  = 30_000;
-
-const LOG_RE = /^(\S+) - \S+ \[([^\]]+)\] "(\S+) (\S+) [^"]*" (\d+) \d+ "[^"]*" "([^"]*)"/;
-const UA_RE  = /^(?:\d+)-(\d{15})-(\d{14})-.*GL320M/;
-
-function parseLogLine(line) {
-  const m = line.match(LOG_RE);
-  if (!m) return null;
-  const [, ip, , , reqPath, status, ua] = m;
-  const uam = ua.match(UA_RE);
-  if (!uam) return null;
-  const imei = uam[1];
-  const ts   = uam[2];
-  const isoTs = `${ts.slice(0,4)}-${ts.slice(4,6)}-${ts.slice(6,8)}T` +
-                `${ts.slice(8,10)}:${ts.slice(10,12)}:${ts.slice(12,14)}Z`;
-  return { imei, timestamp: isoTs, ip,
-           config: reqPath.replace(/^\//, ''), status: parseInt(status) };
-}
 
 const getCursor  = db.prepare('SELECT inode, byte_offset FROM log_cursor WHERE id = 1');
 const saveCursor = db.prepare(
@@ -29,6 +15,15 @@ const saveCursor = db.prepare(
 const insertEvent = db.prepare(
   'INSERT INTO tracker_events (imei, timestamp, ip, config, status) VALUES (?, ?, ?, ?, ?)'
 );
+const markDeploymentDownloaded = db.prepare(`
+  UPDATE pending_deployments
+  SET status = 'downloaded', downloaded_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')
+  WHERE imei = ? AND filename = ? AND status = 'queued'
+`);
+const getQueuedDeployment = db.prepare(`
+  SELECT 1 FROM pending_deployments
+  WHERE imei = ? AND filename = ? AND status = 'queued'
+`);
 
 function processLines(text) {
   // Returns array of parsed events from complete lines
@@ -79,6 +74,35 @@ function insertEvents(events) {
   txn();
 }
 
+function cleanupDeliveredConfigs(events) {
+  for (const event of events) {
+    const filename = `${event.imei}.ini`;
+    if (!getQueuedDeployment.get(event.imei, filename)) continue;
+    const configPath = path.join(CONFIGS_DIR, filename);
+    let stat;
+    try { stat = fs.statSync(configPath); } catch { continue; }
+    if (!isCompleteConfigDelivery(event, stat)) continue;
+    try {
+      fs.unlinkSync(configPath);
+      markDeploymentDownloaded.run(event.imei, filename);
+      console.log(`[cleanup] Tracker downloaded complete config; deleted ${filename}`);
+    } catch (error) {
+      console.error(`[cleanup] Failed to complete ${filename}:`, error.message);
+    }
+  }
+}
+
+function reconcileQueuedDownloads() {
+  const logFiles = [`${LOG_FILE}.1`, LOG_FILE];
+  const events = [];
+  for (const logFile of logFiles) {
+    let text;
+    try { text = fs.readFileSync(logFile, 'utf8'); } catch { continue; }
+    events.push(...processLines(text.endsWith('\n') ? text : `${text}\n`));
+  }
+  cleanupDeliveredConfigs(events);
+}
+
 function poll() {
   try {
     let stat;
@@ -105,6 +129,7 @@ function poll() {
         const events = processLines(text + '\n'); // ensure last line is treated as complete
         if (events.length) {
           insertEvents(events);
+          cleanupDeliveredConfigs(events);
           console.log(`[watcher] drained rotated log: ${events.length} events`);
         }
       }
@@ -128,6 +153,7 @@ function poll() {
     const events = processLines(text + '\n');
     if (events.length) {
       insertEvents(events);
+      cleanupDeliveredConfigs(events);
       saveCursor.run(currentInode, newOffset);
       console.log(`[watcher] inserted ${events.length} events (offset ${storedOffset}→${newOffset})`);
     } else {
@@ -139,6 +165,9 @@ function poll() {
 }
 
 function startLogWatcher() {
+  // Recover completed downloads that occurred while the service was stopped or
+  // before its cursor advanced. Only still-queued files can be removed.
+  reconcileQueuedDownloads();
   poll(); // immediate first tick
   setInterval(() => {
     poll();
