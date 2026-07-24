@@ -5,7 +5,7 @@ const crypto  = require("crypto");
 
 const { db, initSchema } = require('./db');
 const { runMigration }   = require('./migrate');
-const { normalizeRecord, authHeaderFromConfig, secureEqual } = require('./oneNce');
+const { normalizeRecord, authHeaderFromConfig, basicAuthMatches } = require('./oneNce');
 
 const app  = express();
 const PORT = 3010;
@@ -242,7 +242,7 @@ function loadOneNceAuthHeader() {
 function receiveOneNce(req, res) {
   const expected = loadOneNceAuthHeader();
   if (!expected) return res.status(503).json({ error: '1NCE receiver is not configured' });
-  if (!secureEqual(req.headers.authorization, expected)) {
+  if (!basicAuthMatches(req.headers.authorization, expected)) {
     res.setHeader('WWW-Authenticate', 'Basic realm="1NCE Data Streamer"');
     return res.status(401).json({ error: 'Unauthorized' });
   }

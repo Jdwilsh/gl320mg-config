@@ -16,7 +16,12 @@ process.env.DISABLE_LOG_WATCHER = '1';
 process.env.ONE_NCE_BASIC_AUTH = Buffer.from('streamer:very-secret').toString('base64');
 
 const { app } = require('../api/server');
-const { normalizeRecord, canonicalImei } = require('../api/oneNce');
+const {
+  normalizeRecord,
+  canonicalImei,
+  basicAuthMatches,
+  basicAuthToken,
+} = require('../api/oneNce');
 
 function startServer() {
   return new Promise(resolve => {
@@ -58,6 +63,19 @@ test('IMEI-SV values are converted back to the canonical 15-digit IMEI', () => {
   assert.equal(canonicalImei('8602010678951533'), '860201067895154');
 
   assert.equal(canonicalImei('860201067899156'), '860201067899156');
+});
+
+test('1NCE Basic Auth accepts the portal value with or without an accidental prefix', () => {
+  const token = Buffer.from('streamer:very-secret').toString('base64');
+  const expected = `Basic ${token}`;
+
+  assert.equal(basicAuthToken(token), token);
+  assert.equal(basicAuthToken(`Basic ${token}`), token);
+  assert.equal(basicAuthToken(`Basic Basic ${token}`), token);
+  assert.equal(basicAuthMatches(token, expected), true);
+  assert.equal(basicAuthMatches(`Basic ${token}`, expected), true);
+  assert.equal(basicAuthMatches(`Basic Basic ${token}`, expected), true);
+  assert.equal(basicAuthMatches('Basic wrong-token', expected), false);
 });
 
 test('1NCE normalizer understands Platform 2.0 flat usage and event fields', () => {

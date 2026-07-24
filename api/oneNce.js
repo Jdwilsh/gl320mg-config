@@ -234,4 +234,19 @@ function secureEqual(actual, expected) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-module.exports = { normalizeRecord, canonicalImei, authHeaderFromConfig, secureEqual };
+function basicAuthToken(value) {
+  return String(value || '').trim().replace(/^(?:Basic\s+)+/i, '').trim();
+}
+
+function basicAuthMatches(actual, expected) {
+  return secureEqual(basicAuthToken(actual), basicAuthToken(expected));
+}
+
+module.exports = {
+  normalizeRecord,
+  canonicalImei,
+  authHeaderFromConfig,
+  basicAuthMatches,
+  basicAuthToken,
+  secureEqual,
+};
