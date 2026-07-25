@@ -265,7 +265,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="config-utils.js?v=20260723-ota-workspace"></script>
+<script src="config-utils.js?v=20260725-gtupc-fields"></script>
 </head>
 <body>
 <!-- ── LOGIN SCREEN ── -->
@@ -943,8 +943,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div class="f"><label>OTA Configuration Mode</label>
         <select id="upc_mode">
           <option value="0">0 – Disabled</option>
-          <option value="1">1 – Enabled (mode 1)</option>
-          <option value="2">2 – Enabled (mode 2)</option>
+          <option value="1">1 – Enabled</option>
         </select>
       </div>
       <div class="f"><label>Config File URL</label><input id="upc_url" value="http://cfg.jdwilsh.com/" placeholder="http://cfg.jdwilsh.com/"></div>
@@ -1973,9 +1972,14 @@ function buildGTGLM(p) {
 }
 
 function buildGTUPC(p) {
-  // Field order: mode, timeout, reserved(0), retries, interval, url, send_report
-  return `AT+GTUPC=${p},${v('upc_mode') || '0'},${v('upc_timeout') || 10},0,` +
-    `${v('upc_max_retries') || 0},${v('upc_interval') || 0},${v('upc_url')},${chk('upc_report')},,,,${SN}$`;
+  return ConfigUtils.buildGtupcCommand(p, {
+    maxRetries: v('upc_max_retries'),
+    timeout: v('upc_timeout'),
+    enableReport: chk('upc_report'),
+    interval: v('upc_interval'),
+    url: v('upc_url'),
+    mode: v('upc_mode'),
+  }, SN);
 }
 
 function buildGTPDS(p) {
@@ -2297,11 +2301,10 @@ function populateFromConfig(text) {
     }
   }
   if (cmds.GTUPC) {
-    const p = cmds.GTUPC[0];
-    // Field order: mode, timeout, reserved, retries, interval, url, send_report
-    setV('upc_mode', p[1]); setV('upc_timeout', p[2]);
-    setV('upc_max_retries', p[4]); setV('upc_interval', p[5]);
-    setV('upc_url', p[6]); setV('upc_report', p[7]);
+    const upc = ConfigUtils.parseGtupcParams(cmds.GTUPC[0]);
+    setV('upc_mode', upc.mode); setV('upc_timeout', upc.timeout);
+    setV('upc_max_retries', upc.maxRetries); setV('upc_interval', upc.interval);
+    setV('upc_url', upc.url); setV('upc_report', upc.enableReport);
   }
   if (cmds.GTPDS) {
     const p = cmds.GTPDS[0]; setV('pds_mode', p[1]);

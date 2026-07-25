@@ -2,12 +2,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   appendPreservedLines,
+  buildGtupcCommand,
   configToMap,
   diffConfig,
   generatedLinesMissingFromSource,
   mergeWithSource,
   officialMetadataLines,
   parseConfig,
+  parseGtupcParams,
   preservedLines,
   unparsedLines,
 } = require('../config-utils');
@@ -137,4 +139,30 @@ test('an OTA interval edit is retained in place and reported as a GTUPC change',
     old: 'AT+GTUPC=gl320m,1,10,0,1,24,http://cfg.jdwilsh.com/,1,,,,FFFF$',
     new: 'AT+GTUPC=gl320m,1,10,0,1,4,http://cfg.jdwilsh.com/,1,,,,FFFF$',
   }]);
+});
+
+test('GTUPC fields follow the GL320M protocol order', () => {
+  const command = buildGtupcCommand('gl320m', {
+    maxRetries: '3',
+    timeout: '10',
+    enableReport: '1',
+    interval: '6',
+    url: 'http://cfg.jdwilsh.com/',
+    mode: '1',
+  });
+
+  assert.equal(
+    command,
+    'AT+GTUPC=gl320m,3,10,0,1,6,http://cfg.jdwilsh.com/,1,,,,FFFF$'
+  );
+
+  const params = parseConfig(command).commands.GTUPC[0];
+  assert.deepEqual(parseGtupcParams(params), {
+    maxRetries: '3',
+    timeout: '10',
+    enableReport: '1',
+    interval: '6',
+    url: 'http://cfg.jdwilsh.com/',
+    mode: '1',
+  });
 });

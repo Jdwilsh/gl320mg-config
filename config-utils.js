@@ -129,8 +129,28 @@
     }));
   }
 
+  function parseGtupcParams(params) {
+    const values = Array.isArray(params) ? params : [];
+    return {
+      maxRetries: values[1] ?? '0',
+      timeout: values[2] ?? '10',
+      enableReport: values[4] ?? '0',
+      interval: values[5] ?? '0',
+      url: values[6] ?? '',
+      mode: values[7] ?? '0',
+    };
+  }
+
+  function buildGtupcCommand(password, settings, serialNumber = 'FFFF') {
+    const values = settings || {};
+    return `AT+GTUPC=${password},${values.maxRetries || '0'},${values.timeout || '10'},0,` +
+      `${values.enableReport || '0'},${values.interval || '0'},${values.url || ''},` +
+      `${values.mode || '0'},,,,${serialNumber}$`;
+  }
+
   return {
     appendPreservedLines,
+    buildGtupcCommand,
     commandNames,
     configToMap,
     diffConfig,
@@ -138,6 +158,7 @@
     officialMetadataLines,
     mergeWithSource,
     parseConfig,
+    parseGtupcParams,
     preservedLines,
     unparsedLines,
   };
