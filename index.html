@@ -2069,12 +2069,18 @@ function serializeConfig(includePreserved = true) {
     buildGTCMDLines(p),
     buildGTUDFLines(p),
     buildGTRPC(p),
-  ].join('\n');
+  ].join('\r\n');
 
-  const generated = body + '\n';
+  const generated = ConfigUtils.toTrackerConfigText(body);
   if (!includePreserved) return generated;
-  if (documentState.sourceText) return ConfigUtils.mergeWithSource(documentState.sourceText, generated);
-  return ConfigUtils.appendPreservedLines(generated, documentState.preservedLines);
+  if (documentState.sourceText) {
+    return ConfigUtils.toTrackerConfigText(
+      ConfigUtils.mergeWithSource(documentState.sourceText, generated)
+    );
+  }
+  return ConfigUtils.toTrackerConfigText(
+    ConfigUtils.appendPreservedLines(generated, documentState.preservedLines)
+  );
 }
 
 function generate(options = {}) {

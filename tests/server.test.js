@@ -243,7 +243,7 @@ test('queueing keeps pending state separate and writes a full IMEI config', asyn
 
   assert.equal(
     fs.readFileSync(path.join(testRoot, 'configs', `${imei}.ini`), 'utf8'),
-    content
+    content.replace(/\n/g, '\r\n')
   );
 });
 

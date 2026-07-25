@@ -6,6 +6,7 @@ const crypto  = require("crypto");
 const { db, initSchema } = require('./db');
 const { runMigration }   = require('./migrate');
 const { normalizeRecord, authHeaderFromConfig, basicAuthMatches } = require('./oneNce');
+const { toTrackerConfigText } = require('../config-utils');
 
 const app  = express();
 const PORT = 3010;
@@ -499,7 +500,7 @@ app.post("/deployment/:imei", (req, res) => {
   const fp = safeConfigPath(filename);
   if (!fs.existsSync(CONFIGS_DIR)) fs.mkdirSync(CONFIGS_DIR, { recursive: true });
   const queue = db.transaction(() => {
-    fs.writeFileSync(fp, content, "utf8");
+    fs.writeFileSync(fp, toTrackerConfigText(content), "utf8");
     stmts.upsertPendingDeployment.run(imei, filename, JSON.stringify(state));
   });
   queue();
@@ -583,7 +584,7 @@ app.post("/config/:name", (req, res) => {
   const { content } = req.body;
   if (!content) return res.status(400).json({ error: "content required" });
   if (!fs.existsSync(CONFIGS_DIR)) fs.mkdirSync(CONFIGS_DIR, { recursive: true });
-  fs.writeFileSync(fp, content, "utf8");
+  fs.writeFileSync(fp, toTrackerConfigText(content), "utf8");
   res.json({ ok: true });
 });
 

@@ -148,6 +148,11 @@
       `${values.mode || '0'},,,,${serialNumber}$`;
   }
 
+  function toTrackerConfigText(text) {
+    const normalized = String(text || '').replace(/\r\n?|\n/g, '\n').replace(/\n+$/, '');
+    return normalized ? `${normalized.replace(/\n/g, '\r\n')}\r\n` : '';
+  }
+
   return {
     appendPreservedLines,
     buildGtupcCommand,
@@ -160,6 +165,7 @@
     parseConfig,
     parseGtupcParams,
     preservedLines,
+    toTrackerConfigText,
     unparsedLines,
   };
 });

@@ -11,6 +11,7 @@ const {
   parseConfig,
   parseGtupcParams,
   preservedLines,
+  toTrackerConfigText,
   unparsedLines,
 } = require('../config-utils');
 
@@ -165,4 +166,15 @@ test('GTUPC fields follow the GL320M protocol order', () => {
     url: 'http://cfg.jdwilsh.com/',
     mode: '1',
   });
+});
+
+test('tracker configuration output always uses CRLF between commands', () => {
+  assert.equal(
+    toTrackerConfigText('AT+GTAAA=gl320m,1$\nAT+GTBBB=gl320m,2$\n'),
+    'AT+GTAAA=gl320m,1$\r\nAT+GTBBB=gl320m,2$\r\n'
+  );
+  assert.equal(
+    toTrackerConfigText('AT+GTAAA=gl320m,1$\r\nAT+GTBBB=gl320m,2$\r\n'),
+    'AT+GTAAA=gl320m,1$\r\nAT+GTBBB=gl320m,2$\r\n'
+  );
 });
