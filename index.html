@@ -2318,6 +2318,8 @@ async function loadFromServer() {
     const res = await apiFetch(`${API}/config/${encodeURIComponent(filename)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     applyConfigText(await res.text(), filename);
+    // In the named-config flow, a loaded baseline belongs to the active config.
+    if (activeConfigId) await saveActiveConfig();
   } catch (e) {
     showMsg('load_msg', `Load failed: ${e.message}`, true);
   }
@@ -2615,13 +2617,15 @@ async function importLocalConfig(file) {
     showMsg('load_msg', 'That file is larger than 5 MB and does not look like a tracker configuration', true);
     return;
   }
-  if (!documentState.targetImei) {
+  // Named-config flow: a config is selected, so the baseline loads straight into
+  // it — no tracker target needed. Legacy per-tracker flow still needs an IMEI.
+  if (!activeConfigId && !documentState.targetImei) {
     const match = file.name.match(/^(\d{15})\.ini$/i);
     const device = match && workspaceDevices.find(item => item.imei === match[1] && item.configEnabled);
     if (device) {
       await openDeviceWorkspace(device.imei);
     } else {
-      showMsg('load_msg', 'Choose a tracker tab first, or select a registered <IMEI>.ini file so the target can be identified safely', true);
+      showMsg('load_msg', 'Select a configuration first (or, in Advanced, choose a tracker) so the baseline has somewhere to load into.', true);
       return;
     }
   }
@@ -2632,9 +2636,13 @@ async function importLocalConfig(file) {
       showMsg('load_msg', `${file.name} does not contain any Queclink AT+GT configuration commands`, true);
       return;
     }
-    document.getElementById('cfg_filename').value = `${documentState.targetImei}.ini`;
+    if (documentState.targetImei) {
+      document.getElementById('cfg_filename').value = `${documentState.targetImei}.ini`;
+    }
     applyConfigText(contents, `Imported from Mac: ${file.name}`);
-    showMsg('load_msg', `${file.name} imported into ${documentState.targetName}; review all validation messages before editing`, false);
+    const where = activeConfigId ? (documentState.targetName || 'this configuration') : documentState.targetName;
+    showMsg('load_msg', `${file.name} imported into ${where}; review all validation messages, then Save settings to keep it.`, false);
+    if (activeConfigId) await saveActiveConfig(); // persist the new baseline to the config
   } catch (error) {
     showMsg('load_msg', `Could not read ${file.name}: ${error.message}`, true);
   }
