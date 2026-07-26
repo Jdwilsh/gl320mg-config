@@ -601,3 +601,77 @@ test('command-log reports configured=false and an empty list initially', async t
   assert.equal(body.configured, false);
   assert.ok(Array.isArray(body.commands));
 });
+
+test('config-sets: create, assign members, and deploy fans out per-imei .ini files', async t => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const post = (p, body) => fetch(`${base}${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+  // two GL320MG devices
+  const a = '860201067000001', b = '860201067000002';
+  await post('/devices', { imei: a, name: 'TRK-A', deviceType: 'GL320MG' });
+  await post('/devices', { imei: b, name: 'TRK-B', deviceType: 'GL320MG' });
+
+  // create a named config
+  const created = await (await post('/config-sets', { name: 'Config A', state: { foo: 1 } })).json();
+  assert.ok(created.id);
+
+  // duplicate-name rejected
+  assert.equal((await post('/config-sets', { name: 'Config A' })).status, 409);
+
+  // assign both trackers
+  const assigned = await (await post(`/config-sets/${created.id}/members`, { imeis: [a, b] })).json();
+  assert.equal(assigned.assigned, 2);
+
+  // config detail shows 2 members
+  const detail = await (await fetch(`${base}/config-sets/${created.id}`)).json();
+  assert.equal(detail.members.length, 2);
+
+  // deploy → one queued .ini per member
+  const deployed = await (await post(`/config-sets/${created.id}/deploy`, {
+    content: 'AT+GTQSS=gl320m,,,,1,,,,,,,,,,,,FFFF$', state: { foo: 1 },
+  })).json();
+  assert.equal(deployed.queued, 2);
+  assert.equal(fs.existsSync(path.join(testRoot, 'configs', `${a}.ini`)), true);
+  assert.equal(fs.existsSync(path.join(testRoot, 'configs', `${b}.ini`)), true);
+
+  // each member now has a pending deployment
+  const pend = await (await fetch(`${base}/deployment/${a}`)).json();
+  assert.equal(pend.pending.status, 'queued');
+  assert.equal(pend.pending.filename, `${a}.ini`);
+});
+
+test('config-sets: a tracker belongs to at most one config, and delete unassigns', async t => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const post = (p, body) => fetch(`${base}${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+  const imei = '860201067000003';
+  await post('/devices', { imei, name: 'TRK-C', deviceType: 'GL320MG' });
+  const c1 = await (await post('/config-sets', { name: 'One' })).json();
+  const c2 = await (await post('/config-sets', { name: 'Two' })).json();
+
+  await post(`/config-sets/${c1.id}/members`, { imeis: [imei] });
+  await post(`/config-sets/${c2.id}/members`, { imeis: [imei] }); // reassign
+
+  // now only c2 has it
+  assert.equal((await (await fetch(`${base}/config-sets/${c1.id}`)).json()).members.length, 0);
+  assert.equal((await (await fetch(`${base}/config-sets/${c2.id}`)).json()).members.length, 1);
+
+  // deleting c2 cascades the membership away (device itself untouched)
+  await fetch(`${base}/config-sets/${c2.id}`, { method: 'DELETE' });
+  const unassigned = await (await fetch(`${base}/config-sets-unassigned`)).json();
+  assert.ok(unassigned.some(d => d.imei === imei));
+});
+
+test('config-sets: deploy refuses a config with no eligible trackers', async t => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const post = (p, body) => fetch(`${base}${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const empty = await (await post('/config-sets', { name: 'Empty' })).json();
+  const res = await post(`/config-sets/${empty.id}/deploy`, { content: 'AT+GTX=1$', state: {} });
+  assert.equal(res.status, 409);
+});

@@ -230,6 +230,39 @@ const stmts = {
     VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))
   `),
   deleteCommandPreset: db.prepare('DELETE FROM command_presets WHERE name = ?'),
+
+  // Named configs
+  allConfigs: db.prepare(`
+    SELECT c.id, c.name, c.updated_at AS updatedAt,
+           (SELECT COUNT(*) FROM config_members m WHERE m.config_id = c.id) AS memberCount
+    FROM configs c ORDER BY c.name
+  `),
+  getConfig: db.prepare('SELECT id, name, state_json AS stateJson, source_text AS sourceText, updated_at AS updatedAt FROM configs WHERE id = ?'),
+  getConfigByName: db.prepare('SELECT id FROM configs WHERE name = ?'),
+  createConfig: db.prepare(`
+    INSERT INTO configs (name, state_json, source_text) VALUES (?, ?, ?)
+  `),
+  updateConfigContent: db.prepare(`
+    UPDATE configs SET state_json = ?, source_text = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id = ?
+  `),
+  renameConfig: db.prepare(`UPDATE configs SET name = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id = ?`),
+  deleteConfig: db.prepare('DELETE FROM configs WHERE id = ?'),
+  configMembers: db.prepare(`
+    SELECT m.imei, d.name AS deviceName, d.config_enabled AS configEnabled
+    FROM config_members m LEFT JOIN devices d ON d.imei = m.imei
+    WHERE m.config_id = ? ORDER BY d.name, m.imei
+  `),
+  memberConfigId: db.prepare('SELECT config_id AS configId FROM config_members WHERE imei = ?'),
+  assignMember: db.prepare(`
+    INSERT INTO config_members (imei, config_id) VALUES (?, ?)
+    ON CONFLICT(imei) DO UPDATE SET config_id = excluded.config_id, assigned_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')
+  `),
+  unassignMember: db.prepare('DELETE FROM config_members WHERE imei = ?'),
+  unassignedDevices: db.prepare(`
+    SELECT imei, name, config_enabled AS configEnabled FROM devices
+    WHERE config_enabled = 1 AND imei NOT IN (SELECT imei FROM config_members)
+    ORDER BY name, imei
+  `),
 };
 
 // ── Middleware ────────────────────────────────────────────────────────────────
@@ -548,6 +581,148 @@ app.delete('/command-presets/:name', (req, res) => {
   if (!name) return res.status(400).json({ error: 'Invalid name' });
   stmts.deleteCommandPreset.run(name);
   res.json({ ok: true });
+});
+
+// ── Named configs (build once → assign trackers → deploy to group) ────────────
+function configName(value) {
+  const name = String(value || '').trim();
+  return name && name.length <= 60 && /^[\w.\- ]+$/.test(name) ? name : null;
+}
+
+app.get('/config-sets', (req, res) => {
+  res.json(stmts.allConfigs.all());
+});
+
+app.get('/config-sets/:id', (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid config id' });
+  const cfg = stmts.getConfig.get(id);
+  if (!cfg) return res.status(404).json({ error: 'Not found' });
+  res.json({
+    id: cfg.id, name: cfg.name, updatedAt: cfg.updatedAt,
+    state: JSON.parse(cfg.stateJson || '{}'),
+    sourceText: cfg.sourceText || '',
+    members: stmts.configMembers.all(id).map(m => ({ ...m, configEnabled: Boolean(m.configEnabled) })),
+  });
+});
+
+app.post('/config-sets', (req, res) => {
+  const name = configName(req.body?.name);
+  if (!name) return res.status(400).json({ error: 'Config name required (letters, digits, spaces, . - _, max 60)' });
+  if (stmts.getConfigByName.get(name)) return res.status(409).json({ error: 'A config with that name already exists' });
+  const state = req.body?.state && typeof req.body.state === 'object' ? req.body.state : {};
+  const sourceText = typeof req.body?.sourceText === 'string' ? req.body.sourceText : null;
+  const info = stmts.createConfig.run(name, JSON.stringify(state), sourceText);
+  res.json({ ok: true, id: info.lastInsertRowid });
+});
+
+// Save a config's settings/baseline (edited via the settings panels).
+app.put('/config-sets/:id', (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid config id' });
+  if (!stmts.getConfig.get(id)) return res.status(404).json({ error: 'Not found' });
+  const state = req.body?.state && typeof req.body.state === 'object' ? req.body.state : {};
+  const sourceText = typeof req.body?.sourceText === 'string' ? req.body.sourceText : null;
+  stmts.updateConfigContent.run(JSON.stringify(state), sourceText, id);
+  res.json({ ok: true });
+});
+
+app.patch('/config-sets/:id', (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid config id' });
+  if (!stmts.getConfig.get(id)) return res.status(404).json({ error: 'Not found' });
+  const name = configName(req.body?.name);
+  if (!name) return res.status(400).json({ error: 'Invalid config name' });
+  const clash = stmts.getConfigByName.get(name);
+  if (clash && clash.id !== id) return res.status(409).json({ error: 'A config with that name already exists' });
+  stmts.renameConfig.run(name, id);
+  res.json({ ok: true });
+});
+
+app.post('/config-sets/:id/duplicate', (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  const src = Number.isInteger(id) ? stmts.getConfig.get(id) : null;
+  if (!src) return res.status(404).json({ error: 'Not found' });
+  let name = configName(req.body?.name) || `${src.name} copy`;
+  // ensure uniqueness
+  let n = name, i = 2;
+  while (stmts.getConfigByName.get(n)) { n = `${name} ${i++}`; if (n.length > 60) return res.status(409).json({ error: 'Name too long' }); }
+  const info = stmts.createConfig.run(n, src.stateJson, src.sourceText);
+  res.json({ ok: true, id: info.lastInsertRowid, name: n });
+});
+
+app.delete('/config-sets/:id', (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid config id' });
+  stmts.deleteConfig.run(id); // cascade unassigns members; per-imei deployed state untouched
+  res.json({ ok: true });
+});
+
+// Assign / unassign trackers. A tracker belongs to at most one config.
+app.post('/config-sets/:id/members', (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (!stmts.getConfig.get(id)) return res.status(404).json({ error: 'Config not found' });
+  const imeis = Array.isArray(req.body?.imeis) ? req.body.imeis : [];
+  const assign = db.transaction(list => {
+    let n = 0;
+    for (const raw of list) {
+      const imei = safeImei(String(raw || ''));
+      if (!imei) continue;
+      if (!stmts.configDevice.get(imei)?.configEnabled) continue; // only GL320MG-config devices
+      stmts.assignMember.run(imei, id); n++;
+    }
+    return n;
+  });
+  res.json({ ok: true, assigned: assign(imeis) });
+});
+
+app.delete('/config-sets/:id/members/:imei', (req, res) => {
+  const imei = safeImei(req.params.imei);
+  if (!imei) return res.status(400).json({ error: 'Invalid IMEI' });
+  stmts.unassignMember.run(imei);
+  res.json({ ok: true });
+});
+
+app.get('/config-sets-unassigned', (req, res) => {
+  res.json(stmts.unassignedDevices.all().map(d => ({ ...d, configEnabled: Boolean(d.configEnabled) })));
+});
+
+// Deploy a config to every member: generate the .ini once, then queue the
+// identical per-imei file through the SAME pending_deployments machinery the
+// single-tracker flow uses — so OTA delivery, the log-watcher and cleanup all
+// keep working unchanged.
+app.post('/config-sets/:id/deploy', (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  const cfg = Number.isInteger(id) ? stmts.getConfig.get(id) : null;
+  if (!cfg) return res.status(404).json({ error: 'Config not found' });
+  const content = req.body?.content;
+  const state = req.body?.state;
+  if (!content || typeof content !== 'string') return res.status(400).json({ error: 'content required' });
+  if (!state || typeof state !== 'object') return res.status(400).json({ error: 'state required' });
+
+  const members = stmts.configMembers.all(id);
+  const eligible = members.filter(m => m.configEnabled);
+  if (eligible.length === 0) return res.status(409).json({ error: 'This config has no GL320MG trackers assigned' });
+
+  if (!fs.existsSync(CONFIGS_DIR)) fs.mkdirSync(CONFIGS_DIR, { recursive: true });
+  const fileText = toTrackerConfigText(content);
+  const stateJson = JSON.stringify(state);
+
+  const deploy = db.transaction(list => {
+    // Persist the config's saved settings/baseline as part of the deploy.
+    stmts.updateConfigContent.run(stateJson, cfg.sourceText ?? null, id);
+    const queued = [];
+    for (const m of list) {
+      const filename = `${m.imei}.ini`;
+      fs.writeFileSync(safeConfigPath(filename), fileText, 'utf8');
+      stmts.upsertPendingDeployment.run(m.imei, filename, stateJson);
+      queued.push(m.imei);
+    }
+    return queued;
+  });
+  const queued = deploy(eligible);
+  console.log(`[deploy-config] "${cfg.name}" → ${queued.length} tracker(s)`);
+  res.json({ ok: true, queued: queued.length, imeis: queued });
 });
 
 app.post("/devices", (req, res) => {

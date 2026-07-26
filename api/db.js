@@ -129,7 +129,34 @@ function initSchema() {
       payload    TEXT NOT NULL,
       updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
     );
+
+    -- Named configurations: build once, assign trackers, deploy to the group.
+    -- state_json is the same workspace object a single tracker used to hold
+    -- (form-field values); source_text is the trusted baseline .ini that carries
+    -- unsupported commands verbatim. Deploying a config fans the generated .ini
+    -- out to each member via the existing per-imei pending_deployments machinery.
+    CREATE TABLE IF NOT EXISTS configs (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      name        TEXT NOT NULL UNIQUE,
+      state_json  TEXT NOT NULL DEFAULT '{}',
+      source_text TEXT,
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+      updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+    );
+
+    -- Membership: each tracker belongs to at most one config. A tracker with no
+    -- row here is "unassigned". FK cascades so removing a config unassigns its
+    -- members (their per-imei deployed state is untouched).
+    CREATE TABLE IF NOT EXISTS config_members (
+      imei        TEXT PRIMARY KEY,
+      config_id   INTEGER NOT NULL REFERENCES configs(id) ON DELETE CASCADE,
+      assigned_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_config_members_config ON config_members(config_id);
   `);
+
+  // FK cascade only fires when foreign_keys is on (off by default in SQLite).
+  db.pragma('foreign_keys = ON');
 
   // Additive upgrade for databases created before multiple tracker types were
   // supported. Existing entries remain GL320MG configuration targets.
