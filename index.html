@@ -1184,7 +1184,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="card" style="padding:0;overflow:hidden;margin-bottom:0">
     <div style="overflow-x:auto">
       <table class="tbl" id="monitor_table">
-        <thead><tr><th>Name / IMEI</th><th>Last Seen</th><th>Config File</th><th>Status</th><th>Deploy</th><th>Last IP</th><th></th></tr></thead>
+        <thead><tr><th>Name / IMEI</th><th>Last Seen</th><th>Assigned config</th><th>Status</th><th>Deploy</th><th>Last IP</th><th></th></tr></thead>
         <tbody id="monitor_tbody"><tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr></tbody>
       </table>
     </div>
@@ -3266,6 +3266,21 @@ function deployBadge(t) {
   return '';
 }
 
+// Shows which named config a tracker is assigned to, and whether that config's
+// latest settings have actually reached it (drift detection).
+function configSyncBadge(t) {
+  if (!t.assignedConfig)
+    return '<span style="color:var(--muted)">Unassigned</span>';
+  const name = `<strong>${esc(t.assignedConfig)}</strong>`;
+  const tag = {
+    synced:  '<span class="sim-pill ok"><span class="pd"></span>In sync</span>',
+    pending: '<span class="sim-pill warn"><span class="pd"></span>Deploy pending</span>',
+    stale:   '<span class="sim-pill bad"><span class="pd"></span>Out of date</span>',
+    never:   '<span class="sim-pill bad"><span class="pd"></span>Never deployed</span>',
+  }[t.configSync] || '';
+  return `${name}<div style="margin-top:3px">${tag}</div>`;
+}
+
 async function loadMonitor() {
   const dot = document.getElementById('ref_dot');
   const lbl = document.getElementById('ref_label');
@@ -3328,12 +3343,11 @@ function renderMonitor(trackers) {
       ? `<strong>${esc(t.name)}</strong> ${healthBadge(t.lastSeen)}<br><span class="mono">${t.imei}</span>`
       : `<span style="color:var(--muted);font-style:italic">Unnamed</span> ${healthBadge(t.lastSeen)}<br><span class="mono">${t.imei}</span>`;
     const histId = `hist_${t.imei}`;
-    const configFile = t.lastConfig || `${t.imei}.ini`;
     const row = document.createElement('tr');
     row.innerHTML = `
       <td>${nameHtml}</td>
       <td${t.lastSeen ? ` title="${esc(t.lastSeen)}"` : ''}>${t.lastSeen ? relTime(t.lastSeen) : '<span style="color:var(--muted)">Never</span>'}</td>
-      <td><code style="font-size:12px">${esc(configFile)}</code>${t.lastSeen ? '' : '<span class="sim-secondary">Not requested yet</span>'}</td>
+      <td>${configSyncBadge(t)}</td>
       <td>${statusBadge(t.lastStatus)}</td>
       <td>${deployBadge(t)}</td>
       <td><span class="mono">${t.lastIp ? esc(t.lastIp) : '—'}</span></td>

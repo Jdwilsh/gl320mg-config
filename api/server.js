@@ -263,6 +263,13 @@ const stmts = {
     WHERE config_enabled = 1 AND imei NOT IN (SELECT imei FROM config_members)
     ORDER BY name, imei
   `),
+  // The config a tracker is assigned to, plus when that config was last edited —
+  // used on the dashboard to show assigned config and flag drift.
+  memberConfigForImei: db.prepare(`
+    SELECT c.id, c.name, c.updated_at AS configUpdatedAt
+    FROM config_members m JOIN configs c ON c.id = m.config_id
+    WHERE m.imei = ?
+  `),
 };
 
 // ── Middleware ────────────────────────────────────────────────────────────────
@@ -426,6 +433,22 @@ app.get("/trackers", (req, res) => {
   const result = rows.map(t => {
     const history = stmts.trackerHistory.all(t.imei);
     const deployment = stmts.getPendingDeployment.get(t.imei);
+    const assigned = stmts.memberConfigForImei.get(t.imei);
+
+    // Config sync state, from the tracker's point of view:
+    //   'synced'   — assigned config was delivered after its last edit
+    //   'pending'  — a config file is queued/downloaded but not yet confirmed applied
+    //   'stale'    — assigned config edited since it was last delivered (needs redeploy)
+    //   'never'    — assigned to a config that has never been deployed to it
+    //   null       — not assigned to any config
+    let configSync = null;
+    if (assigned) {
+      const lastDelivered = deployment?.downloaded_at || null;
+      if (deployment && deployment.status !== 'downloaded') configSync = 'pending';
+      else if (!lastDelivered) configSync = 'never';
+      else if (assigned.configUpdatedAt > lastDelivered) configSync = 'stale';
+      else configSync = 'synced';
+    }
     return {
       imei:          t.imei,
       lastSeen:      t.lastSeen,
@@ -437,6 +460,8 @@ app.get("/trackers", (req, res) => {
       deploymentStatus: deployment ? deployment.status : null,
       deploymentQueuedAt: deployment ? deployment.queued_at : null,
       deploymentDownloadedAt: deployment ? deployment.downloaded_at : null,
+      assignedConfig: assigned ? assigned.name : null,
+      configSync,
       history,
     };
   });

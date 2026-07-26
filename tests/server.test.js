@@ -675,3 +675,33 @@ test('config-sets: deploy refuses a config with no eligible trackers', async t =
   const res = await post(`/config-sets/${empty.id}/deploy`, { content: 'AT+GTX=1$', state: {} });
   assert.equal(res.status, 409);
 });
+
+test('trackers report their assigned config and sync state', async t => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const post = (p, body) => fetch(`${base}${p}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+  const imei = '860201067000010';
+  await post('/devices', { imei, name: 'Drift Test', deviceType: 'GL320MG' });
+
+  // Unassigned tracker → assignedConfig null, configSync null
+  let list = await (await fetch(`${base}/trackers`)).json();
+  let row = list.find(t => t.imei === imei);
+  assert.equal(row.assignedConfig, null);
+  assert.equal(row.configSync, null);
+
+  // Assign to a config but never deploy → "never"
+  const cfg = await (await post('/config-sets', { name: 'Drift Cfg' })).json();
+  await post(`/config-sets/${cfg.id}/members`, { imeis: [imei] });
+  list = await (await fetch(`${base}/trackers`)).json();
+  row = list.find(t => t.imei === imei);
+  assert.equal(row.assignedConfig, 'Drift Cfg');
+  assert.equal(row.configSync, 'never');
+
+  // Deploy → a file is queued → "pending"
+  await post(`/config-sets/${cfg.id}/deploy`, { content: 'AT+GTQSS=gl320m,,,,1,,,,,,,,,,,,FFFF$', state: {} });
+  list = await (await fetch(`${base}/trackers`)).json();
+  row = list.find(t => t.imei === imei);
+  assert.equal(row.configSync, 'pending');
+});
