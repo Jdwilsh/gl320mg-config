@@ -82,9 +82,11 @@ main{padding:22px 26px;min-width:0;max-width:1200px;margin:0 auto}
 .sim-overview-row{cursor:pointer}
 .sim-spark{display:block}
 /* Activity feed */
-.feed-row{display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:start;padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer}
+.feed-row{display:grid;grid-template-columns:130px 34px 1fr;gap:12px;align-items:start;padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer}
 .feed-row:last-child{border-bottom:none}
 .feed-row:hover{background:var(--panel-2)}
+.feed-when{font-size:12px;color:var(--muted);line-height:1.4;font-variant-numeric:tabular-nums}
+.feed-when .rel{display:block;font-weight:600;color:var(--text);font-size:12.5px}
 .feed-ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:15px;flex-shrink:0;background:var(--panel-2)}
 .feed-ic.up{background:var(--online-soft)}
 .feed-ic.down{background:var(--panel-2)}
@@ -94,11 +96,9 @@ main{padding:22px 26px;min-width:0;max-width:1200px;margin:0 auto}
 .feed-main{min-width:0}
 .feed-title{font-weight:600;font-size:13.5px;line-height:1.35}
 .feed-sub{font-size:12px;color:var(--muted);margin-top:2px;word-break:break-word}
-.feed-meta{text-align:right;font-size:11.5px;color:var(--faint);white-space:nowrap;line-height:1.5}
-.feed-meta .net{color:var(--muted)}
 @media(max-width:600px){
-  .feed-row{grid-template-columns:30px 1fr}
-  .feed-meta{grid-column:2;text-align:left}
+  .feed-row{grid-template-columns:34px 1fr}
+  .feed-when{grid-column:2;order:3;margin-top:2px}
 }
 /* Named configs (Config Editor) */
 .cfg-layout{display:grid;grid-template-columns:250px 1fr;gap:16px;align-items:start}
@@ -1257,7 +1257,11 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     <!-- Compose -->
     <div class="card" style="margin-bottom:0">
       <div class="card-title">Compose</div>
-      <label class="cmd-lbl">Send to</label>
+      <label class="cmd-lbl">Send to <span id="sendcmd_count" style="color:var(--faint);font-weight:600;text-transform:none;letter-spacing:0"></span></label>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input id="sendcmd_filter" placeholder="Filter trackers…" style="flex:1">
+        <button class="btn btn-outline btn-sm" id="sendcmd_select_all" type="button">Select all</button>
+      </div>
       <div id="sendcmd_targets" class="cmd-targets"><span style="color:var(--muted);font-size:13px">Loading trackers…</span></div>
 
       <label class="cmd-lbl" style="margin-top:14px">Quick commands</label>
@@ -1343,36 +1347,24 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   </div>
 
   <!-- Legacy per-tracker workspace (kept available; config model is the primary flow) -->
-  <details style="margin-top:18px">
-    <summary style="cursor:pointer;font-size:13px;color:var(--muted);font-weight:600">Advanced: edit a single tracker directly</summary>
-  <div class="card" style="margin-top:12px">
-    <div class="card-title">GL320MG trackers</div>
-    <div class="device-tabs" id="device_tabs">
-      <span style="color:var(--muted);font-size:13px">Loading trackers…</span>
-    </div>
-    <select id="cfg_device_select" style="display:none"><option value="">— choose tracker —</option></select>
-    <input id="cfg_filename" value="1.cfg" style="display:none">
-    <button id="btn_use_device" style="display:none">Open tracker configuration</button>
-    <button id="btn_load_device" style="display:none">Reload pending configuration</button>
-    <div id="device_workspace_empty" class="note">Choose a tracker tab to open its configuration.</div>
-    <div id="device_workspace_controls" style="display:none">
-      <div class="device-workspace-head">
-        <div style="flex:1;min-width:220px">
-          <strong id="active_device_name">Tracker</strong>
-          <span class="sim-secondary mono" id="active_device_imei"></span>
-        </div>
-        <div class="f copy-control">
-          <label>Copy editable configuration from</label>
-          <select id="copy_device_select"><option value="">— choose another tracker —</option></select>
-          <span class="hint">The current tracker remains the target; its device-specific unsupported commands are retained.</span>
-        </div>
-        <button class="btn btn-outline" id="btn_copy_device">Copy into this tracker</button>
-        <button class="btn btn-outline" id="btn_reload_device">Reload trusted baseline</button>
-      </div>
-      <div style="margin-top:8px"><span id="device_msg" class="status-msg"></span></div>
+  <!-- Legacy per-tracker workspace retired in favour of the named-config model.
+       Elements kept hidden and null-safe for the shared engine code. -->
+  <div style="display:none" id="legacy_device_workspace">
+    <div id="device_tabs"></div>
+    <select id="cfg_device_select"><option value="">—</option></select>
+    <input id="cfg_filename" value="1.cfg">
+    <button id="btn_use_device"></button>
+    <button id="btn_load_device"></button>
+    <div id="device_workspace_empty"></div>
+    <div id="device_workspace_controls">
+      <strong id="active_device_name"></strong>
+      <span id="active_device_imei"></span>
+      <select id="copy_device_select"><option value="">—</option></select>
+      <button id="btn_copy_device"></button>
+      <button id="btn_reload_device"></button>
+      <span id="device_msg"></span>
     </div>
   </div>
-  </details>
 
   <div class="cards-grid">
 
@@ -3507,16 +3499,18 @@ function renderSimActivity() {
     const time = simTimestamp(record);
     const h = humaniseEvent(record);
     const who = record.deviceName || (record.imei ? `IMEI ${record.imei}` : record.iccid ? `ICCID ${record.iccid}` : 'Unknown SIM');
+    const when = time ? new Date(time) : null;
+    const absTime = when ? when.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
     const row = document.createElement('div');
     row.className = 'feed-row';
     row.title = 'Show the full 1NCE record';
     row.innerHTML = `
+      <div class="feed-when">${when ? `<span class="rel">${esc(relTime(time))}</span>${esc(absTime)}` : '—'}</div>
       <div class="feed-ic ${h.cls}">${h.icon}</div>
       <div class="feed-main">
         <div class="feed-title">${esc(who)} — ${esc(h.title)}</div>
         ${h.sub ? `<div class="feed-sub">${esc(h.sub)}</div>` : ''}
-      </div>
-      <div class="feed-meta">${time ? esc(relTime(time)) : '—'}${h.sub && record.operatorName ? `<br><span class="net">${esc(record.operatorName)}</span>` : ''}</div>`;
+      </div>`;
     row.addEventListener('click', () => openSimDetail(record.id));
     feed.appendChild(row);
   });
@@ -3711,8 +3705,12 @@ document.getElementById('sim_auto_refresh').dispatchEvent(new Event('change'));
 // ── Send Command (SMS via 1NCE) ───────────────────────────────────────────────
 let sendCmdTargets = [];   // [{ iccid, imei, name }]
 let sendCmdConfigured = false;
+let sendCmdSelected = new Set(); // selected ICCIDs, persists across filtering
 
 async function loadSendCommand() {
+  sendCmdSelected = new Set(); // fresh selection each visit
+  const filterEl = document.getElementById('sendcmd_filter');
+  if (filterEl) filterEl.value = '';
   // Targets = SIMs we've seen an ICCID for, joined to device names.
   try {
     const res = await apiFetch(`${API}/sim-activity?limit=300`);
@@ -3730,21 +3728,45 @@ async function loadSendCommand() {
     sendCmdTargets = [...byIccid.values()].sort((a, b) => (a.name || a.iccid).localeCompare(b.name || b.iccid));
   } catch { sendCmdTargets = []; }
 
-  const box = document.getElementById('sendcmd_targets');
-  box.innerHTML = sendCmdTargets.length
-    ? sendCmdTargets.map((t, i) => `
-        <label class="cmd-target">
-          <input type="checkbox" class="sendcmd-tgt" data-iccid="${esc(t.iccid)}">
-          <span><span class="nm">${t.name ? esc(t.name) : 'Unnamed device'}</span>
-          <span class="id mono">ICCID ${esc(t.iccid)}${t.imei ? ` · ${esc(t.imei)}` : ''}</span></span>
-        </label>`).join('')
-    : '<span style="color:var(--muted);font-size:13px">No SIMs with a known ICCID yet. They appear here once 1NCE reports activity.</span>';
-  box.querySelectorAll('.sendcmd-tgt').forEach(cb => cb.addEventListener('change', renderSendPreview));
+  renderSendTargets('');
 
   await loadPresets();
   await loadCommandLog();
   renderSendPreview();
 }
+
+function renderSendTargets(query) {
+  const box = document.getElementById('sendcmd_targets');
+  const q = (query || '').trim().toLowerCase();
+  const rows = sendCmdTargets.filter(t => !q || (t.name || '').toLowerCase().includes(q) || t.iccid.includes(q) || (t.imei || '').includes(q));
+  box.innerHTML = sendCmdTargets.length
+    ? (rows.length
+        ? rows.map(t => `
+            <label class="cmd-target">
+              <input type="checkbox" class="sendcmd-tgt" data-iccid="${esc(t.iccid)}"${sendCmdSelected.has(t.iccid) ? ' checked' : ''}>
+              <span class="nm">${t.name ? esc(t.name) : `Unnamed (ICCID ${esc(t.iccid)})`}</span>
+            </label>`).join('')
+        : '<span style="color:var(--muted);font-size:13px">No trackers match that filter.</span>')
+    : '<span style="color:var(--muted);font-size:13px">No SIMs with a known ICCID yet. They appear here once 1NCE reports activity.</span>';
+  box.querySelectorAll('.sendcmd-tgt').forEach(cb => cb.addEventListener('change', () => {
+    if (cb.checked) sendCmdSelected.add(cb.dataset.iccid); else sendCmdSelected.delete(cb.dataset.iccid);
+    updateSendCount();
+    renderSendPreview();
+  }));
+  updateSendCount();
+}
+function updateSendCount() {
+  const el = document.getElementById('sendcmd_count');
+  if (el) el.textContent = sendCmdSelected.size ? `· ${sendCmdSelected.size} selected` : '';
+}
+document.getElementById('sendcmd_filter').addEventListener('input', e => renderSendTargets(e.target.value));
+document.getElementById('sendcmd_select_all').addEventListener('click', () => {
+  const visible = [...document.querySelectorAll('.sendcmd-tgt')];
+  const allOn = visible.every(cb => sendCmdSelected.has(cb.dataset.iccid));
+  visible.forEach(cb => { if (allOn) sendCmdSelected.delete(cb.dataset.iccid); else sendCmdSelected.add(cb.dataset.iccid); });
+  renderSendTargets(document.getElementById('sendcmd_filter').value);
+  renderSendPreview();
+});
 
 async function loadPresets() {
   const wrap = document.getElementById('sendcmd_presets');
@@ -3772,7 +3794,8 @@ async function loadPresets() {
 }
 
 function selectedIccids() {
-  return [...document.querySelectorAll('.sendcmd-tgt:checked')].map(cb => cb.dataset.iccid);
+  // Read from the persistent set so a filtered-out (hidden) selection still counts.
+  return [...sendCmdSelected];
 }
 
 function validateAtClient(payload) {
