@@ -8,25 +8,46 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#f4f6f9;--panel:#fff;--border:#dde2ea;--text:#1a2030;--muted:#6b7a95;
-  --accent:#2563eb;--accent-bg:#eff6ff;--danger:#dc2626;--success:#16a34a;
-  --warn:#d97706;--radius:8px;--font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --bg:#f4f6f9;--panel:#fff;--panel-2:#f6f8fb;--border:#dde2ea;--text:#1a2030;--muted:#6b7a95;--faint:#8a97ad;
+  --accent:#2563eb;--accent-bg:#eff6ff;--accent-soft:#eff6ff;--danger:#dc2626;--success:#16a34a;
+  --warn:#d97706;
+  --online:#15a34a;--online-soft:#e7f6ed;--late:#c97a06;--late-soft:#fbf1e0;
+  --overdue:#dc2626;--overdue-soft:#fbe9e9;--idle:#7c8aa3;
+  --radius:8px;--r-sm:6px;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:ui-monospace,'SF Mono','Cascadia Code','Fira Code',monospace;
+  --shadow:0 1px 2px rgba(18,26,44,.04),0 2px 8px rgba(18,26,44,.05);
+}
+:root[data-theme="dark"]{
+  --bg:#0e131d;--panel:#161d2b;--panel-2:#1b2333;--border:#263145;--text:#e6ebf4;--muted:#93a1bb;--faint:#67748d;
+  --accent:#4b8bf5;--accent-bg:#1b2942;--accent-soft:#1b2942;--danger:#f26d6d;--success:#3ecf7e;--warn:#f2a93b;
+  --online:#3ecf7e;--online-soft:#12291e;--late:#f2a93b;--late-soft:#2c220f;
+  --overdue:#f26d6d;--overdue-soft:#2c1618;--idle:#6b7891;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 2px 10px rgba(0,0,0,.25);
 }
 body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
-header{background:var(--panel);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;gap:16px;height:56px}
-header h1{font-size:17px;font-weight:700}
-header .subtitle{color:var(--muted);font-size:13px}
-.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 56px)}
-nav{background:var(--panel);border-right:1px solid var(--border);padding:16px 0;position:sticky;top:0;height:calc(100vh - 56px);overflow-y:auto}
-nav .nav-section{padding:4px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:16px;margin-bottom:4px}
-nav .nav-section:first-child{margin-top:0}
-nav a{display:block;padding:6px 16px;color:var(--text);text-decoration:none;border-radius:6px;margin:1px 8px;font-size:13px;transition:background .1s;line-height:1.3}
-nav a:hover{background:var(--bg)}
-nav a.active{background:var(--accent-bg);color:var(--accent);font-weight:600}
-nav a .nav-cmd{display:block;font-family:'SF Mono','Fira Code',monospace;font-size:10px;font-weight:700;color:var(--accent);opacity:.7;letter-spacing:.03em}
-nav a.active .nav-cmd{opacity:1}
-nav a .nav-lbl{display:block;font-size:12px}
-main{padding:24px 32px;min-width:0}
+header{background:var(--panel);border-bottom:1px solid var(--border);padding:0 18px;display:flex;align-items:center;gap:10px;height:54px;position:sticky;top:0;z-index:30}
+header h1{font-size:15px;font-weight:700;white-space:nowrap;letter-spacing:-.01em}
+header .subtitle{color:var(--faint);font-size:12px;white-space:nowrap}
+header .brand-dot{width:9px;height:9px;border-radius:50%;background:var(--online);box-shadow:0 0 0 3px var(--online-soft);flex-shrink:0}
+.top-btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);border-radius:var(--r-sm);font-size:13px;font-weight:500;cursor:pointer}
+.top-btn:hover{border-color:var(--accent)}
+/* Primary nav = top-nav buttons in the header */
+.topnav{display:flex;align-items:center;gap:2px;margin-left:4px}
+.topnav a{display:inline-flex;align-items:center;padding:8px 12px;color:var(--muted);text-decoration:none;border-radius:var(--r-sm);font-size:13.5px;font-weight:600;position:relative;line-height:1.2;white-space:nowrap}
+.topnav a:hover{color:var(--text);background:var(--panel-2)}
+.topnav a.active{color:var(--accent)}
+.topnav a.active::after{content:'';position:absolute;left:12px;right:12px;bottom:-8px;height:2px;background:var(--accent);border-radius:2px}
+.topnav a .nav-lbl{display:block}
+/* Config settings sub-nav (lives inside the Config Editor section) */
+.config-subnav{display:flex;gap:3px;overflow-x:auto;padding-bottom:2px;margin-bottom:16px;border-bottom:1px solid var(--border);scrollbar-width:thin}
+.config-subnav a{flex:0 0 auto;display:block;padding:8px 12px;color:var(--muted);text-decoration:none;font-size:12.5px;font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;line-height:1.3}
+.config-subnav a:hover{color:var(--text)}
+.config-subnav a.active{color:var(--accent);border-bottom-color:var(--accent)}
+.config-subnav a .nav-cmd{display:none}
+.config-subnav a .nav-lbl{display:block}
+.layout{min-height:calc(100vh - 54px)}
+main{padding:22px 26px;min-width:0;max-width:1200px;margin:0 auto}
 .section{display:none}.section.active{display:block}
 .section-title{font-size:20px;font-weight:700;margin-bottom:4px}
 .section-desc{color:var(--muted);font-size:13px;margin-bottom:20px}
@@ -45,6 +66,21 @@ main{padding:24px 32px;min-width:0}
 .sim-primary{font-weight:600;display:block}
 .sim-secondary{font-size:11px;color:var(--muted);display:block;margin-top:2px}
 .sim-volume{white-space:nowrap}
+.sim-card-hd{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700}
+.sim-card-sub{font-size:12px;font-weight:500;color:var(--faint);margin-left:6px}
+.tbl th.col-r,.tbl td.col-r{text-align:right}
+.sim-pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.sim-pill .pd{width:6px;height:6px;border-radius:50%;background:currentColor}
+.sim-pill.ok{background:var(--online-soft);color:var(--online)}
+.sim-pill.warn{background:var(--late-soft);color:var(--late)}
+.sim-pill.bad{background:var(--overdue-soft);color:var(--overdue)}
+.sim-pill.idle{background:var(--panel-2);color:var(--muted)}
+.sim-pill.net{background:var(--accent-soft);color:var(--accent)}
+.sim-stripe-cell{display:flex;align-items:center;gap:9px}
+.sim-stripe{width:3px;height:30px;border-radius:2px;background:var(--idle);flex-shrink:0}
+.sim-stripe.ok{background:var(--online)}.sim-stripe.warn{background:var(--late)}.sim-stripe.bad{background:var(--overdue)}
+.sim-overview-row{cursor:pointer}
+.sim-spark{display:block}
 .sim-setup{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
 .sim-setup code{word-break:break-all}
 .json-view{background:#111827;color:#d1d5db;border-radius:8px;padding:14px;white-space:pre-wrap;word-break:break-word;font:12px/1.55 'SF Mono','Fira Code',monospace;max-height:52vh;overflow:auto}
@@ -69,13 +105,18 @@ main{padding:24px 32px;min-width:0}
 .nav-overlay{display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.3)}
 .nav-overlay.open{display:block}
 /* ── Responsive ── */
-@media(max-width:768px){
-  .nav-toggle{display:flex}
-  header .subtitle{display:none}
-  .layout{grid-template-columns:1fr}
-  nav{position:fixed;top:56px;left:0;width:240px;height:calc(100vh - 56px);transform:translateX(-100%);transition:transform .2s ease;z-index:100;box-shadow:4px 0 16px rgba(0,0,0,.15)}
-  nav.nav-open{transform:translateX(0)}
-  main{padding:16px}
+@media(max-width:820px){
+  .nav-toggle{display:flex;order:-1}
+  header .subtitle,header h1{display:none}
+  /* Top nav collapses into a dropdown from the hamburger */
+  #sidebar.topnav{position:fixed;top:54px;left:0;right:0;flex-direction:column;gap:0;margin:0;background:var(--panel);
+    border-bottom:1px solid var(--border);padding:6px;box-shadow:var(--shadow);z-index:100;transform:translateY(-120%);
+    transition:transform .2s ease;max-height:calc(100vh - 54px);overflow-y:auto}
+  #sidebar.topnav.nav-open{transform:translateY(0)}
+  .topnav a{padding:11px 13px}
+  .topnav a.active::after{display:none}
+  .topnav a.active{background:var(--accent-soft);border-radius:var(--r-sm)}
+  main{padding:16px 14px}
   .cards-grid,.sect-col-grid,.gen-grid,.monitor-grid{grid-template-columns:1fr}
   .sim-setup{flex-direction:column}
   .fg.two,.fg.three,.fg.four{grid-template-columns:1fr}
@@ -193,18 +234,19 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 .badge-first{background:#f3e8ff;color:#7c3aed}
 .badge-warn{background:#fef3c7;color:#92400e}
 .badge-info{background:#dbeafe;color:#1d4ed8}
-.workspace-context{background:linear-gradient(135deg,#172554,#1e3a8a);color:#fff;border-radius:12px;padding:18px 20px;margin-bottom:18px;display:grid;grid-template-columns:minmax(240px,1fr) auto;gap:16px;align-items:center}
-.editing-context{display:none;position:sticky;top:8px;z-index:80;box-shadow:0 8px 28px rgba(15,23,42,.18)}
-.editing-context.visible{display:grid}
-.workspace-context .eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#bfdbfe;margin-bottom:4px}
-.workspace-context h2{font-size:18px;margin:0}
-.workspace-context p{font-size:12px;color:#dbeafe;margin-top:4px}
+/* Quiet, non-sticky config workspace header (replaces the old blue bar) */
+.editing-context{display:none;margin-bottom:16px}
+.editing-context.visible{display:block}
+.ec-head{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start;
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:14px 16px;margin-bottom:14px}
+.ec-id h2{font-size:16px;margin:0;font-weight:700;letter-spacing:-.01em}
+.ec-id p{font-size:12.5px;color:var(--faint);margin-top:3px}
 .workspace-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.workspace-actions .btn-outline{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.3)}
-.document-state{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:8px}
-.source-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.13);padding:3px 8px;border-radius:999px;font-size:11px}
-.dirty-dot{width:7px;height:7px;border-radius:50%;background:#86efac}
-.dirty-dot.dirty{background:#fbbf24}
+.document-state{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:9px}
+.source-chip{display:inline-flex;align-items:center;gap:5px;background:var(--panel-2);border:1px solid var(--border);color:var(--muted);padding:3px 9px;border-radius:999px;font-size:11px}
+.dirty-dot{width:7px;height:7px;border-radius:50%;background:var(--online)}
+.dirty-dot.dirty{background:var(--late)}
 .file-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}
 .file-row{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:7px;padding:9px 10px;background:var(--panel)}
 .file-row:hover{border-color:#93c5fd;background:var(--accent-bg)}
@@ -248,7 +290,6 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 .import-drop input[type=file]::file-selector-button:hover{border-color:#93c5fd;background:var(--accent-bg)}
 @media(max-width:768px){
   #monitor_summary .stat-row{grid-template-columns:repeat(2,1fr)}
-  .workspace-context{grid-template-columns:1fr}
   .workspace-actions{justify-content:flex-start}
   .primary-flow{grid-template-columns:1fr}
   .change-grid{grid-template-columns:1fr}
@@ -291,51 +332,58 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <header>
   <button class="nav-toggle" id="nav_toggle" aria-label="Menu"><span></span><span></span><span></span></button>
-  <h1>GL320MG Config Tool</h1>
-  <span class="subtitle">Queclink GL320MG &bull; OTA Configuration Generator</span>
-  <span style="margin-left:auto"><button class="btn btn-outline btn-sm" id="btn_logout">Sign out</button></span>
+  <span class="brand-dot"></span>
+  <h1>Tracker Fleet</h1>
+  <span class="subtitle">GL320MG &bull; 1NCE</span>
+  <nav id="sidebar" class="topnav">
+    <a href="#" data-section="monitor" class="active"><span class="nav-lbl">Dashboard</span></a>
+    <a href="#" data-section="simactivity"><span class="nav-lbl">SIM Activity</span></a>
+    <a href="#" data-section="output"><span class="nav-lbl">Config Editor</span></a>
+    <a href="#" data-section="changes"><span class="nav-lbl">Changes &amp; OTA</span></a>
+    <a href="#" data-section="devices"><span class="nav-lbl">Device Names</span></a>
+  </nav>
+  <span style="margin-left:auto;display:flex;gap:8px">
+    <button class="top-btn" id="btn_theme" type="button">◐ Theme</button>
+    <button class="btn btn-outline btn-sm" id="btn_logout">Sign out</button>
+  </span>
 </header>
 <div class="nav-overlay" id="nav_overlay"></div>
 <div class="layout">
-<nav id="sidebar">
-  <div class="nav-section">Dashboard</div>
-  <a href="#" data-section="monitor" class="active"><span class="nav-lbl">Tracker Activity</span></a>
-  <a href="#" data-section="simactivity"><span class="nav-lbl">SIM Activity</span></a>
-  <a href="#" data-section="output"><span class="nav-lbl">Configurations</span></a>
-  <a href="#" data-section="changes"><span class="nav-lbl">Changes &amp; OTA</span></a>
-  <a href="#" data-section="devices"><span class="nav-lbl">Device Names</span></a>
-  <div class="nav-section">Edit GL320MG config</div>
-  <a href="#" data-section="connectivity"><span class="nav-cmd">APN &amp; reporting server</span><span class="nav-lbl">Connectivity</span></a>
-  <a href="#" data-section="apnlist"><span class="nav-cmd">Fallback networks</span><span class="nav-lbl">APN List</span></a>
-  <a href="#" data-section="globalcfg"><span class="nav-cmd">Power, sleep &amp; behavior</span><span class="nav-lbl">Device Settings</span></a>
-  <a href="#" data-section="simpin"><span class="nav-cmd">AT+GTSIM / GTPIN</span><span class="nav-lbl">SIM &amp; PIN</span></a>
-  <a href="#" data-section="reporting"><span class="nav-cmd">Timing &amp; frequency</span><span class="nav-lbl">Position Reports</span></a>
-  <a href="#" data-section="motion"><span class="nav-cmd">Movement &amp; stationary</span><span class="nav-lbl">Motion Detection</span></a>
-  <a href="#" data-section="geofences"><span class="nav-cmd">AT+GTGEO</span><span class="nav-lbl">Geofences</span></a>
-  <a href="#" data-section="alarms"><span class="nav-cmd">Speed &amp; temperature</span><span class="nav-lbl">Alarms</span></a>
-  <a href="#" data-section="harsh"><span class="nav-cmd">Acceleration &amp; braking</span><span class="nav-lbl">Driving Events</span></a>
-  <a href="#" data-section="behaviour"><span class="nav-cmd">AT+GTDOG / GTFKS / GTOWH</span><span class="nav-lbl">Watchdog, Keys &amp; Hours</span></a>
-  <a href="#" data-section="comms"><span class="nav-cmd">SMS, alerts &amp; updates</span><span class="nav-lbl">Communications &amp; OTA</span></a>
-  <a href="#" data-section="advanced"><span class="nav-cmd">Less common options</span><span class="nav-lbl">Advanced</span></a>
-</nav>
 <main>
 
-<div class="workspace-context editing-context" id="editing_context">
-  <div>
-    <div class="eyebrow">Currently editing</div>
-    <h2 id="document_title">New GL320MG configuration</h2>
-    <p id="document_summary">Using the tool defaults. Choose a tracker or load an existing file to begin.</p>
-    <div class="document-state">
-      <span class="source-chip"><span class="dirty-dot" id="dirty_dot"></span><span id="dirty_label">Ready</span></span>
-      <span class="source-chip" id="target_label">Target: not selected</span>
-      <span class="source-chip" id="source_label">Source: defaults</span>
-      <span class="source-chip" id="preserved_label" style="display:none"></span>
+<div class="editing-context" id="editing_context">
+  <div class="ec-head">
+    <div class="ec-id">
+      <h2 id="document_title">New GL320MG configuration</h2>
+      <p id="document_summary">Using the tool defaults. Choose a tracker or load an existing file to begin.</p>
+      <div class="document-state">
+        <span class="source-chip"><span class="dirty-dot" id="dirty_dot"></span><span id="dirty_label">Ready</span></span>
+        <span class="source-chip" id="target_label">Target: not selected</span>
+        <span class="source-chip" id="source_label">Source: defaults</span>
+        <span class="source-chip" id="preserved_label" style="display:none"></span>
+      </div>
+    </div>
+    <div class="workspace-actions">
+      <button class="btn btn-outline btn-sm" id="btn_context_home">Configuration home</button>
+      <button class="btn btn-primary btn-sm" id="btn_context_review">Review &amp; queue</button>
     </div>
   </div>
-  <div class="workspace-actions">
-    <button class="btn btn-outline btn-sm" id="btn_context_home">Configuration home</button>
-    <button class="btn btn-primary btn-sm" id="btn_context_review">Review &amp; queue</button>
-  </div>
+  <!-- Config settings sub-nav (was the left-sidebar 'Edit GL320MG config' group) -->
+  <nav class="config-subnav" id="config_subnav">
+    <a href="#" data-section="output"><span class="nav-lbl">Overview</span></a>
+    <a href="#" data-section="connectivity"><span class="nav-cmd">APN &amp; reporting server</span><span class="nav-lbl">Connectivity</span></a>
+    <a href="#" data-section="apnlist"><span class="nav-cmd">Fallback networks</span><span class="nav-lbl">APN List</span></a>
+    <a href="#" data-section="globalcfg"><span class="nav-cmd">Power, sleep &amp; behavior</span><span class="nav-lbl">Device Settings</span></a>
+    <a href="#" data-section="simpin"><span class="nav-cmd">AT+GTSIM / GTPIN</span><span class="nav-lbl">SIM &amp; PIN</span></a>
+    <a href="#" data-section="reporting"><span class="nav-cmd">Timing &amp; frequency</span><span class="nav-lbl">Position Reports</span></a>
+    <a href="#" data-section="motion"><span class="nav-cmd">Movement &amp; stationary</span><span class="nav-lbl">Motion Detection</span></a>
+    <a href="#" data-section="geofences"><span class="nav-cmd">AT+GTGEO</span><span class="nav-lbl">Geofences</span></a>
+    <a href="#" data-section="alarms"><span class="nav-cmd">Speed &amp; temperature</span><span class="nav-lbl">Alarms</span></a>
+    <a href="#" data-section="harsh"><span class="nav-cmd">Acceleration &amp; braking</span><span class="nav-lbl">Driving Events</span></a>
+    <a href="#" data-section="behaviour"><span class="nav-cmd">AT+GTDOG / GTFKS / GTOWH</span><span class="nav-lbl">Watchdog, Keys &amp; Hours</span></a>
+    <a href="#" data-section="comms"><span class="nav-cmd">SMS, alerts &amp; updates</span><span class="nav-lbl">Communications &amp; OTA</span></a>
+    <a href="#" data-section="advanced"><span class="nav-cmd">Less common options</span><span class="nav-lbl">Advanced</span></a>
+  </nav>
 </div>
 
 <!-- ── CONNECTIVITY ── -->
@@ -1130,10 +1178,23 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     <span style="font-size:12px;color:var(--muted);margin-left:auto;padding-bottom:5px"><span class="ref-dot" id="sim_ref_dot"></span><span id="sim_ref_label">Loading…</span></span>
   </div>
 
-  <div class="card" style="padding:0;overflow:hidden">
+  <!-- Per-SIM overview: one row per SIM, its live connectivity + 24h data -->
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+    <div class="sim-card-hd">Per-SIM overview <span id="sim_overview_count" class="sim-card-sub"></span></div>
     <div style="overflow-x:auto">
       <table class="tbl">
-        <thead><tr><th>Device / SIM</th><th>Time</th><th>Type</th><th>Activity</th><th>Network</th><th>Usage / Cost</th><th></th></tr></thead>
+        <thead><tr><th>Device / SIM</th><th>Status</th><th>Network</th><th>Last seen</th><th class="col-r">Data · 24h</th><th>Trend</th></tr></thead>
+        <tbody id="sim_overview_tbody"><tr><td colspan="6" style="text-align:center;padding:28px;color:var(--muted)">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Event stream: individual records, newest first -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="sim-card-hd">Event stream <span class="sim-card-sub">all records, newest first</span></div>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr><th>Device / SIM</th><th>Time</th><th>Type</th><th>Activity</th><th>Network</th><th>Usage</th><th></th></tr></thead>
         <tbody id="sim_tbody"><tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr></tbody>
       </table>
     </div>
@@ -1344,18 +1405,46 @@ document.getElementById('nav_toggle').addEventListener('click', () => {
 });
 navOverlay.addEventListener('click', closeNav);
 
+// Theme: light by default, remembered across sessions; toggle flips light/dark.
+(function initTheme() {
+  const saved = localStorage.getItem('tracker_theme');
+  document.documentElement.setAttribute('data-theme', saved === 'dark' ? 'dark' : 'light');
+})();
+document.getElementById('btn_theme').addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme') || 'light';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('tracker_theme', next);
+});
+
 const CONFIG_SECTIONS = new Set([
   'output', 'changes', 'connectivity', 'apnlist', 'globalcfg', 'simpin', 'reporting',
+  'motion', 'geofences', 'alarms', 'harsh', 'behaviour', 'comms', 'advanced',
+]);
+
+// Config settings sub-sections that live under the "Config Editor" top-nav item.
+// (changes/output are their own destinations and highlight themselves.)
+const CONFIG_SUBNAV_SECTIONS = new Set([
+  'output', 'connectivity', 'apnlist', 'globalcfg', 'simpin', 'reporting',
   'motion', 'geofences', 'alarms', 'harsh', 'behaviour', 'comms', 'advanced',
 ]);
 
 function showSection(target, options = {}) {
   const section = document.getElementById('sect-' + target);
   if (!section) return;
-  navLinks.forEach(link => link.classList.toggle('active', link.dataset.section === target));
+  navLinks.forEach(link => {
+    const ds = link.dataset.section;
+    // Exact match highlights the link. Additionally, keep the top-nav
+    // "Config Editor" (output) lit for every settings sub-section so the
+    // primary nav still shows where you are while a sub-page is open.
+    const inTopNav = link.closest('#sidebar');
+    const active = ds === target ||
+      (inTopNav && ds === 'output' && CONFIG_SUBNAV_SECTIONS.has(target));
+    link.classList.toggle('active', active);
+  });
   sections.forEach(item => item.classList.remove('active'));
   section.classList.add('active');
-  document.getElementById('editing_context').classList.toggle('visible', CONFIG_SECTIONS.has(target));
+  document.getElementById('editing_context').classList.toggle('visible', CONFIG_SUBNAV_SECTIONS.has(target));
   closeNav();
   if (target === 'monitor') loadMonitor();
   if (target === 'simactivity') loadSimActivity();
@@ -3267,6 +3356,113 @@ function renderSimActivity() {
   });
 }
 
+// Aggregate the flat record list into one row per SIM (keyed by IMEI, else
+// ICCID, else IMSI). Uses only fields already returned by /sim-activity — no
+// new endpoint. Latest record per SIM drives status/network/last-seen; 24h
+// usage records drive the data total and sparkline.
+function buildSimOverview(records) {
+  const now = Date.now();
+  const DAY = 24 * 60 * 60 * 1000;
+  const byKey = new Map();
+  for (const r of records) {
+    const key = r.imei || r.iccid || r.imsi;
+    if (!key) continue;
+    let s = byKey.get(key);
+    if (!s) {
+      s = { key, deviceName: r.deviceName || null, imei: r.imei || null,
+            iccid: r.iccid || null, imsi: r.imsi || null, latest: null,
+            latestMs: -1, data24h: 0, spark: [] };
+      byKey.set(key, s);
+    }
+    if (!s.deviceName && r.deviceName) s.deviceName = r.deviceName;
+    if (!s.imei && r.imei) s.imei = r.imei;
+    if (!s.iccid && r.iccid) s.iccid = r.iccid;
+    const t = simTimestamp(r);
+    const ms = t ? new Date(t).getTime() : NaN;
+    if (!Number.isNaN(ms) && ms > s.latestMs) { s.latestMs = ms; s.latest = r; }
+    if (r.recordKind === 'usage' && r.volumeTotal) {
+      const rt = r.receivedAt ? new Date(r.receivedAt).getTime() : ms;
+      if (!Number.isNaN(rt) && now - rt <= DAY) {
+        s.data24h += Number(r.volumeTotal) || 0;
+        s.spark.push({ ms: rt, v: Number(r.volumeTotal) || 0 });
+      }
+    }
+  }
+  return [...byKey.values()].sort((a, b) => b.latestMs - a.latestMs);
+}
+
+function simSparkline(points, color) {
+  if (points.length < 2) return '<span style="color:var(--faint);font-size:11px">—</span>';
+  const pts = [...points].sort((a, b) => a.ms - b.ms);
+  const W = 110, H = 26, P = 3;
+  const t0 = pts[0].ms, t1 = pts[pts.length - 1].ms;
+  const maxV = Math.max(...pts.map(p => p.v), 1);
+  const coords = pts.map(p => {
+    const x = P + ((p.ms - t0) / Math.max(1, t1 - t0)) * (W - 2 * P);
+    const y = H - P - (p.v / maxV) * (H - 2 * P);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const last = coords.split(' ').pop().split(',');
+  return `<svg class="sim-spark" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <polyline points="${coords}" fill="none" stroke="${color}" stroke-width="1.5"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="2" fill="${color}"/></svg>`;
+}
+
+function renderSimOverview() {
+  const tbody = document.getElementById('sim_overview_tbody');
+  const rows = buildSimOverview(simActivityRecords);
+  document.getElementById('sim_overview_count').textContent =
+    rows.length ? `${rows.length} SIM${rows.length === 1 ? '' : 's'}` : '';
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--muted)">${
+      simActivityRecords.length ? 'No SIMs identified in these records.' : 'No 1NCE records received yet.'}</td></tr>`;
+    return;
+  }
+  const now = Date.now();
+  tbody.innerHTML = '';
+  rows.forEach(s => {
+    const r = s.latest || {};
+    const ageMin = s.latestMs > 0 ? (now - s.latestMs) / 60000 : Infinity;
+    let state = 'idle', label = 'No data', pill = 'idle';
+    if (ageMin === Infinity) { state = 'idle'; label = 'No data'; pill = 'idle'; }
+    else if (ageMin <= 60)   { state = 'ok';   label = 'Online';  pill = 'ok'; }
+    else if (ageMin <= 1440) { state = 'warn'; label = `Idle ${Math.round(ageMin / 60)}h`; pill = 'warn'; }
+    else { state = 'bad'; label = `Offline ${Math.round(ageMin / 1440)}d`; pill = 'bad'; }
+
+    const name = s.deviceName
+      ? esc(s.deviceName)
+      : '<span style="color:var(--muted)">Unnamed device</span>';
+    const simId = [s.iccid ? `ICCID ${esc(s.iccid)}` : null, s.imei ? esc(s.imei) : null]
+      .filter(Boolean).join(' · ') || (s.imsi ? `IMSI ${esc(s.imsi)}` : 'No SIM id');
+    const net = [r.operatorName, r.countryName].filter(Boolean).join(' · ');
+    const rat = r.ratType ? esc(r.ratType) : '';
+    const netCell = net
+      ? `<span class="sim-pill net">${esc(net)}${rat ? ' · ' + rat : ''}</span>`
+      : '<span class="sim-pill idle">No session</span>';
+    const lastSeen = s.latestMs > 0
+      ? `<span class="sim-primary">${relTime(new Date(s.latestMs).toISOString())}</span>`
+      : '—';
+    const dataCell = s.data24h
+      ? `<span class="sim-primary">${formatSimNumber(s.data24h)}</span>`
+      : '<span style="color:var(--faint)">0</span>';
+    const sparkColor = state === 'warn' ? 'var(--late)' : state === 'bad' ? 'var(--idle)' : 'var(--accent)';
+
+    const tr = document.createElement('tr');
+    tr.className = 'sim-overview-row';
+    tr.title = r.id ? 'Open the latest complete 1NCE record' : '';
+    tr.innerHTML = `
+      <td><div class="sim-stripe-cell"><div class="sim-stripe ${state}"></div>
+        <div><span class="sim-primary">${name}</span><span class="sim-secondary mono">${simId}</span></div></div></td>
+      <td><span class="sim-pill ${pill}"><span class="pd"></span>${esc(label)}</span></td>
+      <td>${netCell}</td>
+      <td>${lastSeen}</td>
+      <td class="col-r">${dataCell}</td>
+      <td>${simSparkline(s.spark, sparkColor)}</td>`;
+    if (r.id) tr.addEventListener('click', () => openSimDetail(r.id));
+    tbody.appendChild(tr);
+  });
+}
+
 async function loadSimActivity() {
   const dot = document.getElementById('sim_ref_dot');
   const label = document.getElementById('sim_ref_label');
@@ -3281,6 +3477,7 @@ async function loadSimActivity() {
     const data = await response.json();
     simActivityRecords = data.records || [];
     renderSimSummary(data.summary || {});
+    renderSimOverview();
     renderSimActivity();
     const status = document.getElementById('sim_receiver_status');
     const hasDelivery = Boolean(data.summary?.lastReceivedAt);
@@ -3300,6 +3497,8 @@ async function loadSimActivity() {
     dot.className = 'ref-dot off';
     document.getElementById('sim_tbody').innerHTML =
       `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--danger)">Could not load SIM activity: ${esc(error.message)}</td></tr>`;
+    document.getElementById('sim_overview_tbody').innerHTML =
+      `<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--danger)">Could not load SIM activity: ${esc(error.message)}</td></tr>`;
   }
 }
 
