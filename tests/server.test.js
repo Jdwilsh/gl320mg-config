@@ -550,3 +550,54 @@ test('1NCE receiver stores MO SMS and MT delivery reports and resolves ICCID to 
   assert.equal(moBody.records[0].smsPartNumber, 1);
   assert.equal(moBody.records[0].smsTotalParts, 1);
 });
+
+test('send-command returns 503 when the 1NCE Management API is not configured', async t => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const res = await fetch(`${base}/send-command`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ iccids: ['8988000000000000001'], payload: 'AT+GTRTO=gl320m,1,,,,,,0001$' }),
+  });
+  assert.equal(res.status, 503);
+});
+
+test('command presets: only valid @Track commands are stored, and CRUD works', async t => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  // reject a non-AT payload
+  const bad = await fetch(`${base}/command-presets`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'evil', payload: 'rm -rf /' }),
+  });
+  assert.equal(bad.status, 400);
+
+  // accept a valid one
+  const good = await fetch(`${base}/command-presets`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ name: 'Report now', payload: 'AT+GTRTO=gl320m,1,,,,,,0001$' }),
+  });
+  assert.equal(good.status, 200);
+
+  const list = await (await fetch(`${base}/command-presets`)).json();
+  assert.equal(list.length, 1);
+  assert.equal(list[0].name, 'Report now');
+  assert.equal(list[0].payload, 'AT+GTRTO=gl320m,1,,,,,,0001$');
+
+  const del = await fetch(`${base}/command-presets/Report%20now`, { method: 'DELETE' });
+  assert.equal(del.status, 200);
+  const empty = await (await fetch(`${base}/command-presets`)).json();
+  assert.equal(empty.length, 0);
+});
+
+test('command-log reports configured=false and an empty list initially', async t => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const body = await (await fetch(`${base}/command-log`)).json();
+  assert.equal(body.configured, false);
+  assert.ok(Array.isArray(body.commands));
+});

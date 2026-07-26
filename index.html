@@ -81,6 +81,27 @@ main{padding:22px 26px;min-width:0;max-width:1200px;margin:0 auto}
 .sim-stripe.ok{background:var(--online)}.sim-stripe.warn{background:var(--late)}.sim-stripe.bad{background:var(--overdue)}
 .sim-overview-row{cursor:pointer}
 .sim-spark{display:block}
+/* Send Command */
+.cmd-lbl{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:7px}
+.cmd-targets{display:flex;flex-direction:column;gap:6px;max-height:230px;overflow:auto}
+.cmd-target{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 11px;cursor:pointer}
+.cmd-target:hover{border-color:var(--accent)}
+.cmd-target input{width:15px;height:15px;flex-shrink:0}
+.cmd-target .nm{font-weight:600;display:block;font-size:13px}
+.cmd-target .id{font-size:11px;color:var(--faint);display:block}
+.cmd-quick{display:flex;gap:7px;flex-wrap:wrap}
+.cmd-preset{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);border-radius:20px;cursor:pointer}
+.cmd-preset:hover{border-color:var(--accent)}
+.cmd-preset .del{color:var(--faint);font-weight:700;cursor:pointer;padding:0 2px}
+.cmd-preset .del:hover{color:var(--danger)}
+.cmd-input{width:100%;border:1px solid var(--border);background:var(--panel-2);color:var(--text);border-radius:var(--r-sm);padding:10px 12px;font-size:13px;resize:vertical;line-height:1.5}
+.cmd-input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+.cmd-preview{background:var(--panel-2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word;margin:0;max-height:220px;overflow:auto}
+.hint{font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.45}
+.vmsg{font-size:12.5px;padding:8px 11px;border-radius:var(--r-sm);margin-top:8px}
+.vmsg.ok{background:var(--online-soft);color:var(--online)}
+.vmsg.warn{background:var(--late-soft);color:var(--late)}
+.vmsg.bad{background:var(--overdue-soft);color:var(--overdue)}
 .sim-setup{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
 .sim-setup code{word-break:break-all}
 .json-view{background:#111827;color:#d1d5db;border-radius:8px;padding:14px;white-space:pre-wrap;word-break:break-word;font:12px/1.55 'SF Mono','Fira Code',monospace;max-height:52vh;overflow:auto}
@@ -338,6 +359,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <nav id="sidebar" class="topnav">
     <a href="#" data-section="monitor" class="active"><span class="nav-lbl">Dashboard</span></a>
     <a href="#" data-section="simactivity"><span class="nav-lbl">SIM Activity</span></a>
+    <a href="#" data-section="sendcmd"><span class="nav-lbl">Send Command</span></a>
     <a href="#" data-section="output"><span class="nav-lbl">Config Editor</span></a>
     <a href="#" data-section="changes"><span class="nav-lbl">Changes &amp; OTA</span></a>
     <a href="#" data-section="devices"><span class="nav-lbl">Device Names</span></a>
@@ -1201,6 +1223,59 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   </div>
 </div>
 
+<!-- ── SEND COMMAND ── -->
+<div class="section" id="sect-sendcmd">
+  <div class="section-title">Send Command</div>
+  <div class="section-desc">Send an AT command by SMS to one or more trackers via the 1NCE API. Use for reboots, one-off report requests, or applying a single setting live. Commands take effect immediately — there is no undo.</div>
+
+  <div id="sendcmd_notconfigured" class="note" style="display:none;border-color:var(--late);color:var(--late)">
+    The 1NCE Management API is not configured on the server. Add <code>one-nce-mgmt-auth.json</code> with your API user and password to enable sending.
+  </div>
+
+  <div class="cards-grid">
+    <!-- Compose -->
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">Compose</div>
+      <label class="cmd-lbl">Send to</label>
+      <div id="sendcmd_targets" class="cmd-targets"><span style="color:var(--muted);font-size:13px">Loading trackers…</span></div>
+
+      <label class="cmd-lbl" style="margin-top:14px">Quick commands</label>
+      <div id="sendcmd_presets" class="cmd-quick"><span style="color:var(--muted);font-size:12px">No saved presets yet.</span></div>
+
+      <label class="cmd-lbl" style="margin-top:14px">AT command payload</label>
+      <textarea id="sendcmd_payload" class="cmd-input mono" rows="2" placeholder="AT+GTRTO=gl320m,1,,,,,,0001$"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <input id="sendcmd_preset_name" placeholder="Save this as a preset named…" style="flex:1;min-width:180px">
+        <button class="btn btn-outline btn-sm" id="btn_save_preset">Save preset</button>
+      </div>
+      <p class="hint">The tool wraps this into the 1NCE SMS envelope (source address, DCS filled in server-side). You never paste credentials here.</p>
+    </div>
+
+    <!-- Preview + send -->
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">Preview &amp; send</div>
+      <div class="note" id="sendcmd_preview_note">Select trackers and enter a command to preview.</div>
+      <pre class="cmd-preview mono" id="sendcmd_preview">—</pre>
+      <div id="sendcmd_validation"></div>
+      <button class="btn btn-primary" id="btn_send_command" style="width:100%;margin-top:12px" disabled>Send command</button>
+      <div style="margin-top:8px"><span id="sendcmd_msg" class="status-msg"></span></div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="sim-card-hd">Recent commands <span class="sim-card-sub">delivery via 1NCE</span>
+      <button class="btn btn-outline btn-sm" id="btn_refresh_cmdlog" style="float:right;margin:-2px 0">Refresh</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr><th>When</th><th>Tracker</th><th>Command</th><th>Status</th></tr></thead>
+        <tbody id="cmdlog_tbody"><tr><td colspan="4" style="text-align:center;padding:28px;color:var(--muted)">No commands sent yet.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- ── DEVICES ── -->
 <div class="section" id="sect-devices">
   <div class="section-title">Device Names</div>
@@ -1448,6 +1523,7 @@ function showSection(target, options = {}) {
   closeNav();
   if (target === 'monitor') loadMonitor();
   if (target === 'simactivity') loadSimActivity();
+  if (target === 'sendcmd') loadSendCommand();
   if (target === 'devices') loadDevices();
   if (target === 'output') { loadDevices(); loadServerFiles(); renderValidation(); }
   if (target === 'changes') { snapshotActiveWorkspace(); renderChangesPage(); }
@@ -3275,12 +3351,28 @@ function formatSimNumber(value) {
   return Number(value).toLocaleString(undefined, { maximumFractionDigits: 3 });
 }
 
+// 1NCE reports usage volume in BYTES. Humanise to B/KB/MB/GB so the dashboard
+// shows "6.61 MB" rather than a bare "6609124". If a full session ever shows as
+// only a few bytes, 1NCE is pre-scaling and BYTES_ARE_MB below flips.
+const VOLUME_UNIT_IS_MB = false; // set true if 1NCE turns out to send MB, not bytes
+function formatVolume(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  let bytes = Number(value);
+  if (!Number.isFinite(bytes)) return '—';
+  if (VOLUME_UNIT_IS_MB) bytes *= 1024 * 1024;
+  if (bytes < 1024) return `${bytes.toLocaleString(undefined, { maximumFractionDigits: 0 })} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let u = -1, v = bytes;
+  do { v /= 1024; u++; } while (v >= 1024 && u < units.length - 1);
+  return `${v.toLocaleString(undefined, { maximumFractionDigits: v < 10 ? 2 : 1 })} ${units[u]}`;
+}
+
 function renderSimSummary(summary) {
   document.getElementById('sim_summary').innerHTML =
     `<div class="stat-row">
       <div class="stat-card stat-total"><div class="stat-num">${Number(summary.simsSeen || 0).toLocaleString()}</div><div class="stat-lbl">SIMs seen</div></div>
       <div class="stat-card stat-active"><div class="stat-num">${Number(summary.records24h || 0).toLocaleString()}</div><div class="stat-lbl">Records · 24h</div></div>
-      <div class="stat-card stat-late"><div class="stat-num">${formatSimNumber(summary.volume24h || 0)}</div><div class="stat-lbl">Volume · 24h</div></div>
+      <div class="stat-card stat-late"><div class="stat-num">${formatVolume(summary.volume24h || 0)}</div><div class="stat-lbl">Volume · 24h</div></div>
       <div class="stat-card stat-overdue"><div class="stat-num">${Number(summary.alerts24h || 0).toLocaleString()}</div><div class="stat-lbl">Alerts · 24h</div></div>
     </div>`;
 }
@@ -3332,9 +3424,9 @@ function renderSimActivity() {
       record.endpointIp,
     ].filter(Boolean).join(' · ');
     const volumes = [
-      record.volumeTotal !== null && `Total ${formatSimNumber(record.volumeTotal)}`,
-      record.volumeTx !== null && `TX ${formatSimNumber(record.volumeTx)}`,
-      record.volumeRx !== null && `RX ${formatSimNumber(record.volumeRx)}`,
+      record.volumeTotal !== null && `Total ${formatVolume(record.volumeTotal)}`,
+      record.volumeTx !== null && `TX ${formatVolume(record.volumeTx)}`,
+      record.volumeRx !== null && `RX ${formatVolume(record.volumeRx)}`,
     ].filter(Boolean);
     const cost = record.cost !== null
       ? `${formatSimNumber(record.cost)}${record.currencyCode ? ` ${esc(record.currencyCode)}` : ''}` : '';
@@ -3443,7 +3535,7 @@ function renderSimOverview() {
       ? `<span class="sim-primary">${relTime(new Date(s.latestMs).toISOString())}</span>`
       : '—';
     const dataCell = s.data24h
-      ? `<span class="sim-primary">${formatSimNumber(s.data24h)}</span>`
+      ? `<span class="sim-primary">${formatVolume(s.data24h)}</span>`
       : '<span style="color:var(--faint)">0</span>';
     const sparkColor = state === 'warn' ? 'var(--late)' : state === 'bad' ? 'var(--idle)' : 'var(--accent)';
 
@@ -3540,6 +3632,185 @@ document.getElementById('sim_auto_refresh').addEventListener('change', () => {
   }
 });
 document.getElementById('sim_auto_refresh').dispatchEvent(new Event('change'));
+
+
+// ── Send Command (SMS via 1NCE) ───────────────────────────────────────────────
+let sendCmdTargets = [];   // [{ iccid, imei, name }]
+let sendCmdConfigured = false;
+
+async function loadSendCommand() {
+  // Targets = SIMs we've seen an ICCID for, joined to device names.
+  try {
+    const res = await apiFetch(`${API}/sim-activity?limit=300`);
+    const data = res.ok ? await res.json() : { records: [] };
+    const byIccid = new Map();
+    for (const r of data.records || []) {
+      if (!r.iccid) continue;
+      if (!byIccid.has(r.iccid)) byIccid.set(r.iccid, { iccid: r.iccid, imei: r.imei || null, name: r.deviceName || null });
+      else {
+        const t = byIccid.get(r.iccid);
+        if (!t.name && r.deviceName) t.name = r.deviceName;
+        if (!t.imei && r.imei) t.imei = r.imei;
+      }
+    }
+    sendCmdTargets = [...byIccid.values()].sort((a, b) => (a.name || a.iccid).localeCompare(b.name || b.iccid));
+  } catch { sendCmdTargets = []; }
+
+  const box = document.getElementById('sendcmd_targets');
+  box.innerHTML = sendCmdTargets.length
+    ? sendCmdTargets.map((t, i) => `
+        <label class="cmd-target">
+          <input type="checkbox" class="sendcmd-tgt" data-iccid="${esc(t.iccid)}">
+          <span><span class="nm">${t.name ? esc(t.name) : 'Unnamed device'}</span>
+          <span class="id mono">ICCID ${esc(t.iccid)}${t.imei ? ` · ${esc(t.imei)}` : ''}</span></span>
+        </label>`).join('')
+    : '<span style="color:var(--muted);font-size:13px">No SIMs with a known ICCID yet. They appear here once 1NCE reports activity.</span>';
+  box.querySelectorAll('.sendcmd-tgt').forEach(cb => cb.addEventListener('change', renderSendPreview));
+
+  await loadPresets();
+  await loadCommandLog();
+  renderSendPreview();
+}
+
+async function loadPresets() {
+  const wrap = document.getElementById('sendcmd_presets');
+  try {
+    const presets = await (await apiFetch(`${API}/command-presets`)).json();
+    wrap.innerHTML = presets.length
+      ? presets.map(p => `<span class="cmd-preset" data-payload="${esc(p.payload)}" title="${esc(p.payload)}">${esc(p.name)}<span class="del" data-name="${esc(p.name)}">×</span></span>`).join('')
+      : '<span style="color:var(--muted);font-size:12px">No saved presets yet. Enter a command below and save it.</span>';
+    wrap.querySelectorAll('.cmd-preset').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.classList.contains('del')) return;
+        document.getElementById('sendcmd_payload').value = el.dataset.payload;
+        renderSendPreview();
+      });
+    });
+    wrap.querySelectorAll('.cmd-preset .del').forEach(d => {
+      d.addEventListener('click', async e => {
+        e.stopPropagation();
+        if (!confirm(`Delete preset "${d.dataset.name}"?`)) return;
+        await apiFetch(`${API}/command-presets/${encodeURIComponent(d.dataset.name)}`, { method: 'DELETE' });
+        loadPresets();
+      });
+    });
+  } catch { wrap.innerHTML = '<span style="color:var(--danger);font-size:12px">Could not load presets.</span>'; }
+}
+
+function selectedIccids() {
+  return [...document.querySelectorAll('.sendcmd-tgt:checked')].map(cb => cb.dataset.iccid);
+}
+
+function validateAtClient(payload) {
+  const v = String(payload || '').trim();
+  if (!v) return { ok: false, error: 'Enter a command.' };
+  if (!/^AT\+GT[A-Z0-9]+=/i.test(v)) return { ok: false, error: 'Must start with AT+GT…= (a Queclink @Track command).' };
+  if (!v.endsWith('$')) return { ok: false, error: 'Must end with the $ terminator.' };
+  return { ok: true, value: v };
+}
+
+function renderSendPreview() {
+  const payload = document.getElementById('sendcmd_payload').value;
+  const iccids = selectedIccids();
+  const note = document.getElementById('sendcmd_preview_note');
+  const pre = document.getElementById('sendcmd_preview');
+  const val = document.getElementById('sendcmd_validation');
+  const btn = document.getElementById('btn_send_command');
+  const check = validateAtClient(payload);
+
+  const targetLabel = iccids.length === 1 ? '1 tracker' : `${iccids.length} trackers`;
+  note.textContent = iccids.length
+    ? `This will be sent to ${targetLabel}. Review before sending — no undo.`
+    : 'Select at least one tracker.';
+  pre.textContent = check.ok
+    ? `POST /v2/sims/<ICCID>/sms\n{\n  "payload": "${check.value}",\n  "dcs": 0,\n  "source_address_type": { "id": 145 }\n}`
+    : '—';
+
+  const msgs = [];
+  if (!check.ok && payload.trim()) msgs.push(`<div class="vmsg bad">${esc(check.error)}</div>`);
+  if (check.ok) msgs.push('<div class="vmsg ok">✓ Command syntax valid (AT+GT…$)</div>');
+  if (iccids.length) msgs.push(`<div class="vmsg warn">! Sends live to ${targetLabel} — takes effect immediately</div>`);
+  val.innerHTML = msgs.join('');
+
+  btn.disabled = !(sendCmdConfigured && check.ok && iccids.length > 0);
+  btn.textContent = iccids.length ? `Send to ${targetLabel}` : 'Send command';
+}
+
+async function doSendCommand() {
+  const payload = document.getElementById('sendcmd_payload').value.trim();
+  const iccids = selectedIccids();
+  const check = validateAtClient(payload);
+  if (!check.ok || !iccids.length) return;
+  const names = iccids.map(ic => {
+    const t = sendCmdTargets.find(x => x.iccid === ic);
+    return t?.name || ic;
+  });
+  if (!confirm(`Send this command to ${iccids.length} tracker${iccids.length === 1 ? '' : 's'}?\n\n${check.value}\n\nTargets: ${names.join(', ')}\n\nThis takes effect immediately and cannot be undone.`)) return;
+
+  const btn = document.getElementById('btn_send_command');
+  const msg = document.getElementById('sendcmd_msg');
+  btn.disabled = true; msg.textContent = 'Sending…'; msg.className = 'status-msg';
+  try {
+    const res = await apiFetch(`${API}/send-command`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ iccids, payload: check.value }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    msg.textContent = `Sent to ${data.sent}/${data.total} tracker(s).`;
+    msg.className = data.sent === data.total ? 'status-msg ok' : 'status-msg warn';
+    loadCommandLog();
+  } catch (e) {
+    msg.textContent = `Error: ${e.message}`; msg.className = 'status-msg err';
+  } finally {
+    renderSendPreview();
+  }
+}
+
+async function loadCommandLog() {
+  try {
+    const data = await (await apiFetch(`${API}/command-log?limit=100`)).json();
+    sendCmdConfigured = Boolean(data.configured);
+    document.getElementById('sendcmd_notconfigured').style.display = sendCmdConfigured ? 'none' : 'block';
+    const tbody = document.getElementById('cmdlog_tbody');
+    const cmds = data.commands || [];
+    tbody.innerHTML = cmds.length
+      ? cmds.map(c => {
+          const cls = c.status === 'sent' ? 'ok' : 'bad';
+          const label = c.status === 'sent' ? 'Sent' : 'Failed';
+          const cmd = c.payload.length > 40 ? esc(c.payload.slice(0, 40)) + '…' : esc(c.payload);
+          return `<tr>
+            <td class="mono">${relTime(c.sentAt)}</td>
+            <td>${c.deviceName ? esc(c.deviceName) : `<span class="mono" style="color:var(--muted)">${esc(c.iccid || c.imei || '?')}</span>`}</td>
+            <td class="mono">${cmd}</td>
+            <td><span class="sim-pill ${cls}"><span class="pd"></span>${label}${c.httpStatus ? ` · ${c.httpStatus}` : ''}</span></td>
+          </tr>`;
+        }).join('')
+      : '<tr><td colspan="4" style="text-align:center;padding:28px;color:var(--muted)">No commands sent yet.</td></tr>';
+  } catch { /* leave as-is */ }
+}
+
+document.getElementById('sendcmd_payload').addEventListener('input', renderSendPreview);
+document.getElementById('btn_send_command').addEventListener('click', doSendCommand);
+document.getElementById('btn_refresh_cmdlog').addEventListener('click', loadCommandLog);
+document.getElementById('btn_save_preset').addEventListener('click', async () => {
+  const name = document.getElementById('sendcmd_preset_name').value.trim();
+  const payload = document.getElementById('sendcmd_payload').value.trim();
+  const msg = document.getElementById('sendcmd_msg');
+  if (!name) { msg.textContent = 'Enter a name for the preset.'; msg.className = 'status-msg warn'; return; }
+  const check = validateAtClient(payload);
+  if (!check.ok) { msg.textContent = check.error; msg.className = 'status-msg warn'; return; }
+  try {
+    const res = await apiFetch(`${API}/command-presets`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, payload: check.value }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'Save failed');
+    document.getElementById('sendcmd_preset_name').value = '';
+    msg.textContent = `Preset "${name}" saved.`; msg.className = 'status-msg ok';
+    loadPresets();
+  } catch (e) { msg.textContent = `Error: ${e.message}`; msg.className = 'status-msg err'; }
+});
 
 
 // ── Devices ───────────────────────────────────────────────────────────────────

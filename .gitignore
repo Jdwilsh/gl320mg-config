@@ -1,3 +1,4 @@
 api/tracker.db
 api/node_modules/
 one-nce-auth.json
+one-nce-mgmt-auth.json

@@ -6,6 +6,7 @@ const crypto  = require("crypto");
 const { db, initSchema } = require('./db');
 const { runMigration }   = require('./migrate');
 const { normalizeRecord, authHeaderFromConfig, basicAuthMatches } = require('./oneNce');
+const oneNceApi = require('./oneNceApi');
 const { toTrackerConfigText } = require('../config-utils');
 
 const app  = express();
@@ -198,6 +199,37 @@ const stmts = {
   linkIccidToImei: db.prepare(`
     UPDATE sim_activity SET imei = ? WHERE iccid = ? AND imei IS NULL
   `),
+
+  // SMS command send/history
+  insertSmsCommand: db.prepare(`
+    INSERT INTO sms_commands (iccid, imei, device_name, payload, status, http_status, response)
+    VALUES (@iccid, @imei, @deviceName, @payload, @status, @httpStatus, @response)
+  `),
+  smsCommandLog: db.prepare(`
+    SELECT id, iccid, imei, device_name AS deviceName, payload, status,
+           http_status AS httpStatus, response, sent_at AS sentAt
+    FROM sms_commands ORDER BY sent_at DESC, id DESC LIMIT ?
+  `),
+  // Resolve a tracker's most recent ICCID + name from SIM activity / devices
+  simIdentityForImei: db.prepare(`
+    SELECT s.iccid AS iccid, d.name AS deviceName
+    FROM sim_activity s LEFT JOIN devices d ON d.imei = s.imei
+    WHERE s.imei = ? AND s.iccid IS NOT NULL
+    ORDER BY COALESCE(s.event_timestamp, s.received_at) DESC, s.id DESC LIMIT 1
+  `),
+  deviceNameForIccid: db.prepare(`
+    SELECT d.name AS deviceName, s.imei AS imei
+    FROM sim_activity s LEFT JOIN devices d ON d.imei = s.imei
+    WHERE s.iccid = ? ORDER BY COALESCE(s.event_timestamp, s.received_at) DESC, s.id DESC LIMIT 1
+  `),
+
+  // Command presets
+  allCommandPresets: db.prepare('SELECT name, payload FROM command_presets ORDER BY name'),
+  upsertCommandPreset: db.prepare(`
+    INSERT OR REPLACE INTO command_presets (name, payload, updated_at)
+    VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+  `),
+  deleteCommandPreset: db.prepare('DELETE FROM command_presets WHERE name = ?'),
 };
 
 // ── Middleware ────────────────────────────────────────────────────────────────
@@ -430,6 +462,92 @@ app.get('/sim-activity/:id', (req, res) => {
   const row = stmts.simActivityRaw.get(id);
   if (!row) return res.status(404).json({ error: 'Not found' });
   res.json({ ...row, raw: JSON.parse(row.rawJson), rawJson: undefined });
+});
+
+// ── Send Command (SMS via 1NCE Management API) ────────────────────────────────
+// Sends an AT command by SMS to one or more trackers. Targets are given by
+// ICCID (a tracker's SIM) or by IMEI (resolved to the SIM's latest ICCID).
+// Credentials never reach the browser — this route holds them server-side.
+app.post('/send-command', async (req, res) => {
+  if (!oneNceApi.isConfigured()) {
+    return res.status(503).json({ error: '1NCE Management API is not configured on the server' });
+  }
+  const body = req.body || {};
+  const payload = typeof body.payload === 'string' ? body.payload.trim() : '';
+  const check = oneNceApi.validateAtCommand(payload);
+  if (!check.ok) return res.status(400).json({ error: check.error });
+
+  // Accept { iccids: [...] } and/or { imeis: [...] }; resolve everything to a
+  // unique set of ICCIDs, remembering which tracker each belongs to.
+  const targets = new Map(); // iccid → { imei, deviceName }
+  for (const raw of Array.isArray(body.iccids) ? body.iccids : []) {
+    const iccid = String(raw || '').trim();
+    if (!iccid) continue;
+    const meta = stmts.deviceNameForIccid.get(iccid) || {};
+    targets.set(iccid, { imei: meta.imei || null, deviceName: meta.deviceName || null });
+  }
+  for (const raw of Array.isArray(body.imeis) ? body.imeis : []) {
+    const imei = safeImei(String(raw || ''));
+    if (!imei) continue;
+    const id = stmts.simIdentityForImei.get(imei);
+    if (id?.iccid) targets.set(id.iccid, { imei, deviceName: id.deviceName || null });
+  }
+  if (targets.size === 0) {
+    return res.status(400).json({ error: 'No valid trackers to send to (need an ICCID, or an IMEI seen in SIM activity)' });
+  }
+  if (targets.size > 50) {
+    return res.status(413).json({ error: 'Refusing to send to more than 50 trackers at once' });
+  }
+
+  const results = [];
+  for (const [iccid, meta] of targets) {
+    try {
+      const out = await oneNceApi.sendSms(iccid, check.value);
+      const status = out.ok ? 'sent' : 'failed';
+      stmts.insertSmsCommand.run({
+        iccid, imei: meta.imei, deviceName: meta.deviceName, payload: check.value,
+        status, httpStatus: out.status, response: out.response == null ? null : JSON.stringify(out.response),
+      });
+      results.push({ iccid, deviceName: meta.deviceName, ok: out.ok, status: out.status });
+    } catch (err) {
+      stmts.insertSmsCommand.run({
+        iccid, imei: meta.imei, deviceName: meta.deviceName, payload: check.value,
+        status: 'failed', httpStatus: null, response: JSON.stringify({ error: err.message }),
+      });
+      results.push({ iccid, deviceName: meta.deviceName, ok: false, error: err.message });
+    }
+  }
+  const sent = results.filter(r => r.ok).length;
+  console.log(`[send-command] "${check.value}" → ${sent}/${results.length} trackers`);
+  res.json({ ok: sent > 0, sent, total: results.length, results });
+});
+
+app.get('/command-log', (req, res) => {
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
+  res.json({
+    configured: oneNceApi.isConfigured(),
+    commands: stmts.smsCommandLog.all(limit),
+  });
+});
+
+// Command presets (user-saved quick commands)
+app.get('/command-presets', (req, res) => {
+  res.json(stmts.allCommandPresets.all());
+});
+app.post('/command-presets', (req, res) => {
+  const name = String(req.body?.name || '').trim();
+  const payload = String(req.body?.payload || '').trim();
+  if (!name || name.length > 60) return res.status(400).json({ error: 'Preset name required (max 60 chars)' });
+  const check = oneNceApi.validateAtCommand(payload);
+  if (!check.ok) return res.status(400).json({ error: check.error });
+  stmts.upsertCommandPreset.run(name, check.value);
+  res.json({ ok: true });
+});
+app.delete('/command-presets/:name', (req, res) => {
+  const name = String(req.params.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'Invalid name' });
+  stmts.deleteCommandPreset.run(name);
+  res.json({ ok: true });
 });
 
 app.post("/devices", (req, res) => {

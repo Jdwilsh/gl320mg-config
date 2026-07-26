@@ -106,6 +106,29 @@ function initSchema() {
       key   TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    -- SMS commands sent to trackers via the 1NCE Management API. One row per
+    -- (command, tracker) so a fan-out to several trackers records each result.
+    CREATE TABLE IF NOT EXISTS sms_commands (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      iccid      TEXT,
+      imei       TEXT,
+      device_name TEXT,
+      payload    TEXT NOT NULL,
+      status     TEXT NOT NULL DEFAULT 'sent',   -- sent | failed
+      http_status INTEGER,
+      response   TEXT,
+      sent_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_sms_commands_sent ON sms_commands(sent_at DESC);
+
+    -- User-saved quick-command presets (name → AT payload). Seeded by the user
+    -- from commands they have verified; never auto-populated with guesses.
+    CREATE TABLE IF NOT EXISTS command_presets (
+      name       TEXT PRIMARY KEY,
+      payload    TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+    );
   `);
 
   // Additive upgrade for databases created before multiple tracker types were
