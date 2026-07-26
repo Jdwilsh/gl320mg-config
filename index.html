@@ -1377,14 +1377,14 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
   <div class="cards-grid">
 
     <div class="card" style="margin-bottom:0">
-      <div class="card-title">Load a complete file into the current tracker</div>
-      <div class="note"><strong>Safety rule:</strong> tool defaults alone cannot be deployed. Load a known tracker state, trusted template, or complete config file first.</div>
+      <div class="card-title">Baseline for this configuration</div>
+      <div class="note"><strong>Safety rule:</strong> a config can't be deployed from tool defaults alone. Load a known-good complete config or another config's file as the trusted baseline first.</div>
       <div id="server_file_list" class="file-list">
         <span style="color:var(--muted);font-size:13px">Loading files…</span>
       </div>
       <div class="import-drop" id="import_drop">
         <strong>Import from this Mac</strong>
-        <p>Drag a configuration file here, or use the native macOS file chooser. Plain-text files with any extension are accepted.</p>
+        <p>Drag a configuration file here, or use the native file chooser. Plain-text files with any extension are accepted.</p>
         <input type="file" id="file_import" aria-label="Choose configuration file from this Mac">
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
@@ -1393,13 +1393,13 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div style="margin-top:8px"><span id="load_msg" class="status-msg"></span></div>
     </div>
     <div class="card" style="margin-bottom:0">
-      <div class="card-title">Current tracker safety</div>
+      <div class="card-title">Safety &amp; validation</div>
       <div id="validation_list" class="validation-list">
-        <div class="validation-item">Choose a tracker and load its trusted baseline.</div>
+        <div class="validation-item">Select a configuration and load its baseline.</div>
       </div>
       <p class="hint" style="margin-top:9px">
         A checked but greyed-out sub-option is a stored value from the source file, not an active feature.
-        It remains inactive while its parent mode is Off and is preserved so importing alone does not alter the configuration.
+        It stays inactive while its parent mode is Off, preserved so loading a baseline alone never changes the configuration.
       </p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <button class="btn btn-outline" id="btn_generate">Regenerate &amp; validate</button>
@@ -1411,32 +1411,13 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title">Or start from a trusted template</div>
-    <div class="tpl-grid" id="template_cards">
-      <span style="color:var(--muted);font-size:13px;align-self:center">No templates saved yet.</span>
-    </div>
-    <hr class="div">
-    <div class="dev-form" style="margin-bottom:0">
-      <div class="f"><label>Save the current complete configuration as a template</label><input id="new_template_name" placeholder="e.g. Bag Tracker"></div>
-      <button class="btn btn-outline" id="btn_save_template">Save Complete Template</button>
-      <span id="template_msg" class="status-msg"></span>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">2. What do you need to change?</div>
-    <div class="change-grid">
-      <button class="change-card" data-open-config="connectivity"><strong>Connectivity or server</strong><span>APN, reporting host, ports, protocol, and heartbeat</span></button>
-      <button class="change-card" data-open-config="reporting"><strong>Position reporting</strong><span>How often and under what conditions the tracker reports</span></button>
-      <button class="change-card" data-open-config="motion"><strong>Motion and stationary behavior</strong><span>Movement detection, sleep behavior, and scheduled timing</span></button>
-      <button class="change-card" data-open-config="alarms"><strong>Alarms</strong><span>Speed and temperature thresholds and reporting behavior</span></button>
-      <button class="change-card" data-open-config="comms"><strong>SMS, alerts, or OTA</strong><span>Whitelists, Google links, alerts, and update checks</span></button>
-      <button class="change-card" data-open-config="globalcfg"><strong>Device settings</strong><span>Passwords, sleep, power, buffers, and general behavior</span></button>
-      <button class="change-card" data-open-config="geofences"><strong>Geofences</strong><span>Configure map-based zones and entry or exit events</span></button>
-      <button class="change-card" data-open-config="simpin"><strong>SIM and PIN</strong><span>SIM PIN handling and related device behavior</span></button>
-      <button class="change-card" data-open-config="advanced"><strong>Advanced settings</strong><span>Less common options; use only when you know the required change</span></button>
-    </div>
+  <!-- Hidden: templates retired (a saved config is the default now) but IDs kept
+       so the existing template JS never throws. -->
+  <div style="display:none">
+    <div class="tpl-grid" id="template_cards"></div>
+    <input id="new_template_name">
+    <button id="btn_save_template"></button>
+    <span id="template_msg"></span>
   </div>
 
   <div style="margin-top:4px">
@@ -1578,7 +1559,7 @@ navLinks.forEach(link => link.addEventListener('click', e => {
 }));
 document.getElementById('btn_context_home').addEventListener('click', () => showSection('output'));
 document.getElementById('btn_context_review').addEventListener('click', () => showSection('changes'));
-document.querySelectorAll('[data-open-config]').forEach(button => {
+document.querySelectorAll('[data-open-config]').forEach(button => { // retired shortcut grid; kept as a no-op guard
   button.addEventListener('click', () => showSection(button.dataset.openConfig));
 });
 // ── Auth ─────────────────────────────────────────────────────────────────────
