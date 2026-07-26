@@ -81,6 +81,25 @@ main{padding:22px 26px;min-width:0;max-width:1200px;margin:0 auto}
 .sim-stripe.ok{background:var(--online)}.sim-stripe.warn{background:var(--late)}.sim-stripe.bad{background:var(--overdue)}
 .sim-overview-row{cursor:pointer}
 .sim-spark{display:block}
+/* Activity feed */
+.feed-row{display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:start;padding:11px 16px;border-bottom:1px solid var(--border);cursor:pointer}
+.feed-row:last-child{border-bottom:none}
+.feed-row:hover{background:var(--panel-2)}
+.feed-ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:15px;flex-shrink:0;background:var(--panel-2)}
+.feed-ic.up{background:var(--online-soft)}
+.feed-ic.down{background:var(--panel-2)}
+.feed-ic.move{background:var(--accent-soft)}
+.feed-ic.alert{background:var(--overdue-soft)}
+.feed-ic.sms{background:var(--late-soft)}
+.feed-main{min-width:0}
+.feed-title{font-weight:600;font-size:13.5px;line-height:1.35}
+.feed-sub{font-size:12px;color:var(--muted);margin-top:2px;word-break:break-word}
+.feed-meta{text-align:right;font-size:11.5px;color:var(--faint);white-space:nowrap;line-height:1.5}
+.feed-meta .net{color:var(--muted)}
+@media(max-width:600px){
+  .feed-row{grid-template-columns:30px 1fr}
+  .feed-meta{grid-column:2;text-align:left}
+}
 /* Named configs (Config Editor) */
 .cfg-layout{display:grid;grid-template-columns:250px 1fr;gap:16px;align-items:start}
 .cfg-list{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:9px}
@@ -1180,15 +1199,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
   <div id="sim_summary" style="margin-bottom:16px"></div>
 
-  <div class="card sim-setup" id="sim_setup">
-    <div>
-      <div class="card-title">1NCE Data Streamer receiver</div>
-      <p style="font-size:13px;margin-bottom:5px">Create separate <strong>Usage Data</strong> and <strong>Events</strong> REST streams in the 1NCE portal using the same callback.</p>
-      <code id="sim_callback_url">https://1nce.jdwilsh.com/api/1nce/data-streamer</code>
-      <span class="sim-secondary">The receiver accepts 1NCE bulk deliveries, stores the original JSON, and safely ignores retransmitted record IDs.</span>
-    </div>
-    <span class="badge badge-muted" id="sim_receiver_status">Checking receiver…</span>
-  </div>
+  <!-- Receiver status kept for JS, not shown (it was just noise). -->
+  <span id="sim_receiver_status" style="display:none"></span><span id="sim_callback_url" style="display:none"></span>
 
   <div class="sim-filter-bar">
     <div class="f">
@@ -1225,15 +1237,10 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     </div>
   </div>
 
-  <!-- Event stream: individual records, newest first -->
+  <!-- Activity feed: plain-English one-liner per record, newest first -->
   <div class="card" style="padding:0;overflow:hidden">
-    <div class="sim-card-hd">Event stream <span class="sim-card-sub">all records, newest first</span></div>
-    <div style="overflow-x:auto">
-      <table class="tbl">
-        <thead><tr><th>Device / SIM</th><th>Time</th><th>Type</th><th>Activity</th><th>Network</th><th>Usage</th><th></th></tr></thead>
-        <tbody id="sim_tbody"><tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">Loading…</td></tr></tbody>
-      </table>
-    </div>
+    <div class="sim-card-hd">Activity <span class="sim-card-sub">newest first · tap a row for the full record</span></div>
+    <div id="sim_feed"><div style="text-align:center;padding:32px;color:var(--muted)">Loading…</div></div>
   </div>
 </div>
 
@@ -3451,65 +3458,67 @@ function simSearchText(record) {
   ].filter(Boolean).join(' ').toLowerCase();
 }
 
+// Translate a 1NCE record into a plain-English one-liner an operator can read
+// at a glance. Returns { icon, cls, title, sub }. The raw telecom detail (SGSN,
+// IMSI, PDP…) stays available in the click-through record.
+function humaniseEvent(r) {
+  const net = [r.operatorName, r.ratType].filter(Boolean).join(' · ');
+  if (r.recordKind === 'usage') {
+    const vol = r.volumeTotal ? formatVolume(r.volumeTotal) : null;
+    return { icon: '📊', cls: 'move', title: `Used data${vol ? ` — ${vol}` : ''}`, sub: net };
+  }
+  if (r.recordKind === 'sms_mo') return { icon: '✉️', cls: 'sms', title: 'Received an SMS', sub: r.smsPayload ? `“${r.smsPayload.slice(0, 80)}”` : net };
+  if (r.recordKind === 'sms_mt') return { icon: '✉️', cls: 'sms', title: `SMS ${r.smsStatus ? r.smsStatus.toLowerCase() : 'delivery report'}`, sub: net };
+  if (r.recordKind === 'sms')    return { icon: '✉️', cls: 'sms', title: 'SMS activity', sub: net };
+
+  // Events — map the raw 1NCE event type to plain language.
+  const t = (r.eventType || '').toLowerCase();
+  if (r.isAlert || /block|suspen|fail|quota used|deleted/.test(t))
+    return { icon: '⚠️', cls: 'alert', title: prettyEvent(r.eventType) || 'Alert', sub: net };
+  if (t.includes('create pdp')) return { icon: '🟢', cls: 'up',   title: 'Came online (data connected)', sub: net };
+  if (t.includes('delete pdp')) return { icon: '⚪', cls: 'down', title: 'Went offline (data disconnected)', sub: net };
+  if (t.includes('update pdp')) return { icon: '🔄', cls: 'move', title: 'Data session refreshed', sub: net };
+  if (t.includes('location'))   return { icon: '📶', cls: 'move', title: 'Moved to a new cell', sub: net };
+  if (t.includes('authentication')) return { icon: '🔑', cls: 'move', title: 'Network authentication', sub: net };
+  if (t.includes('activation') || t.includes('assigned')) return { icon: '🟢', cls: 'up', title: prettyEvent(r.eventType), sub: net };
+  return { icon: 'ℹ️', cls: '', title: prettyEvent(r.eventType) || 'Network event', sub: net };
+}
+
+function prettyEvent(type) {
+  if (!type) return '';
+  return type.replace(/\bpdp\b/gi, 'data').replace(/\bgprs\b/gi, 'cell')
+    .replace(/^./, c => c.toUpperCase());
+}
+
 function renderSimActivity() {
   const query = document.getElementById('sim_search').value.trim().toLowerCase();
   const records = query
     ? simActivityRecords.filter(record => simSearchText(record).includes(query))
     : simActivityRecords;
-  const tbody = document.getElementById('sim_tbody');
+  const feed = document.getElementById('sim_feed');
   if (!records.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">${
+    feed.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">${
       simActivityRecords.length ? 'No records match this search.' : 'No 1NCE records received yet.'
-    }</td></tr>`;
+    }</div>`;
     return;
   }
-
-  tbody.innerHTML = '';
+  feed.innerHTML = '';
   records.forEach(record => {
     const time = simTimestamp(record);
-    const device = record.deviceName
-      ? `<span class="sim-primary">${esc(record.deviceName)}</span>`
-      : '<span class="sim-primary" style="color:var(--muted)">Unnamed device</span>';
-    const simId = record.imei
-      ? `IMEI ${esc(record.imei)}`
-      : record.iccid ? `ICCID ${esc(record.iccid)}` : record.imsi ? `IMSI ${esc(record.imsi)}` : 'No SIM identifier';
-    const activity = record.description || simKindLabel(record);
-    const smsDetail = record.recordKind === 'sms_mo' && record.smsPayload
-      ? `<span class="sim-secondary">${esc(record.smsPayload.length > 90 ? `${record.smsPayload.slice(0, 90)}…` : record.smsPayload)}</span>`
-      : record.recordKind === 'sms_mt' && record.smsStatus
-        ? `<span class="sim-secondary">Delivery status: ${esc(record.smsStatus)}</span>` : '';
-    const severity = [
-      record.isAlert ? '<span class="badge badge-err" style="margin-top:4px">Alert</span>' : '',
-      record.eventSeverity ? `<span class="sim-secondary">Severity: ${esc(record.eventSeverity)}</span>` : '',
-    ].join('');
-    const networkPrimary = [record.operatorName, record.countryName].filter(Boolean).join(' · ') || '—';
-    const networkSecondary = [
-      record.apn && `APN ${record.apn}`,
-      record.ratType,
-      record.endpointIp,
-    ].filter(Boolean).join(' · ');
-    const volumes = [
-      record.volumeTotal !== null && `Total ${formatVolume(record.volumeTotal)}`,
-      record.volumeTx !== null && `TX ${formatVolume(record.volumeTx)}`,
-      record.volumeRx !== null && `RX ${formatVolume(record.volumeRx)}`,
-    ].filter(Boolean);
-    const cost = record.cost !== null
-      ? `${formatSimNumber(record.cost)}${record.currencyCode ? ` ${esc(record.currencyCode)}` : ''}` : '';
-
-    const tr = document.createElement('tr');
-    tr.className = 'sim-activity-row';
-    tr.dataset.recordId = record.id;
-    tr.title = 'Open the complete 1NCE record';
-    tr.innerHTML = `
-      <td>${device}<span class="sim-secondary mono">${simId}</span>${record.iccid && record.imei ? `<span class="sim-secondary mono">ICCID ${esc(record.iccid)}</span>` : ''}</td>
-      <td title="${esc(time)}">${time ? `<span class="sim-primary">${relTime(time)}</span><span class="sim-secondary">${new Date(time).toLocaleString()}</span>` : '—'}</td>
-      <td>${simKindBadge(record)}<span class="sim-secondary">${esc(simKindLabel(record))}</span></td>
-      <td><span class="sim-primary">${esc(activity)}</span>${severity}${smsDetail}</td>
-      <td><span class="sim-primary">${esc(networkPrimary)}</span>${networkSecondary ? `<span class="sim-secondary">${esc(networkSecondary)}</span>` : ''}</td>
-      <td class="sim-volume"><span class="sim-primary">${volumes.length ? esc(volumes.join(' · ')) : (cost || '—')}</span>${volumes.length && cost ? `<span class="sim-secondary">${cost}</span>` : ''}</td>
-      <td><button class="hist-toggle" type="button">Details</button></td>`;
-    tr.addEventListener('click', () => openSimDetail(record.id));
-    tbody.appendChild(tr);
+    const h = humaniseEvent(record);
+    const who = record.deviceName || (record.imei ? `IMEI ${record.imei}` : record.iccid ? `ICCID ${record.iccid}` : 'Unknown SIM');
+    const row = document.createElement('div');
+    row.className = 'feed-row';
+    row.title = 'Show the full 1NCE record';
+    row.innerHTML = `
+      <div class="feed-ic ${h.cls}">${h.icon}</div>
+      <div class="feed-main">
+        <div class="feed-title">${esc(who)} — ${esc(h.title)}</div>
+        ${h.sub ? `<div class="feed-sub">${esc(h.sub)}</div>` : ''}
+      </div>
+      <div class="feed-meta">${time ? esc(relTime(time)) : '—'}${h.sub && record.operatorName ? `<br><span class="net">${esc(record.operatorName)}</span>` : ''}</div>`;
+    row.addEventListener('click', () => openSimDetail(record.id));
+    feed.appendChild(row);
   });
 }
 
@@ -3652,8 +3661,8 @@ async function loadSimActivity() {
   } catch (error) {
     label.textContent = `Error: ${error.message}`;
     dot.className = 'ref-dot off';
-    document.getElementById('sim_tbody').innerHTML =
-      `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--danger)">Could not load SIM activity: ${esc(error.message)}</td></tr>`;
+    document.getElementById('sim_feed').innerHTML =
+      `<div style="text-align:center;padding:28px;color:var(--danger)">Could not load SIM activity: ${esc(error.message)}</div>`;
     document.getElementById('sim_overview_tbody').innerHTML =
       `<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--danger)">Could not load SIM activity: ${esc(error.message)}</td></tr>`;
   }
