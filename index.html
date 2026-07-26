@@ -81,6 +81,27 @@ main{padding:22px 26px;min-width:0;max-width:1200px;margin:0 auto}
 .sim-stripe.ok{background:var(--online)}.sim-stripe.warn{background:var(--late)}.sim-stripe.bad{background:var(--overdue)}
 .sim-overview-row{cursor:pointer}
 .sim-spark{display:block}
+/* Named configs (Config Editor) */
+.cfg-layout{display:grid;grid-template-columns:250px 1fr;gap:16px;align-items:start}
+.cfg-list{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:9px}
+.cfg-list-hd{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);padding:4px 8px 8px}
+.cfg-item{display:block;width:100%;text-align:left;border:1px solid transparent;background:none;font:inherit;color:var(--text);border-radius:var(--r-sm);padding:10px 11px;cursor:pointer;margin-bottom:3px}
+.cfg-item:hover{background:var(--panel-2)}
+.cfg-item.active{background:var(--accent-soft);border-color:var(--accent)}
+.cfg-item .ci-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cfg-item .ci-top b{font-size:13.5px;font-weight:600}
+.cfg-item.active .ci-top b{color:var(--accent)}
+.cfg-item .ci-count{font-size:11px;font-weight:600;color:var(--muted);background:var(--panel-2);border:1px solid var(--border);border-radius:20px;padding:1px 8px}
+.cfg-detail-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px}
+.cfg-detail-hd .cd-name{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.cfg-detail-hd .cd-sub{font-size:12.5px;color:var(--faint);margin-top:3px}
+.cfg-member{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border)}
+.cfg-member:last-child{border-bottom:none}
+.cfg-member .nm{font-weight:600;display:block;font-size:13px}
+.cfg-member .id{font-size:11px;color:var(--faint);display:block}
+.cfg-member>div:first-child{flex:1;min-width:0}
+.cfg-member .x{background:none;border:none;color:var(--faint);font:inherit;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0}
+.cfg-member .x:hover{color:var(--danger)}
 /* Send Command */
 .cmd-lbl{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:7px}
 .cmd-targets{display:flex;flex-direction:column;gap:6px;max-height:230px;overflow:auto}
@@ -1307,10 +1328,24 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <!-- ── OUTPUT ── -->
 <div class="section" id="sect-output">
-  <div class="section-title">Device Configurations</div>
-  <div class="section-desc">Choose a tracker by name. Each GL320MG keeps its own baseline and unsaved changes while you move between devices.</div>
+  <div class="section-title">Configurations</div>
+  <div class="section-desc">Build a configuration once, assign trackers to it, then deploy to the whole group. Edit its settings from the sub-nav above.</div>
 
-  <div class="card">
+  <div class="cfg-layout" id="config_sets_layout">
+    <aside class="cfg-list">
+      <div class="cfg-list-hd" style="display:flex;justify-content:space-between;align-items:center">Configurations
+        <button class="btn btn-outline btn-sm" id="btn_new_config" style="padding:2px 8px">+ New</button></div>
+      <div id="config_list"><span style="color:var(--muted);font-size:13px;padding:8px 11px;display:block">Loading…</span></div>
+    </aside>
+    <section class="cfg-detail" id="config_detail">
+      <div class="note">Select a configuration on the left, or create one, to begin. Its settings are edited from the sub-nav tabs above; changes apply to every tracker assigned to it.</div>
+    </section>
+  </div>
+
+  <!-- Legacy per-tracker workspace (kept available; config model is the primary flow) -->
+  <details style="margin-top:18px">
+    <summary style="cursor:pointer;font-size:13px;color:var(--muted);font-weight:600">Advanced: edit a single tracker directly</summary>
+  <div class="card" style="margin-top:12px">
     <div class="card-title">GL320MG trackers</div>
     <div class="device-tabs" id="device_tabs">
       <span style="color:var(--muted);font-size:13px">Loading trackers…</span>
@@ -1337,6 +1372,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
       <div style="margin-top:8px"><span id="device_msg" class="status-msg"></span></div>
     </div>
   </div>
+  </details>
 
   <div class="cards-grid">
 
@@ -1525,7 +1561,7 @@ function showSection(target, options = {}) {
   if (target === 'simactivity') loadSimActivity();
   if (target === 'sendcmd') loadSendCommand();
   if (target === 'devices') loadDevices();
-  if (target === 'output') { loadDevices(); loadServerFiles(); renderValidation(); }
+  if (target === 'output') { loadConfigList(); loadDevices(); loadServerFiles(); renderValidation(); }
   if (target === 'changes') { snapshotActiveWorkspace(); renderChangesPage(); }
   if (target === 'geofences') setTimeout(initGeoMap, 60);
   if (sectionBuilders?.[target]) setTimeout(() => renderCmdPreview(target), 0);
@@ -3351,15 +3387,17 @@ function formatSimNumber(value) {
   return Number(value).toLocaleString(undefined, { maximumFractionDigits: 3 });
 }
 
-// 1NCE reports usage volume in BYTES. Humanise to B/KB/MB/GB so the dashboard
-// shows "6.61 MB" rather than a bare "6609124". If a full session ever shows as
-// only a few bytes, 1NCE is pre-scaling and BYTES_ARE_MB below flips.
-const VOLUME_UNIT_IS_MB = false; // set true if 1NCE turns out to send MB, not bytes
+// 1NCE reports usage volume in KILOBYTES for these trackers (a GL320MG position
+// report is ~100-200 B, so a per-record value like 6.6 is KB, not bytes or MB).
+// Humanise to KB/MB/GB. If a raw sqlite check ever shows a different unit, change
+// VOLUME_UNIT to 'bytes' or 'MB' — the scaling below adapts.
+const VOLUME_UNIT = 'KB'; // 'bytes' | 'KB' | 'MB'
 function formatVolume(value) {
   if (value === null || value === undefined || value === '') return '—';
   let bytes = Number(value);
   if (!Number.isFinite(bytes)) return '—';
-  if (VOLUME_UNIT_IS_MB) bytes *= 1024 * 1024;
+  if (VOLUME_UNIT === 'KB') bytes *= 1024;
+  else if (VOLUME_UNIT === 'MB') bytes *= 1024 * 1024;
   if (bytes < 1024) return `${bytes.toLocaleString(undefined, { maximumFractionDigits: 0 })} B`;
   const units = ['KB', 'MB', 'GB', 'TB'];
   let u = -1, v = bytes;
@@ -3810,6 +3848,202 @@ document.getElementById('btn_save_preset').addEventListener('click', async () =>
     msg.textContent = `Preset "${name}" saved.`; msg.className = 'status-msg ok';
     loadPresets();
   } catch (e) { msg.textContent = `Error: ${e.message}`; msg.className = 'status-msg err'; }
+});
+
+
+// ── Named configs (Config Editor primary flow) ────────────────────────────────
+let configList = [];
+let activeConfigId = null;
+
+async function loadConfigList() {
+  try {
+    configList = await (await apiFetch(`${API}/config-sets`)).json();
+  } catch { configList = []; }
+  const box = document.getElementById('config_list');
+  box.innerHTML = configList.length
+    ? configList.map(c => `
+        <button class="cfg-item${c.id === activeConfigId ? ' active' : ''}" data-id="${c.id}">
+          <span class="ci-top"><b>${esc(c.name)}</b><span class="ci-count">${c.memberCount}</span></span>
+        </button>`).join('')
+    : '<span style="color:var(--muted);font-size:13px;padding:8px 11px;display:block">No configs yet. Create one to start.</span>';
+  box.querySelectorAll('.cfg-item').forEach(b =>
+    b.addEventListener('click', () => selectConfig(Number(b.dataset.id))));
+}
+
+async function selectConfig(id) {
+  try {
+    const cfg = await (await apiFetch(`${API}/config-sets/${id}`)).json();
+    activeConfigId = id;
+    // Point the shared settings engine at this config: clear the per-tracker
+    // target, load the config's baseline + saved field values into the form.
+    documentState.targetImei = '';
+    documentState.targetName = cfg.name;
+    if (cfg.sourceText) {
+      applyConfigText(cfg.sourceText, `Config: ${cfg.name}`);
+    } else {
+      documentState.sourceText = '';
+      documentState.preservedLines = [];
+      documentState.ignoredLines = [];
+      setDocumentSource('defaults — baseline required',
+        `No baseline loaded for "${cfg.name}" yet. Load a trusted template or complete file below before deploying.`, { trusted: false });
+    }
+    // Overlay any saved field values (settings edited previously for this config).
+    documentState.loading = true;
+    Object.entries(cfg.state || {}).forEach(([fid, val]) => setV(fid, val));
+    documentState.loading = false;
+    applyConditionals?.();
+    Object.keys(sectionBuilders || {}).forEach(renderCmdPreview);
+    renderValidation();
+    renderConfigDetail(cfg);
+    loadConfigList();
+  } catch (e) {
+    document.getElementById('config_detail').innerHTML = `<div class="note" style="color:var(--danger)">Could not load config: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderConfigDetail(cfg) {
+  const members = cfg.members || [];
+  const eligible = members.filter(m => m.configEnabled);
+  document.getElementById('config_detail').innerHTML = `
+    <div class="cfg-detail-hd">
+      <div><div class="cd-name">${esc(cfg.name)}</div>
+        <div class="cd-sub">${eligible.length} tracker${eligible.length === 1 ? '' : 's'} assigned · edit settings from the sub-nav above</div></div>
+      <div class="wsactions">
+        <button class="btn btn-outline btn-sm" id="btn_config_rename">Rename</button>
+        <button class="btn btn-outline btn-sm" id="btn_config_duplicate">Duplicate</button>
+        <button class="btn btn-outline btn-sm" id="btn_config_delete">Delete</button>
+        <button class="btn btn-outline btn-sm" id="btn_config_save">Save settings</button>
+        <button class="btn btn-primary btn-sm" id="btn_config_deploy">Deploy to ${eligible.length}</button>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="sim-card-hd" style="display:flex;justify-content:space-between;align-items:center">Trackers on this config
+        <button class="btn btn-outline btn-sm" id="btn_config_assign" style="margin:-2px 0">+ Assign</button></div>
+      <div id="config_members">${
+        members.length
+          ? members.map(m => `<div class="cfg-member">
+              <div><span class="nm">${m.deviceName ? esc(m.deviceName) : 'Unnamed'}</span><span class="id mono">${esc(m.imei)}${m.configEnabled ? '' : ' · not config-enabled'}</span></div>
+              <button class="x" data-imei="${esc(m.imei)}">Remove</button></div>`).join('')
+          : '<div class="cfg-member"><span style="color:var(--muted);font-size:13px">No trackers assigned yet — use “+ Assign”.</span></div>'
+      }</div>
+    </div>
+    <div style="margin-top:8px"><span id="config_msg" class="status-msg"></span></div>`;
+
+  document.getElementById('btn_config_save').addEventListener('click', () => saveActiveConfig());
+  document.getElementById('btn_config_deploy').addEventListener('click', () => deployActiveConfig());
+  document.getElementById('btn_config_rename').addEventListener('click', () => renameActiveConfig(cfg.name));
+  document.getElementById('btn_config_duplicate').addEventListener('click', () => duplicateActiveConfig());
+  document.getElementById('btn_config_delete').addEventListener('click', () => deleteActiveConfig(cfg.name));
+  document.getElementById('btn_config_assign').addEventListener('click', () => assignToConfig());
+  document.querySelectorAll('#config_members .x').forEach(b =>
+    b.addEventListener('click', () => removeMember(b.dataset.imei)));
+}
+
+async function saveActiveConfig() {
+  if (!activeConfigId) return;
+  try {
+    await apiFetch(`${API}/config-sets/${activeConfigId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: getConfigState(), sourceText: documentState.sourceText || null }),
+    });
+    documentState.dirty = false; updateDocumentState();
+    showMsg('config_msg', 'Settings saved to this config.', false);
+  } catch (e) { showMsg('config_msg', `Error: ${e.message}`, true); }
+}
+
+async function deployActiveConfig() {
+  if (!activeConfigId) return;
+  const validation = renderValidation();
+  if (validation.blocking.length) {
+    showMsg('config_msg', `Cannot deploy: ${validation.blocking[0]}`, true);
+    return;
+  }
+  const content = serializeConfig(true);
+  const cfg = configList.find(c => c.id === activeConfigId);
+  const count = cfg?.memberCount || 0;
+  if (!confirm(`Deploy this configuration to ${count} tracker${count === 1 ? '' : 's'}?\n\nThe same .ini will be queued for every assigned GL320MG. This takes effect when each tracker next checks in.`)) return;
+  try {
+    await saveActiveConfig();
+    const res = await apiFetch(`${API}/config-sets/${activeConfigId}/deploy`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, state: getConfigState() }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    showMsg('config_msg', `Queued for ${data.queued} tracker(s).`, false);
+  } catch (e) { showMsg('config_msg', `Error: ${e.message}`, true); }
+}
+
+async function renameActiveConfig(current) {
+  const name = prompt('Rename configuration:', current);
+  if (!name || name.trim() === current) return;
+  try {
+    const res = await apiFetch(`${API}/config-sets/${activeConfigId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.trim() }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'Rename failed');
+    selectConfig(activeConfigId);
+  } catch (e) { showMsg('config_msg', `Error: ${e.message}`, true); }
+}
+
+async function duplicateActiveConfig() {
+  try {
+    const res = await apiFetch(`${API}/config-sets/${activeConfigId}/duplicate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Duplicate failed');
+    await loadConfigList();
+    selectConfig(data.id);
+  } catch (e) { showMsg('config_msg', `Error: ${e.message}`, true); }
+}
+
+async function deleteActiveConfig(name) {
+  if (!confirm(`Delete configuration "${name}"? Trackers assigned to it become unassigned; their deployed configs are not changed.`)) return;
+  try {
+    await apiFetch(`${API}/config-sets/${activeConfigId}`, { method: 'DELETE' });
+    activeConfigId = null;
+    document.getElementById('config_detail').innerHTML = '<div class="note">Select a configuration on the left, or create one, to begin.</div>';
+    loadConfigList();
+  } catch (e) { showMsg('config_msg', `Error: ${e.message}`, true); }
+}
+
+async function assignToConfig() {
+  try {
+    const avail = await (await apiFetch(`${API}/config-sets-unassigned`)).json();
+    if (!avail.length) { showMsg('config_msg', 'No unassigned GL320MG trackers available.', true); return; }
+    const list = avail.map((d, i) => `${i + 1}. ${d.name || d.imei} (${d.imei})`).join('\n');
+    const pick = prompt(`Assign which tracker(s)? Enter numbers separated by commas:\n\n${list}`);
+    if (!pick) return;
+    const idxs = pick.split(',').map(s => parseInt(s.trim(), 10) - 1).filter(i => avail[i]);
+    const imeis = idxs.map(i => avail[i].imei);
+    if (!imeis.length) return;
+    await apiFetch(`${API}/config-sets/${activeConfigId}/members`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imeis }),
+    });
+    selectConfig(activeConfigId);
+  } catch (e) { showMsg('config_msg', `Error: ${e.message}`, true); }
+}
+
+async function removeMember(imei) {
+  try {
+    await apiFetch(`${API}/config-sets/${activeConfigId}/members/${encodeURIComponent(imei)}`, { method: 'DELETE' });
+    selectConfig(activeConfigId);
+  } catch (e) { showMsg('config_msg', `Error: ${e.message}`, true); }
+}
+
+document.getElementById('btn_new_config').addEventListener('click', async () => {
+  const name = prompt('Name for the new configuration:');
+  if (!name || !name.trim()) return;
+  try {
+    const res = await apiFetch(`${API}/config-sets`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.trim(), state: {} }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Create failed');
+    await loadConfigList();
+    selectConfig(data.id);
+  } catch (e) { alert(e.message); }
 });
 
 
