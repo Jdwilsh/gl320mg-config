@@ -408,7 +408,6 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     <a href="#" data-section="simactivity"><span class="nav-lbl">SIM Activity</span></a>
     <a href="#" data-section="sendcmd"><span class="nav-lbl">Send Command</span></a>
     <a href="#" data-section="output"><span class="nav-lbl">Config Editor</span></a>
-    <a href="#" data-section="changes"><span class="nav-lbl">Changes &amp; OTA</span></a>
     <a href="#" data-section="devices"><span class="nav-lbl">Device Names</span></a>
   </nav>
   <span style="margin-left:auto;display:flex;gap:8px">
@@ -1428,20 +1427,14 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 </div>
 
 <!-- ── CHANGES & OTA ── -->
-<div class="section" id="sect-changes">
-  <div class="section-title">Changes &amp; OTA</div>
-  <div class="section-desc">Only trackers with unsaved configuration edits appear here. Review each device separately before creating its OTA file.</div>
-  <div id="changes_summary" style="margin-bottom:14px"></div>
-  <div id="changes_list">
-    <div class="card"><span style="color:var(--muted)">No device configurations have been changed.</span></div>
-  </div>
-  <div id="review_queue_area" style="display:none">
-    <div id="deploy_device_list"></div>
-    <button id="btn_deploy_all">All</button>
-    <button id="btn_deploy_none">None</button>
-    <button id="btn_deploy_selected">Review</button>
-  </div>
-  <div><span id="deploy_msg" class="status-msg"></span></div>
+<!-- "Changes & OTA" removed: it belonged to the retired per-tracker draft flow,
+     and deploy status (Queued / Downloaded) already shows per tracker on the
+     Dashboard. Legacy IDs kept hidden and null-safe for shared engine code. -->
+<div class="section" id="sect-changes" style="display:none">
+  <div id="changes_summary"></div><div id="changes_list"></div>
+  <div id="review_queue_area"><div id="deploy_device_list"></div>
+    <button id="btn_deploy_all"></button><button id="btn_deploy_none"></button><button id="btn_deploy_selected"></button></div>
+  <span id="deploy_msg"></span>
 </div>
 
 </main>
@@ -1518,7 +1511,7 @@ document.getElementById('btn_theme').addEventListener('click', () => {
 });
 
 const CONFIG_SECTIONS = new Set([
-  'output', 'changes', 'connectivity', 'apnlist', 'globalcfg', 'simpin', 'reporting',
+  'output', 'connectivity', 'apnlist', 'globalcfg', 'simpin', 'reporting',
   'motion', 'geofences', 'alarms', 'harsh', 'behaviour', 'comms', 'advanced',
 ]);
 
