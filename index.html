@@ -3279,8 +3279,7 @@ function deployBadge(t) {
   // acting on it. Neutral, not amber: this is the normal resting state for a
   // delivered config, not a fault. Amber is reserved for work still outstanding.
   if (t.deploymentStatus === 'downloaded')
-    return '<span class="badge badge-muted" title="The tracker fetched the file. Whether it applied the settings is not something we can see from the download alone.">Downloaded</span>' +
-      '<div style="margin-top:3px;font-size:11px;color:var(--muted)">apply not confirmed</div>';
+    return '<span class="badge badge-muted" title="The tracker fetched the file. Whether it applied the settings is not something we can see from the download alone.">Downloaded</span>';
   return '';
 }
 
