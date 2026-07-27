@@ -1,6 +1,6 @@
 {
   "name": "tracker-api",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "GL320MG tracker log monitor API",
   "main": "server.js",
   "scripts": {

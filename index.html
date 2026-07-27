@@ -3275,8 +3275,12 @@ function healthBadge(lastSeen) {
 function deployBadge(t) {
   if (t.configPending || t.deploymentStatus === 'queued')
     return '<span class="badge badge-deploy-pending">Queued</span>';
+  // The tracker fetching the file (200/206) is not the same as the tracker
+  // acting on it. Neutral, not amber: this is the normal resting state for a
+  // delivered config, not a fault. Amber is reserved for work still outstanding.
   if (t.deploymentStatus === 'downloaded')
-    return '<span class="badge badge-warn" title="The file was downloaded; application by the tracker has not been verified">Downloaded · unverified</span>';
+    return '<span class="badge badge-muted" title="The tracker fetched the file. Whether it applied the settings is not something we can see from the download alone.">Downloaded</span>' +
+      '<div style="margin-top:3px;font-size:11px;color:var(--muted)">apply not confirmed</div>';
   return '';
 }
 
