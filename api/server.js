@@ -411,8 +411,10 @@ function cleanupDeliveredConfigs() {
     if (!configPath || !fs.existsSync(configPath)) continue;
     let fileMtime;
     try { fileMtime = fs.statSync(configPath).mtimeMs; } catch { continue; }
+    // GL320MG uses ranged requests, so a complete delivery is 206 far more often
+    // than 200. Requiring 200 here meant this path never fired for a real tracker.
     if (tracker.lastConfig === filename &&
-        tracker.lastStatus === 200 &&
+        (tracker.lastStatus === 200 || tracker.lastStatus === 206) &&
         new Date(tracker.lastSeen).getTime() >= fileMtime) {
       try {
         stmts.markDeploymentDownloaded.run(tracker.imei, filename);
