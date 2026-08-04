@@ -164,7 +164,7 @@ const stmts = {
            s.sms_source AS smsSource, s.sms_destination AS smsDestination,
            s.sms_dcs AS smsDcs, s.sms_part_number AS smsPartNumber,
            s.sms_total_parts AS smsTotalParts,
-           d.name AS deviceName
+           d.name AS deviceName, d.device_type AS deviceType
     FROM sim_activity s
     LEFT JOIN devices d ON d.imei = s.imei
     WHERE (@imei IS NULL OR s.imei = @imei)

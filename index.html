@@ -1244,9 +1244,12 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     <div class="sim-card-hd">Per-SIM overview <span id="sim_overview_count" class="sim-card-sub"></span></div>
     <div style="overflow-x:auto">
       <table class="tbl">
-        <thead><tr><th>Device / SIM</th><th>Status</th><th>Network</th><th>Last seen</th><th class="col-r">Data · 24h</th><th>Trend</th></tr></thead>
+        <thead><tr><th>Device / SIM</th><th>Status</th><th>Network / RAT</th><th>Last seen</th><th class="col-r">Data · 24h</th><th>Trend</th></tr></thead>
         <tbody id="sim_overview_tbody"><tr><td colspan="6" style="text-align:center;padding:28px;color:var(--muted)">Loading…</td></tr></tbody>
       </table>
+    </div>
+    <div style="padding:9px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)">
+      * 1NCE reports most Cat-M1 sessions as generic LTE. For GL320MG devices, LTE therefore indicates Cat-M1; NB-IoT is reported separately.
     </div>
   </div>
 
@@ -3469,11 +3472,21 @@ function simSearchText(record) {
   ].filter(Boolean).join(' ').toLowerCase();
 }
 
+function displayRat(record) {
+  const rat = record?.ratType || '';
+  if (rat === 'NB-IoT') return 'NB-IoT (NB2)';
+  if (rat === 'LTE-M') return 'LTE-M (M1)';
+  if (rat === '4G / LTE' && record?.deviceType === 'GL320MG') {
+    return 'LTE-M (M1, reported as LTE)*';
+  }
+  return rat;
+}
+
 // Translate a 1NCE record into a plain-English one-liner an operator can read
 // at a glance. Returns { icon, cls, title, sub }. The raw telecom detail (SGSN,
 // IMSI, PDP…) stays available in the click-through record.
 function humaniseEvent(r) {
-  const net = [r.operatorName, r.ratType].filter(Boolean).join(' · ');
+  const net = [r.operatorName, displayRat(r)].filter(Boolean).join(' · ');
   if (r.recordKind === 'usage') {
     const vol = r.volumeTotal ? formatVolume(r.volumeTotal) : null;
     return { icon: '📊', cls: 'move', title: `Used data${vol ? ` — ${vol}` : ''}`, sub: net };
@@ -3537,8 +3550,9 @@ function renderSimActivity() {
 
 // Aggregate the flat record list into one row per SIM (keyed by IMEI, else
 // ICCID, else IMSI). Uses only fields already returned by /sim-activity — no
-// new endpoint. Latest record per SIM drives status/network/last-seen; 24h
-// usage records drive the data total and sparkline.
+// new endpoint. The latest record drives status/last-seen, while the latest
+// record containing network information drives Network / RAT. This prevents a
+// later lifecycle event with no RAT from erasing the last known technology.
 function buildSimOverview(records) {
   const now = Date.now();
   const DAY = 24 * 60 * 60 * 1000;
@@ -3550,7 +3564,7 @@ function buildSimOverview(records) {
     if (!s) {
       s = { key, deviceName: r.deviceName || null, imei: r.imei || null,
             iccid: r.iccid || null, imsi: r.imsi || null, latest: null,
-            latestMs: -1, data24h: 0, spark: [] };
+            latestMs: -1, network: null, networkMs: -1, data24h: 0, spark: [] };
       byKey.set(key, s);
     }
     if (!s.deviceName && r.deviceName) s.deviceName = r.deviceName;
@@ -3559,6 +3573,11 @@ function buildSimOverview(records) {
     const t = simTimestamp(r);
     const ms = t ? new Date(t).getTime() : NaN;
     if (!Number.isNaN(ms) && ms > s.latestMs) { s.latestMs = ms; s.latest = r; }
+    if (!Number.isNaN(ms) && ms > s.networkMs &&
+        (r.ratType || r.operatorName || r.countryName || r.apn)) {
+      s.networkMs = ms;
+      s.network = r;
+    }
     if (r.recordKind === 'usage' && r.volumeTotal) {
       const rt = r.receivedAt ? new Date(r.receivedAt).getTime() : ms;
       if (!Number.isNaN(rt) && now - rt <= DAY) {
@@ -3601,6 +3620,7 @@ function renderSimOverview() {
   tbody.innerHTML = '';
   rows.forEach(s => {
     const r = s.latest || {};
+    const networkRecord = s.network || r;
     const ageMin = s.latestMs > 0 ? (now - s.latestMs) / 60000 : Infinity;
     let state = 'idle', label = 'No data', pill = 'idle';
     if (ageMin === Infinity) { state = 'idle'; label = 'No data'; pill = 'idle'; }
@@ -3613,10 +3633,10 @@ function renderSimOverview() {
       : '<span style="color:var(--muted)">Unnamed device</span>';
     const simId = [s.iccid ? `ICCID ${esc(s.iccid)}` : null, s.imei ? esc(s.imei) : null]
       .filter(Boolean).join(' · ') || (s.imsi ? `IMSI ${esc(s.imsi)}` : 'No SIM id');
-    const net = [r.operatorName, r.countryName].filter(Boolean).join(' · ');
-    const rat = r.ratType ? esc(r.ratType) : '';
-    const netCell = net
-      ? `<span class="sim-pill net">${esc(net)}${rat ? ' · ' + rat : ''}</span>`
+    const net = [networkRecord.operatorName, networkRecord.countryName].filter(Boolean).join(' · ');
+    const rat = displayRat(networkRecord);
+    const netCell = net || rat
+      ? `<span class="sim-pill net">${esc(net)}${net && rat ? ' · ' : ''}${esc(rat)}</span>`
       : '<span class="sim-pill idle">No session</span>';
     const lastSeen = s.latestMs > 0
       ? `<span class="sim-primary">${relTime(new Date(s.latestMs).toISOString())}</span>`

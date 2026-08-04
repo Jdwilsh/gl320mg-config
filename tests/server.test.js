@@ -454,6 +454,7 @@ test('1NCE receiver authenticates bulk records, deduplicates retries, and joins 
   assert.equal(body.records.length, 2);
   assert.equal(body.records[0].recordKind, 'event');
   assert.equal(body.records[0].deviceName, 'Medical Bag 12');
+  assert.equal(body.records[0].deviceType, 'GL320MG');
   assert.equal(body.records[0].apn, 'iot.1nce.net');
   assert.equal(body.records[0].ratType, 'LTE-M');
   assert.equal(body.records[0].volumeTotal, null);
