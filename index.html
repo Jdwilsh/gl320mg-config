@@ -76,6 +76,9 @@ main{padding:22px 26px;min-width:0;max-width:1200px;margin:0 auto}
 .sim-pill.bad{background:var(--overdue-soft);color:var(--overdue)}
 .sim-pill.idle{background:var(--panel-2);color:var(--muted)}
 .sim-pill.net{background:var(--accent-soft);color:var(--accent)}
+.operator-logo{display:inline-flex;align-items:center;justify-content:center;height:28px;min-width:42px;padding:3px 9px;border:1px solid var(--border);border-radius:20px;background:#fff}
+.operator-logo img{display:block;width:auto;height:20px;max-width:58px}
+.operator-logo.ee img{height:22px}
 .sim-stripe-cell{display:flex;align-items:center;gap:9px}
 .sim-stripe{width:3px;height:30px;border-radius:2px;background:var(--idle);flex-shrink:0}
 .sim-stripe.ok{background:var(--online)}.sim-stripe.warn{background:var(--late)}.sim-stripe.bad{background:var(--overdue)}
@@ -3482,6 +3485,27 @@ function displayRat(record) {
   return rat;
 }
 
+function operatorBadge(record) {
+  const operator = String(record?.operatorName || '').trim();
+  const country = String(record?.countryName || '').trim();
+  const fullName = [operator, country].filter(Boolean).join(' · ');
+  let logo = '';
+  let logoClass = '';
+  if (/^ee(?:\s|$)/i.test(operator)) {
+    logo = 'assets/operators/ee.svg';
+    logoClass = 'ee';
+  } else if (/^vodafone(?:\s|$)/i.test(operator)) {
+    logo = 'assets/operators/vodafone.svg';
+    logoClass = 'vodafone';
+  }
+  if (logo) {
+    return `<span class="operator-logo ${logoClass}" title="${esc(fullName)}"><img src="${logo}" alt="${esc(operator)}"></span>`;
+  }
+  return fullName
+    ? `<span class="sim-pill net">${esc(fullName)}</span>`
+    : '<span class="sim-pill idle">No session</span>';
+}
+
 // Translate a 1NCE record into a plain-English one-liner an operator can read
 // at a glance. Returns { icon, cls, title, sub }. The raw telecom detail (SGSN,
 // IMSI, PDP…) stays available in the click-through record.
@@ -3633,11 +3657,8 @@ function renderSimOverview() {
       : '<span style="color:var(--muted)">Unnamed device</span>';
     const simId = [s.iccid ? `ICCID ${esc(s.iccid)}` : null, s.imei ? esc(s.imei) : null]
       .filter(Boolean).join(' · ') || (s.imsi ? `IMSI ${esc(s.imsi)}` : 'No SIM id');
-    const net = [networkRecord.operatorName, networkRecord.countryName].filter(Boolean).join(' · ');
     const rat = displayRat(networkRecord);
-    const netCell = net
-      ? `<span class="sim-pill net">${esc(net)}</span>`
-      : '<span class="sim-pill idle">No session</span>';
+    const netCell = operatorBadge(networkRecord);
     const ratCell = rat
       ? `<span class="sim-pill net">${esc(rat)}</span>`
       : '<span class="sim-pill idle">Unknown</span>';
