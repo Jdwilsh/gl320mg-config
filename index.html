@@ -3498,6 +3498,9 @@ function operatorBadge(record) {
   } else if (/^vodafone(?:\s|$)/i.test(operator)) {
     logo = 'assets/operators/vodafone.svg';
     logoClass = 'vodafone';
+  } else if (/^(?:o2|telef[oó]nica o2)(?:\s|-|$)/i.test(operator)) {
+    logo = 'assets/operators/o2.svg?v=1';
+    logoClass = 'o2';
   }
   if (logo) {
     return `<span class="operator-logo ${logoClass}" title="${esc(fullName)}"><img src="${logo}" alt="${esc(operator)}"></span>`;
