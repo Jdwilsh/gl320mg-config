@@ -639,7 +639,9 @@ test('config-sets: assigning members immediately queues per-imei .ini files', as
   assert.equal(pend.pending.filename, `${a}.ini`);
 
   // config detail shows 2 members
-  const detail = await (await fetch(`${base}/config-sets/${created.id}`)).json();
+  const detailResponse = await fetch(`${base}/config-sets/${created.id}`);
+  assert.equal(detailResponse.headers.get('cache-control'), 'no-store');
+  const detail = await detailResponse.json();
   assert.equal(detail.members.length, 2);
 
   // The explicit update action still replaces the waiting files for all members.

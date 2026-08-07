@@ -3981,6 +3981,7 @@ document.getElementById('btn_save_preset').addEventListener('click', async () =>
 // ── Named configs (Config Editor primary flow) ────────────────────────────────
 let configList = [];
 let activeConfigId = null;
+let configSelectionRequest = 0;
 
 async function loadConfigList() {
   try {
@@ -3997,9 +3998,25 @@ async function loadConfigList() {
     b.addEventListener('click', () => selectConfig(Number(b.dataset.id))));
 }
 
-async function selectConfig(id) {
+async function selectConfig(id, options = {}) {
+  if (activeConfigId === id && documentState.dirty && options.reload !== true) {
+    showMsg('config_msg', 'This configuration already has unsaved edits; they have been kept.', false);
+    return;
+  }
+  const requestId = ++configSelectionRequest;
+  if (activeConfigId && documentState.dirty &&
+      (activeConfigId !== id || options.reload === true)) {
+    const savedName = documentState.targetName || 'current configuration';
+    const saved = await saveActiveConfig({ quiet: true });
+    if (!saved) return;
+    if (requestId !== configSelectionRequest) return;
+    showMsg('config_msg', `${savedName} saved before switching.`, false);
+  }
   try {
-    const cfg = await (await apiFetch(`${API}/config-sets/${id}`)).json();
+    const response = await apiFetch(`${API}/config-sets/${id}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const cfg = await response.json();
+    if (requestId !== configSelectionRequest) return;
     activeConfigId = id;
     // Point the shared settings engine at this config: clear the per-tracker
     // target, load the config's baseline + saved field values into the form.
@@ -4018,12 +4035,18 @@ async function selectConfig(id) {
     documentState.loading = true;
     Object.entries(cfg.state || {}).forEach(([fid, val]) => setV(fid, val));
     documentState.loading = false;
+    saveFormState();
     applyConditionals?.();
     Object.keys(sectionBuilders || {}).forEach(renderCmdPreview);
-    renderValidation();
+    generate({ showPreview: false });
     renderConfigDetail(cfg);
     loadConfigList();
+    const savedAt = cfg.updatedAt
+      ? new Date(cfg.updatedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+      : 'unknown time';
+    showMsg('config_msg', `${cfg.name} loaded · saved ${savedAt}.`, false);
   } catch (e) {
+    if (requestId !== configSelectionRequest) return;
     document.getElementById('config_detail').innerHTML = `<div class="note" style="color:var(--danger)">Could not load config: ${esc(e.message)}</div>`;
   }
 }
@@ -4031,10 +4054,13 @@ async function selectConfig(id) {
 function renderConfigDetail(cfg) {
   const members = cfg.members || [];
   const eligible = members.filter(m => m.configEnabled);
+  const savedAt = cfg.updatedAt
+    ? new Date(cfg.updatedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+    : 'unknown';
   document.getElementById('config_detail').innerHTML = `
     <div class="cfg-detail-hd">
       <div><div class="cd-name">${esc(cfg.name)}</div>
-        <div class="cd-sub">${eligible.length} tracker${eligible.length === 1 ? '' : 's'} assigned · new assignments are queued automatically</div></div>
+        <div class="cd-sub">Saved ${esc(savedAt)} · ${eligible.length} tracker${eligible.length === 1 ? '' : 's'} assigned · new assignments queue automatically</div></div>
       <div class="wsactions">
         <button class="btn btn-outline btn-sm" id="btn_config_rename">Rename</button>
         <button class="btn btn-outline btn-sm" id="btn_config_duplicate">Duplicate</button>
@@ -4066,16 +4092,26 @@ function renderConfigDetail(cfg) {
     b.addEventListener('click', () => removeMember(b.dataset.imei)));
 }
 
-async function saveActiveConfig() {
-  if (!activeConfigId) return;
+async function saveActiveConfig(options = {}) {
+  if (!activeConfigId) return false;
+  const savingId = activeConfigId;
   try {
-    await apiFetch(`${API}/config-sets/${activeConfigId}`, {
+    const res = await apiFetch(`${API}/config-sets/${savingId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ state: getConfigState(), sourceText: documentState.sourceText || null }),
     });
-    documentState.dirty = false; updateDocumentState();
-    showMsg('config_msg', 'Settings saved to this config.', false);
-  } catch (e) { showMsg('config_msg', `Error: ${e.message}`, true); }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    if (activeConfigId === savingId) {
+      documentState.dirty = false;
+      updateDocumentState();
+    }
+    if (!options.quiet) showMsg('config_msg', 'Settings saved to this config.', false);
+    return true;
+  } catch (e) {
+    showMsg('config_msg', `${options.quiet ? 'Could not save before switching' : 'Save failed'}: ${e.message}`, true);
+    return false;
+  }
 }
 
 async function deployActiveConfig() {
@@ -4090,7 +4126,7 @@ async function deployActiveConfig() {
   const count = cfg?.memberCount || 0;
   if (!confirm(`Queue this updated configuration for all ${count} tracker${count === 1 ? '' : 's'}?\n\nThis replaces any waiting .ini with the complete current configuration. Each tracker will receive it on its next OTA poll.`)) return;
   try {
-    await saveActiveConfig();
+    if (!await saveActiveConfig({ quiet: true })) return;
     const res = await apiFetch(`${API}/config-sets/${activeConfigId}/deploy`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content, state: getConfigState() }),
@@ -4110,7 +4146,7 @@ async function renameActiveConfig(current) {
       body: JSON.stringify({ name: name.trim() }),
     });
     if (!res.ok) throw new Error((await res.json()).error || 'Rename failed');
-    selectConfig(activeConfigId);
+    selectConfig(activeConfigId, { reload: true });
   } catch (e) { showMsg('config_msg', `Error: ${e.message}`, true); }
 }
 
@@ -4202,7 +4238,7 @@ document.getElementById('btn_assign_confirm').addEventListener('click', async ()
     documentState.dirty = false;
     updateDocumentState();
     closeAssignModal();
-    await selectConfig(activeConfigId);
+    await selectConfig(activeConfigId, { reload: true });
     showMsg('config_msg', `Assigned and queued complete .ini files for ${data.queued} tracker(s).`, false);
   } catch (e) {
     showMsg('config_msg', `Assignment failed: ${e.message}`, true);
@@ -4215,7 +4251,7 @@ document.getElementById('btn_assign_confirm').addEventListener('click', async ()
 async function removeMember(imei) {
   try {
     await apiFetch(`${API}/config-sets/${activeConfigId}/members/${encodeURIComponent(imei)}`, { method: 'DELETE' });
-    selectConfig(activeConfigId);
+    selectConfig(activeConfigId, { reload: true });
   } catch (e) { showMsg('config_msg', `Error: ${e.message}`, true); }
 }
 

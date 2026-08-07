@@ -634,10 +634,12 @@ function configName(value) {
 }
 
 app.get('/config-sets', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   res.json(stmts.allConfigs.all());
 });
 
 app.get('/config-sets/:id', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   const id = Number.parseInt(req.params.id, 10);
   if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid config id' });
   const cfg = stmts.getConfig.get(id);
