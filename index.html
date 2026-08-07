@@ -2743,6 +2743,9 @@ async function getDeviceBaseline(imei) {
 }
 
 async function openDeviceWorkspace(imei, options = {}) {
+  // The per-tracker workspace is legacy UI. Never let one of its remembered
+  // drafts overwrite the shared form while a named configuration is active.
+  if (activeConfigId) return;
   const device = workspaceDevices.find(item => item.imei === imei && item.configEnabled);
   if (!device) return;
   if (documentState.targetImei && documentState.targetImei !== imei) snapshotActiveWorkspace();
@@ -2760,6 +2763,9 @@ async function openDeviceWorkspace(imei, options = {}) {
   showMsg('device_msg', 'Looking for this tracker’s known configuration…', false);
   try {
     const baseline = await getDeviceBaseline(imei);
+    // A named config may have been selected while the baseline request was in
+    // flight. In that case its form state now owns the editor.
+    if (activeConfigId) return;
     if (baseline) {
       applyConfigText(baseline.text, `${baseline.label}: ${device.name}`);
       snapshotActiveWorkspace();
@@ -4386,18 +4392,8 @@ function renderDevices(devices) {
     sel.appendChild(opt);
   });
 
-  if (!documentState.targetImei) {
-    const rememberedImei = localStorage.getItem(ACTIVE_DEVICE_WORKSPACE_KEY) || '';
-    const recentDirtyDraft = Object.values(workspaceDrafts)
-      .filter(draft => draft?.dirty)
-      .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0];
-    const preferredImei = configEntries.some(device => device.imei === rememberedImei)
-      ? rememberedImei
-      : configEntries.some(device => device.imei === recentDirtyDraft?.imei)
-        ? recentDirtyDraft.imei
-        : '';
-    if (preferredImei) setTimeout(() => openDeviceWorkspace(preferredImei), 0);
-  }
+  // Do not auto-restore the retired per-tracker editor. Named configurations
+  // are the sole owner of the shared settings form.
 
   // Populate deploy checklist (with async diff badge per device)
   const deployList = document.getElementById('deploy_device_list');
