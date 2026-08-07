@@ -604,7 +604,7 @@ test('command-log reports configured=false and an empty list initially', async t
   assert.ok(Array.isArray(body.commands));
 });
 
-test('config-sets: create, assign members, and deploy fans out per-imei .ini files', async t => {
+test('config-sets: assigning members immediately queues per-imei .ini files', async t => {
   const server = await startServer();
   t.after(() => server.close());
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -622,26 +622,37 @@ test('config-sets: create, assign members, and deploy fans out per-imei .ini fil
   // duplicate-name rejected
   assert.equal((await post('/config-sets', { name: 'Config A' })).status, 409);
 
-  // assign both trackers
-  const assigned = await (await post(`/config-sets/${created.id}/members`, { imeis: [a, b] })).json();
+  // Assignment cannot create a dangerous defaults-only or incomplete deployment.
+  assert.equal((await post(`/config-sets/${created.id}/members`, { imeis: [a, b] })).status, 400);
+
+  // Assignment and OTA queueing are one atomic user action.
+  const assigned = await (await post(`/config-sets/${created.id}/members`, {
+    imeis: [a, b], content: 'AT+GTQSS=gl320m,,,,1,,,,,,,,,,,,FFFF$', state: { foo: 1 },
+  })).json();
   assert.equal(assigned.assigned, 2);
+  assert.equal(assigned.queued, 2);
+  assert.equal(fs.existsSync(path.join(testRoot, 'configs', `${a}.ini`)), true);
+  assert.equal(fs.existsSync(path.join(testRoot, 'configs', `${b}.ini`)), true);
+
+  const pend = await (await fetch(`${base}/deployment/${a}`)).json();
+  assert.equal(pend.pending.status, 'queued');
+  assert.equal(pend.pending.filename, `${a}.ini`);
 
   // config detail shows 2 members
   const detail = await (await fetch(`${base}/config-sets/${created.id}`)).json();
   assert.equal(detail.members.length, 2);
 
-  // deploy → one queued .ini per member
+  // The explicit update action still replaces the waiting files for all members.
   const deployed = await (await post(`/config-sets/${created.id}/deploy`, {
-    content: 'AT+GTQSS=gl320m,,,,1,,,,,,,,,,,,FFFF$', state: { foo: 1 },
+    content: 'AT+GTQSS=gl320m,,,,0,,,,,,,,,,,,FFFF$', state: { foo: 2 },
   })).json();
   assert.equal(deployed.queued, 2);
-  assert.equal(fs.existsSync(path.join(testRoot, 'configs', `${a}.ini`)), true);
-  assert.equal(fs.existsSync(path.join(testRoot, 'configs', `${b}.ini`)), true);
+  assert.match(fs.readFileSync(path.join(testRoot, 'configs', `${a}.ini`), 'utf8'), /,0,/);
 
-  // each member now has a pending deployment
-  const pend = await (await fetch(`${base}/deployment/${a}`)).json();
-  assert.equal(pend.pending.status, 'queued');
-  assert.equal(pend.pending.filename, `${a}.ini`);
+  // Removing an assignment also removes a still-waiting OTA file.
+  assert.equal((await fetch(`${base}/config-sets/${created.id}/members/${a}`, { method: 'DELETE' })).status, 200);
+  assert.equal(fs.existsSync(path.join(testRoot, 'configs', `${a}.ini`)), false);
+  assert.equal((await (await fetch(`${base}/deployment/${a}`)).json()).pending, null);
 });
 
 test('config-sets: a tracker belongs to at most one config, and delete unassigns', async t => {
@@ -655,8 +666,9 @@ test('config-sets: a tracker belongs to at most one config, and delete unassigns
   const c1 = await (await post('/config-sets', { name: 'One' })).json();
   const c2 = await (await post('/config-sets', { name: 'Two' })).json();
 
-  await post(`/config-sets/${c1.id}/members`, { imeis: [imei] });
-  await post(`/config-sets/${c2.id}/members`, { imeis: [imei] }); // reassign
+  const deployable = { imeis: [imei], content: 'AT+GTQSS=gl320m,,,,1,,,,,,,,,,,,FFFF$', state: {} };
+  await post(`/config-sets/${c1.id}/members`, deployable);
+  await post(`/config-sets/${c2.id}/members`, deployable); // reassign and replace waiting config
 
   // now only c2 has it
   assert.equal((await (await fetch(`${base}/config-sets/${c1.id}`)).json()).members.length, 0);
@@ -693,17 +705,13 @@ test('trackers report their assigned config and sync state', async t => {
   assert.equal(row.assignedConfig, null);
   assert.equal(row.configSync, null);
 
-  // Assign to a config but never deploy → "never"
+  // Assignment itself queues the complete file → "pending" immediately.
   const cfg = await (await post('/config-sets', { name: 'Drift Cfg' })).json();
-  await post(`/config-sets/${cfg.id}/members`, { imeis: [imei] });
+  await post(`/config-sets/${cfg.id}/members`, {
+    imeis: [imei], content: 'AT+GTQSS=gl320m,,,,1,,,,,,,,,,,,FFFF$', state: {},
+  });
   list = await (await fetch(`${base}/trackers`)).json();
   row = list.find(t => t.imei === imei);
   assert.equal(row.assignedConfig, 'Drift Cfg');
-  assert.equal(row.configSync, 'never');
-
-  // Deploy → a file is queued → "pending"
-  await post(`/config-sets/${cfg.id}/deploy`, { content: 'AT+GTQSS=gl320m,,,,1,,,,,,,,,,,,FFFF$', state: {} });
-  list = await (await fetch(`${base}/trackers`)).json();
-  row = list.find(t => t.imei === imei);
   assert.equal(row.configSync, 'pending');
 });

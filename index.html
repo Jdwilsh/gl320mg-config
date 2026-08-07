@@ -1492,8 +1492,8 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
 
 <div class="modal-overlay hidden" id="assign-modal">
   <div class="modal-box" style="max-width:520px">
-    <h3>Assign trackers</h3>
-    <p class="modal-sub" id="assign_modal_sub">Tick the trackers to add to this configuration.</p>
+    <h3>Assign trackers &amp; queue OTA</h3>
+    <p class="modal-sub" id="assign_modal_sub">Assigning a tracker immediately creates its complete &lt;IMEI&gt;.ini file for the next OTA poll.</p>
     <div style="display:flex;gap:8px;margin:6px 0 10px">
       <input id="assign_search" placeholder="Filter…" style="flex:1">
       <button class="btn btn-outline btn-sm" id="assign_select_all">Select all</button>
@@ -1501,7 +1501,7 @@ textarea.output{width:100%;height:420px;font-family:'SF Mono','Fira Code',monosp
     <div id="assign_list" class="assign-list"></div>
     <div class="modal-footer">
       <button class="btn btn-outline" id="btn_assign_cancel">Cancel</button>
-      <button class="btn btn-primary" id="btn_assign_confirm">Assign selected</button>
+      <button class="btn btn-primary" id="btn_assign_confirm">Assign &amp; queue .ini</button>
     </div>
   </div>
 </div>
@@ -4034,13 +4034,13 @@ function renderConfigDetail(cfg) {
   document.getElementById('config_detail').innerHTML = `
     <div class="cfg-detail-hd">
       <div><div class="cd-name">${esc(cfg.name)}</div>
-        <div class="cd-sub">${eligible.length} tracker${eligible.length === 1 ? '' : 's'} assigned · edit settings from the sub-nav above</div></div>
+        <div class="cd-sub">${eligible.length} tracker${eligible.length === 1 ? '' : 's'} assigned · new assignments are queued automatically</div></div>
       <div class="wsactions">
         <button class="btn btn-outline btn-sm" id="btn_config_rename">Rename</button>
         <button class="btn btn-outline btn-sm" id="btn_config_duplicate">Duplicate</button>
         <button class="btn btn-outline btn-sm" id="btn_config_delete">Delete</button>
         <button class="btn btn-outline btn-sm" id="btn_config_save">Save settings</button>
-        <button class="btn btn-primary btn-sm" id="btn_config_deploy">Deploy to ${eligible.length}</button>
+        <button class="btn btn-primary btn-sm" id="btn_config_deploy">Queue update for all ${eligible.length}</button>
       </div>
     </div>
     <div class="card" style="padding:0;overflow:hidden">
@@ -4088,7 +4088,7 @@ async function deployActiveConfig() {
   const content = serializeConfig(true);
   const cfg = configList.find(c => c.id === activeConfigId);
   const count = cfg?.memberCount || 0;
-  if (!confirm(`Deploy this configuration to ${count} tracker${count === 1 ? '' : 's'}?\n\nThe same .ini will be queued for every assigned GL320MG. This takes effect when each tracker next checks in.`)) return;
+  if (!confirm(`Queue this updated configuration for all ${count} tracker${count === 1 ? '' : 's'}?\n\nThis replaces any waiting .ini with the complete current configuration. Each tracker will receive it on its next OTA poll.`)) return;
   try {
     await saveActiveConfig();
     const res = await apiFetch(`${API}/config-sets/${activeConfigId}/deploy`, {
@@ -4136,6 +4136,11 @@ async function deleteActiveConfig(name) {
 
 let assignAvailable = [];
 async function assignToConfig() {
+  const validation = renderValidation();
+  if (validation.blocking.length) {
+    showMsg('config_msg', `Cannot assign: ${validation.blocking[0]}`, true);
+    return;
+  }
   try {
     assignAvailable = await (await apiFetch(`${API}/config-sets-unassigned`)).json();
     if (!assignAvailable.length) { showMsg('config_msg', 'No unassigned GL320MG trackers available.', true); return; }
@@ -4173,13 +4178,38 @@ document.getElementById('assign-modal').addEventListener('click', e => {
 document.getElementById('btn_assign_confirm').addEventListener('click', async () => {
   const imeis = [...document.querySelectorAll('.assign-cb:checked')].map(c => c.value);
   if (!imeis.length) { closeAssignModal(); return; }
-  try {
-    await apiFetch(`${API}/config-sets/${activeConfigId}/members`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imeis }),
-    });
+  const validation = renderValidation();
+  if (validation.blocking.length) {
     closeAssignModal();
-    selectConfig(activeConfigId);
-  } catch (e) { showMsg('config_msg', `Error: ${e.message}`, true); }
+    showMsg('config_msg', `Cannot assign: ${validation.blocking[0]}`, true);
+    return;
+  }
+  const button = document.getElementById('btn_assign_confirm');
+  button.disabled = true;
+  button.textContent = 'Assigning & queuing…';
+  try {
+    const res = await apiFetch(`${API}/config-sets/${activeConfigId}/members`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        imeis,
+        content: serializeConfig(true),
+        state: getConfigState(),
+        sourceText: documentState.sourceText || null,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    documentState.dirty = false;
+    updateDocumentState();
+    closeAssignModal();
+    await selectConfig(activeConfigId);
+    showMsg('config_msg', `Assigned and queued complete .ini files for ${data.queued} tracker(s).`, false);
+  } catch (e) {
+    showMsg('config_msg', `Assignment failed: ${e.message}`, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Assign & queue .ini';
+  }
 });
 
 async function removeMember(imei) {

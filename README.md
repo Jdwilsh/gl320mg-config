@@ -5,13 +5,12 @@ trackers.
 
 ## Operator workflow
 
-1. Open **Config Workspace** and choose a tracker, server file, template, or
-   local file.
-2. Edit the configuration sections. The workspace shows when the draft has
-   unsaved changes.
-3. Return to **Config Workspace** to review validation and the generated
-   configuration.
-4. Save a reusable draft or review and queue a complete `<IMEI>.ini` update.
+1. Open **Configurations** and choose or create a reusable configuration.
+2. Load a trusted complete baseline, then edit and validate its settings.
+3. Assign a tracker. Assignment immediately queues that configuration as the
+   tracker's complete `<IMEI>.ini` file.
+4. After later edits, use **Queue update for all** to replace the waiting file
+   for every tracker assigned to that configuration.
 
 Imported commands that the editor does not understand are preserved verbatim.
 Non-command lines are reported and excluded from tracker output.
@@ -21,12 +20,14 @@ Non-command lines are reported and excluded from tracker output.
 Queueing a file and the tracker downloading it are separate states:
 
 - `queued`: the `<IMEI>.ini` file is waiting for the tracker.
-- `downloaded`: the server returned the complete file with HTTP 200, but
+- `downloaded`: the server returned the complete file with HTTP 200 or a
+  complete ranged HTTP 206 response, but
   application by the tracker has not been independently verified.
 
-HTTP 206 responses do not delete the file. Each update queues a complete
-configuration, so another update cannot accidentally be calculated against a
-configuration the tracker never received.
+After a confirmed complete download, the waiting file is removed so it cannot
+be downloaded repeatedly. Each update queues a complete configuration, so
+another update cannot accidentally be calculated against a configuration the
+tracker never received.
 
 ## Tests
 

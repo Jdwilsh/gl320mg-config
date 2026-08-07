@@ -7,7 +7,7 @@ const { db, initSchema } = require('./db');
 const { runMigration }   = require('./migrate');
 const { normalizeRecord, authHeaderFromConfig, basicAuthMatches } = require('./oneNce');
 const oneNceApi = require('./oneNceApi');
-const { toTrackerConfigText } = require('../config-utils');
+const { parseConfig, toTrackerConfigText } = require('../config-utils');
 
 const app  = express();
 const PORT = 3010;
@@ -401,6 +401,23 @@ function safeConfigPath(name) {
   return resolved;
 }
 
+function deploymentPayload(body) {
+  const content = body?.content;
+  const state = body?.state;
+  if (!content || typeof content !== 'string') return { error: 'content required' };
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return { error: 'state required' };
+  const parsed = parseConfig(content);
+  if (!parsed.commandLines.length || parsed.metadataLines.length || parsed.otherLines.length) {
+    return { error: 'A deployable configuration must contain only complete AT+GT command lines' };
+  }
+  return {
+    fileText: toTrackerConfigText(content),
+    state,
+    stateJson: JSON.stringify(state),
+    sourceText: typeof body?.sourceText === 'string' ? body.sourceText : null,
+  };
+}
+
 // ── Auto-cleanup: delete .ini after confirmed delivery ────────────────────────
 function cleanupDeliveredConfigs() {
   if (!fs.existsSync(CONFIGS_DIR)) return;
@@ -685,27 +702,49 @@ app.delete('/config-sets/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// Assign / unassign trackers. A tracker belongs to at most one config.
+// Assigning is also deployment: once a tracker belongs to a configuration its
+// complete <IMEI>.ini file must already be waiting for the next OTA poll.
 app.post('/config-sets/:id/members', (req, res) => {
   const id = Number.parseInt(req.params.id, 10);
-  if (!stmts.getConfig.get(id)) return res.status(404).json({ error: 'Config not found' });
+  const cfg = Number.isInteger(id) ? stmts.getConfig.get(id) : null;
+  if (!cfg) return res.status(404).json({ error: 'Config not found' });
+  const payload = deploymentPayload(req.body);
+  if (payload.error) return res.status(400).json({ error: payload.error });
   const imeis = Array.isArray(req.body?.imeis) ? req.body.imeis : [];
-  const assign = db.transaction(list => {
-    let n = 0;
+  const assignAndQueue = db.transaction(list => {
+    stmts.updateConfigContent.run(payload.stateJson, payload.sourceText, id);
+    const queued = [];
     for (const raw of list) {
       const imei = safeImei(String(raw || ''));
       if (!imei) continue;
       if (!stmts.configDevice.get(imei)?.configEnabled) continue; // only GL320MG-config devices
-      stmts.assignMember.run(imei, id); n++;
+      const filename = `${imei}.ini`;
+      stmts.assignMember.run(imei, id);
+      fs.writeFileSync(safeConfigPath(filename), payload.fileText, 'utf8');
+      stmts.upsertPendingDeployment.run(imei, filename, payload.stateJson);
+      queued.push(imei);
     }
-    return n;
+    return queued;
   });
-  res.json({ ok: true, assigned: assign(imeis) });
+  if (!fs.existsSync(CONFIGS_DIR)) fs.mkdirSync(CONFIGS_DIR, { recursive: true });
+  const queued = assignAndQueue(imeis);
+  if (!queued.length) return res.status(409).json({ error: 'No eligible GL320MG trackers selected' });
+  console.log(`[assign-config] "${cfg.name}" assigned and queued → ${queued.length} tracker(s)`);
+  res.json({ ok: true, assigned: queued.length, queued: queued.length, imeis: queued });
 });
 
 app.delete('/config-sets/:id/members/:imei', (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
   const imei = safeImei(req.params.imei);
   if (!imei) return res.status(400).json({ error: 'Invalid IMEI' });
+  if (stmts.memberConfigId.get(imei)?.configId !== id) return res.status(404).json({ error: 'Tracker is not assigned to this config' });
+  const pending = stmts.getPendingDeployment.get(imei);
+  if (pending?.status === 'queued') {
+    const fp = safeConfigPath(pending.filename);
+    try { if (fp && fs.existsSync(fp)) fs.unlinkSync(fp); }
+    catch (error) { return res.status(500).json({ error: `Could not remove queued file: ${error.message}` }); }
+    stmts.deletePendingDeployment.run(imei, pending.filename);
+  }
   stmts.unassignMember.run(imei);
   res.json({ ok: true });
 });
@@ -722,27 +761,22 @@ app.post('/config-sets/:id/deploy', (req, res) => {
   const id = Number.parseInt(req.params.id, 10);
   const cfg = Number.isInteger(id) ? stmts.getConfig.get(id) : null;
   if (!cfg) return res.status(404).json({ error: 'Config not found' });
-  const content = req.body?.content;
-  const state = req.body?.state;
-  if (!content || typeof content !== 'string') return res.status(400).json({ error: 'content required' });
-  if (!state || typeof state !== 'object') return res.status(400).json({ error: 'state required' });
+  const payload = deploymentPayload(req.body);
+  if (payload.error) return res.status(400).json({ error: payload.error });
 
   const members = stmts.configMembers.all(id);
   const eligible = members.filter(m => m.configEnabled);
   if (eligible.length === 0) return res.status(409).json({ error: 'This config has no GL320MG trackers assigned' });
 
   if (!fs.existsSync(CONFIGS_DIR)) fs.mkdirSync(CONFIGS_DIR, { recursive: true });
-  const fileText = toTrackerConfigText(content);
-  const stateJson = JSON.stringify(state);
-
   const deploy = db.transaction(list => {
     // Persist the config's saved settings/baseline as part of the deploy.
-    stmts.updateConfigContent.run(stateJson, cfg.sourceText ?? null, id);
+    stmts.updateConfigContent.run(payload.stateJson, payload.sourceText ?? cfg.sourceText ?? null, id);
     const queued = [];
     for (const m of list) {
       const filename = `${m.imei}.ini`;
-      fs.writeFileSync(safeConfigPath(filename), fileText, 'utf8');
-      stmts.upsertPendingDeployment.run(m.imei, filename, stateJson);
+      fs.writeFileSync(safeConfigPath(filename), payload.fileText, 'utf8');
+      stmts.upsertPendingDeployment.run(m.imei, filename, payload.stateJson);
       queued.push(m.imei);
     }
     return queued;
