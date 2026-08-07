@@ -3982,6 +3982,35 @@ document.getElementById('btn_save_preset').addEventListener('click', async () =>
 let configList = [];
 let activeConfigId = null;
 let configSelectionRequest = 0;
+let loadedConfigId = null;
+let loadedConfigState = {};
+const configToolDefaults = getConfigState();
+
+const CRITICAL_CONFIG_FIELDS = {
+  bsi_net_mode: 'Network mode',
+  bsi_lte_mode: 'LTE mode',
+};
+
+function configValueLabel(id, value) {
+  const control = document.getElementById(id);
+  if (control?.tagName === 'SELECT') {
+    const option = [...control.options].find(item => item.value === String(value));
+    if (option) return option.textContent.trim();
+  }
+  return String(value ?? '');
+}
+
+function confirmCriticalConfigChanges(nextState) {
+  if (!loadedConfigId || loadedConfigId !== activeConfigId) return false;
+  const changes = Object.entries(CRITICAL_CONFIG_FIELDS)
+    .filter(([id]) => String(loadedConfigState[id] ?? '') !== String(nextState[id] ?? ''))
+    .map(([id, label]) => `${label}: ${configValueLabel(id, loadedConfigState[id])} → ${configValueLabel(id, nextState[id])}`);
+  if (!changes.length) return true;
+  return confirm(
+    `Confirm critical configuration change for ${documentState.targetName}:\n\n` +
+    `${changes.join('\n')}\n\nSave this change?`
+  );
+}
 
 async function loadConfigList() {
   try {
@@ -4022,6 +4051,9 @@ async function selectConfig(id, options = {}) {
     // target, load the config's baseline + saved field values into the form.
     documentState.targetImei = '';
     documentState.targetName = cfg.name;
+    documentState.loading = true;
+    Object.entries(configToolDefaults).forEach(([fid, val]) => setV(fid, val));
+    documentState.loading = false;
     if (cfg.sourceText) {
       applyConfigText(cfg.sourceText, `Config: ${cfg.name}`);
     } else {
@@ -4039,6 +4071,8 @@ async function selectConfig(id, options = {}) {
     applyConditionals?.();
     Object.keys(sectionBuilders || {}).forEach(renderCmdPreview);
     generate({ showPreview: false });
+    loadedConfigId = id;
+    loadedConfigState = getConfigState();
     renderConfigDetail(cfg);
     loadConfigList();
     const savedAt = cfg.updatedAt
@@ -4095,15 +4129,25 @@ function renderConfigDetail(cfg) {
 async function saveActiveConfig(options = {}) {
   if (!activeConfigId) return false;
   const savingId = activeConfigId;
+  if (loadedConfigId !== savingId) {
+    showMsg('config_msg', 'Save blocked: the form does not match the selected configuration. Reload it and review the settings.', true);
+    return false;
+  }
+  const nextState = getConfigState();
+  if (!confirmCriticalConfigChanges(nextState)) {
+    showMsg('config_msg', 'Save cancelled. The critical network edit remains on screen but has not been saved.', true);
+    return false;
+  }
   try {
     const res = await apiFetch(`${API}/config-sets/${savingId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ state: getConfigState(), sourceText: documentState.sourceText || null }),
+      body: JSON.stringify({ state: nextState, sourceText: documentState.sourceText || null }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
     if (activeConfigId === savingId) {
       documentState.dirty = false;
+      loadedConfigState = { ...nextState };
       updateDocumentState();
     }
     if (!options.quiet) showMsg('config_msg', 'Settings saved to this config.', false);
@@ -4214,6 +4258,17 @@ document.getElementById('assign-modal').addEventListener('click', e => {
 document.getElementById('btn_assign_confirm').addEventListener('click', async () => {
   const imeis = [...document.querySelectorAll('.assign-cb:checked')].map(c => c.value);
   if (!imeis.length) { closeAssignModal(); return; }
+  if (loadedConfigId !== activeConfigId) {
+    closeAssignModal();
+    showMsg('config_msg', 'Assignment blocked: the form does not match the selected configuration. Reload it and review the settings.', true);
+    return;
+  }
+  const nextState = getConfigState();
+  if (!confirmCriticalConfigChanges(nextState)) {
+    closeAssignModal();
+    showMsg('config_msg', 'Assignment cancelled. The critical network edit remains on screen but has not been saved or queued.', true);
+    return;
+  }
   const validation = renderValidation();
   if (validation.blocking.length) {
     closeAssignModal();
@@ -4229,13 +4284,14 @@ document.getElementById('btn_assign_confirm').addEventListener('click', async ()
       body: JSON.stringify({
         imeis,
         content: serializeConfig(true),
-        state: getConfigState(),
+        state: nextState,
         sourceText: documentState.sourceText || null,
       }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
     documentState.dirty = false;
+    loadedConfigState = { ...nextState };
     updateDocumentState();
     closeAssignModal();
     await selectConfig(activeConfigId, { reload: true });
